@@ -1,0 +1,59 @@
+# Swagger UI
+GET     /                          controllers.Assets.at(path="/public/swagger", file="index.html")
+GET     /swagger.json                   controllers.ApiHelpController.getResources
+
+GET     /api/block/stats                org.tronscan.api.BlockApi.stats
+GET     /api/block                      org.tronscan.api.BlockApi.findAll
+GET     /api/block/latest               org.tronscan.api.BlockApi.latest
+GET     /api/block/:id                  org.tronscan.api.BlockApi.findById(id: Long)
+
+GET     /api/transfer                   org.tronscan.api.TransferApi.findAll
+GET     /api/transfer/stats             org.tronscan.api.TransferApi.stats
+GET     /api/transfer/:hash             org.tronscan.api.TransferApi.findByHash(hash: String)
+
+GET     /api/transaction                org.tronscan.api.TransactionApi.findAll
+POST    /api/transaction                org.tronscan.api.TransactionApi.create
+GET     /api/transaction/:hash          org.tronscan.api.TransactionApi.findByHash(hash: String)
+
+GET     /api/account                    org.tronscan.api.AccountApi.findAll
+GET     /api/account/richlist           org.tronscan.api.AccountApi.richList
+GET     /api/account/:address           org.tronscan.api.AccountApi.findByAddress(address: String)
+GET     /api/account/:address/media     org.tronscan.api.AccountApi.getInfo(address: String)
+GET     /api/account/:address/balance   org.tronscan.api.AccountApi.getAddressBalance(address: String)
+GET     /api/account/:address/stats     org.tronscan.api.AccountApi.getStats(address: String)
+GET     /api/account/:address/votes     org.tronscan.api.AccountApi.getVotes(address: String)
+GET     /api/account/:address/sr        org.tronscan.api.AccountApi.getSr(address: String)
+POST    /api/account/:address/sr        org.tronscan.api.AccountApi.updateSr(address: String)
+
+# Node
+
+GET     /api/node                       org.tronscan.api.NodeApi.status
+
+GET     /api/system/status              org.tronscan.api.SystemApi.status
+GET     /api/system/sync-accounts       org.tronscan.api.AccountApi.resync
+
+GET     /api/vote                       org.tronscan.api.VoteApi.findAll
+GET     /api/vote/live                  org.tronscan.api.VoteApi.currentCycle
+GET     /api/vote/current-cycle         org.tronscan.api.VoteApi.candidateTotals
+GET     /api/vote/next-cycle            org.tronscan.api.VoteApi.nextCycle
+GET     /api/vote/stats                 org.tronscan.api.VoteApi.stats
+
+GET     /api/token                      org.tronscan.api.TokenApi.findAll
+GET     /api/token/:name                org.tronscan.api.TokenApi.findByName(name: String)
+GET     /api/token/:name/address        org.tronscan.api.TokenApi.getAccounts(name: String)
+
+GET     /api/witness                    org.tronscan.api.WitnessApi.findAll
+GET     /api/nodemap                    org.tronscan.api.WitnessApi.getNodeMap
+
+GET     /api/market/markets             org.tronscan.api.MarketApi.markets
+
+POST    /api/auth                       org.tronscan.api.AuthApi.requestToken
+
+# Map static resources from the /public folder to the /assets URL path
+GET     /assets/*file                   controllers.Assets.versioned(path="/public", file: Asset)
+
+# Socket IO
+GET     /socket.io/                     play.engineio.EngineIOController.endpoint(transport)
+POST    /socket.io/                     play.engineio.EngineIOController.endpoint(transport)
+
+#GET     /*file                     controllers.Assets.at(path="/public/swagger", file)

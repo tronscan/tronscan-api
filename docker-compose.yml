@@ -1,0 +1,15 @@
+version: '2'
+
+services:
+  tronexplorer:
+    build:
+      dockerfile: ./Dockerfile
+      context: ./
+    container_name: tron_explorer
+    external_links:
+      - pg-9.6
+    ports:
+      - "9022:9000"
+    expose:
+      - "9022"
+    network_mode: "bridge"
