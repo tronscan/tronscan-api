@@ -38,6 +38,7 @@ The non-blocking architecture of Play combined with the reactive streams of Akka
 
 * PostgreSQL 9.6
 * Java 8
+* Redis
 * [SBT](https://www.scala-sbt.org/1.0/docs/Installing-sbt-on-Linux.html)
 
 # Installation
