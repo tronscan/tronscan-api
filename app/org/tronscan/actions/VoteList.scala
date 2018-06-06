@@ -2,6 +2,7 @@ package org.tronscan.actions
 
 import javax.inject.Inject
 import org.tron.api.api.EmptyMessage
+import org.tron.api.api.WalletGrpc.Wallet
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tronscan.Extensions._
 import org.tronscan.grpc.WalletClient
@@ -16,7 +17,8 @@ class VoteList @Inject() (
   srRepo: SuperRepresentativeModelRepository,
   accountModelRepository: AccountModelRepository,
   voteSnapshotModelRepository: VoteSnapshotModelRepository,
-  walletSolidity: WalletSolidity) {
+  walletSolidity: WalletSolidity,
+  wallet: Wallet) {
 
   def execute(implicit executionContext: ExecutionContext) = {
 
@@ -51,7 +53,7 @@ class VoteList @Inject() (
     }
 
     for {
-      witnesses <- walletSolidity.listWitnesses(EmptyMessage()).map(_.witnesses)
+      witnesses <- wallet.listWitnesses(EmptyMessage()).map(_.witnesses)
       accounts <- accountModelRepository.findByAddresses(witnesses.map(_.address.toAddress)).map(_.map(x => x.address -> x.name).toMap)
       previousHour <- getTotals("previous-hour").map(_.toMap)
       previousDay <- getTotals("previous-day").map(_.toMap)
