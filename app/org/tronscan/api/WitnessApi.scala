@@ -1,21 +1,18 @@
 package org.tronscan.api
 
 import javax.inject.{Inject, Singleton}
-import org.tron.api.api.WalletGrpc.Wallet
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tron.api.api.{EmptyMessage, Node}
-import org.tron.common.utils.{Base58, ByteArray}
-import org.tron.protos.Tron.Account
-import play.api.cache.{Cached, NamedCache}
-import play.api.cache.redis.CacheAsyncApi
-import play.api.libs.json.Json
-import play.api.mvc.InjectedController
+import org.tron.common.utils.ByteArray
+import org.tronscan.Extensions._
+import org.tronscan.actions.RepresentativeListReader
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models.{AccountModelRepository, IPGeoModel, VoteWitnessContractModelRepository, WitnessModelRepository}
 import org.tronscan.service.GeoIPService
-import org.tronscan.Extensions._
-import org.tronscan.actions.RepresentativeListReader
-import org.tronscan.protocol.AddressFormatter
+import play.api.cache.redis.CacheAsyncApi
+import play.api.cache.{Cached, NamedCache}
+import play.api.libs.json.Json
+import play.api.mvc.InjectedController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
