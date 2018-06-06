@@ -8,7 +8,7 @@ import org.tron.api.api.EmptyMessage
 import org.tron.api.api.WalletGrpc.Wallet
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tron.common.utils.Base58
-import org.tronscan.models.{VoteSnapshotModel, VoteSnapshotModelRepository}
+import org.tronscan.models.{VoteSnapshotModel, VoteSnapshotModelRepository, VoteWitnessContractModelRepository}
 
 import scala.concurrent.duration._
 
@@ -16,6 +16,7 @@ case class MakeSnapshot()
 
 class VoteScraper @Inject() (
   walletSolidity: WalletSolidity,
+  repo: VoteWitnessContractModelRepository,
   voteSnapshotModelRepository: VoteSnapshotModelRepository) extends Actor {
 
   import context.dispatcher
@@ -29,18 +30,17 @@ class VoteScraper @Inject() (
   def makeSnapshot() = async {
     val timestamp = DateTime.now
 
-    val witnesses = await(walletSolidity.listWitnesses(EmptyMessage())).witnesses
+    val witnesses = await(repo.votesByAddress)
 
-    val votes = witnesses.map { witness =>
+    val votes = witnesses.map { case (address, stats) =>
       VoteSnapshotModel(
-        address = Base58.encode58Check(witness.address.toByteArray),
+        address = address,
         timestamp = timestamp,
-        votes = witness.voteCount,
+        votes = stats.votes,
       )
-    }
+    }.toList
 
     await(voteSnapshotModelRepository.updateVotes(votes))
-
   }
 
   override def preStart(): Unit = {
