@@ -18,7 +18,7 @@ class LoggingFilter @Inject() (implicit val mat: Materializer, ec: ExecutionCont
       host = requestHeader.host,
       uri = requestHeader.uri,
       ip = requestHeader.headers.get("X-Real-IP").getOrElse(""),
-      referer = requestHeader.headers.get("referer").getOrElse(""),
+      referer = requestHeader.headers.get("referer").getOrElse("")
     ))
 
     nextFilter(requestHeader)

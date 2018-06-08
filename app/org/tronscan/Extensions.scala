@@ -2,14 +2,17 @@ package org.tronscan
 
 import com.google.protobuf.ByteString
 import org.tron.common.utils.{Base58, Sha256Hash}
-import org.tron.protos.Tron.Block
-import org.tronscan.protocol.AddressFormatter
+import org.tron.protos.Tron.{Block, Transaction}
 
 object Extensions {
 
-  implicit class BlockUtils(block: Block) {
-    def hash = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray).toString
-    def number = block.getBlockHeader.getRawData.number
+  implicit class ImplicitBlock(block: Block) {
+    def hash: String = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray).toString
+    def number: Long = block.getBlockHeader.getRawData.number
+  }
+
+  implicit class ImplicitTransaction(trx: Transaction) {
+    def hash: String = Sha256Hash.of(trx.getRawData.toByteArray).toString
   }
 
   implicit class ByteStringUtils(byteString: ByteString) {

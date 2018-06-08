@@ -71,6 +71,8 @@ libraryDependencies ++= Seq(
 
   ws,
 
+  specs2,
+
   play.sbt.PlayImport.cacheApi,
   "com.github.karelcemus" %% "play-redis" % "2.1.1",
 

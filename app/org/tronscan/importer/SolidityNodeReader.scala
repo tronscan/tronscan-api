@@ -196,7 +196,7 @@ class SolidityNodeReader @Inject()(
               transaction <- solidityBlock.transactions
             } yield {
 
-              val transactionHash = Sha256Hash.of(transaction.toByteArray).toString
+              val transactionHash = transaction.hash
               val transactionTime = new DateTime(header.timestamp)
 
               val transactionModel = TransactionModel(
@@ -218,7 +218,7 @@ class SolidityNodeReader @Inject()(
             } {
               val any = contract.getParameter
 
-              val transactionHash = Sha256Hash.of(transaction.toByteArray).toString
+              val transactionHash = transaction.hash
               val transactionTime = new DateTime(header.timestamp)
 
               // println(s"block: ${header.number}", s"transaction hash: $transactionHash", "timestamp: " + transaction.getRawData.timestamp)

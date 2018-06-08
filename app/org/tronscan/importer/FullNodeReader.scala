@@ -5,12 +5,13 @@ import akka.pattern.ask
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, KillSwitches, Supervision}
 import akka.util
+import cats.kernel.instances.hash
 import javax.inject.{Inject, Named}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
 import org.tron.api.api.{EmptyMessage, NumberMessage}
-import org.tron.common.utils.{Base58, ByteUtil, Sha256Hash}
+import org.tron.common.utils.{Base58, ByteUtil}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
 import org.tronscan.Extensions._
 import org.tronscan.api.models.TransactionSerializer
@@ -141,7 +142,7 @@ class FullNodeReader @Inject()(
           transaction <- block.transactions
         } yield {
 
-          val transactionHash = Sha256Hash.of(transaction.toByteArray).toString
+          val transactionHash = transaction.hash
           val transactionTime = new DateTime(header.timestamp)
 
           val transactionModel = TransactionModel(
@@ -162,7 +163,7 @@ class FullNodeReader @Inject()(
         } {
           val any = contract.getParameter
 
-          val transactionHash = Sha256Hash.of(transaction.toByteArray).toString
+          val transactionHash = transaction.hash
           val transactionTime = new DateTime(header.timestamp)
 
           //            println(s"block: ${header.number}", s"transaction hash: $transactionHash", "timestamp: " + transaction.getRawData.timestamp)

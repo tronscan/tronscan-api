@@ -6,8 +6,6 @@ import play.api.inject.ConfigurationProvider
 
 class Bootstrap @Inject() (configurationProvider: ConfigurationProvider) {
 
-  println("bootstrapping")
-
   val config = configurationProvider.get
 
   def getNet = config.get[String]("net.type")

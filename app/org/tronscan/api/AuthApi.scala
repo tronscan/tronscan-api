@@ -13,6 +13,7 @@ import pdi.jwt.{JwtAlgorithm, JwtJson}
 import play.api.inject.ConfigurationProvider
 import play.api.libs.json.Json
 import play.api.mvc.InjectedController
+import org.tronscan.Extensions._
 
 
 class AuthApi @Inject() (configurationProvider: ConfigurationProvider) extends InjectedController {
@@ -27,7 +28,7 @@ class AuthApi @Inject() (configurationProvider: ConfigurationProvider) extends I
     val jsonData = (req.body.asJson.get \ "transaction").as[String]
 
     val transaction = Transaction.parseFrom(ByteArray.fromHexString(jsonData))
-    val rawHash = Sha256Hash.of(transaction.getRawData.toByteArray)
+    val rawHash = transaction.hash
 
     val signatureAddress = ECKey.signatureToAddress(rawHash.getBytes, Crypto.getBase64FromByteString(transaction.signature.head))
 
