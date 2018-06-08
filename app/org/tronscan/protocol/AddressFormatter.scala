@@ -1,7 +1,7 @@
 package org.tronscan.protocol
 
 object StaticAddressFormatter {
-  var formatter: AddressFormatter = new TestNetFormatter
+  var formatter: AddressFormatter = new MainNetFormatter
 }
 
 trait AddressFormatter {

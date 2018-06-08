@@ -19,6 +19,7 @@ package org.tron.common.utils;
 
 import com.google.common.io.ByteStreams;
 import com.google.common.primitives.Ints;
+import com.google.common.primitives.Longs;
 import com.google.protobuf.ByteString;
 
 import java.io.File;
@@ -44,6 +45,41 @@ public class Sha256Hash implements Serializable, Comparable<Sha256Hash> {
   public static final Sha256Hash ZERO_HASH = wrap(new byte[LENGTH]);
 
   private final byte[] bytes;
+
+  private long blockNum;
+
+
+  private byte[] generateBlockId(long blockNum, Sha256Hash blockHash) {
+    byte[] numBytes = Longs.toByteArray(blockNum);
+    byte[] hash = blockHash.getBytes();
+    System.arraycopy(numBytes, 0, hash, 0, 8);
+    return hash;
+  }
+
+  private byte[] generateBlockId(long blockNum, byte[] blockHash) {
+    byte[] numBytes = Longs.toByteArray(blockNum);
+    byte[] hash = blockHash;
+    System.arraycopy(numBytes, 0, hash, 0, 8);
+    return hash;
+  }
+
+  public long getBlockNum(){
+    return blockNum;
+  }
+
+  public Sha256Hash(long num, byte[] hash) {
+    byte[] rawHashBytes = this.generateBlockId(num, hash);
+    checkArgument(rawHashBytes.length == LENGTH);
+    this.bytes = rawHashBytes;
+    this.blockNum = num;
+  }
+
+  public Sha256Hash(long num, Sha256Hash hash) {
+    byte[] rawHashBytes = this.generateBlockId(num, hash);
+    checkArgument(rawHashBytes.length == LENGTH);
+    this.bytes = rawHashBytes;
+    this.blockNum = num;
+  }
 
   /**
    * Use {@link #wrap(byte[])} instead.
@@ -189,7 +225,7 @@ public class Sha256Hash implements Serializable, Comparable<Sha256Hash> {
    * two ranges and then passing the result to {@link #hashTwice(byte[])}.
    */
   public static byte[] hashTwice(byte[] input1, int offset1, int length1,
-      byte[] input2, int offset2, int length2) {
+                                 byte[] input2, int offset2, int length2) {
     MessageDigest digest = newDigest();
     digest.update(input1, offset1, length1);
     digest.update(input2, offset2, length2);
@@ -221,7 +257,7 @@ public class Sha256Hash implements Serializable, Comparable<Sha256Hash> {
   public int hashCode() {
     // Use the last 4 bytes, not the first 4 which are often zeros in Bitcoin.
     return Ints
-        .fromBytes(bytes[LENGTH - 4], bytes[LENGTH - 3], bytes[LENGTH - 2], bytes[LENGTH - 1]);
+            .fromBytes(bytes[LENGTH - 4], bytes[LENGTH - 3], bytes[LENGTH - 2], bytes[LENGTH - 1]);
   }
 
   /**
