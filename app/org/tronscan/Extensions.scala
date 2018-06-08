@@ -8,6 +8,7 @@ object Extensions {
 
   implicit class ImplicitBlock(block: Block) {
     def hash: String = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray).toString
+    def hashBytes = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray).getBytes
     def number: Long = block.getBlockHeader.getRawData.number
   }
 

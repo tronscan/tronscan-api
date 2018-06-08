@@ -18,6 +18,7 @@
 
 package org.tron.common.crypto;
 
+import org.tron.common.crypto.cryptohash.Keccak256;
 import org.tron.common.crypto.jce.TronCastleProvider;
 import org.tronscan.protocol.StaticAddressFormatter;
 
@@ -60,22 +61,15 @@ public class Hash {
 
   public static byte[] sha3(byte[] input) {
     MessageDigest digest;
-    try {
-      digest = MessageDigest.getInstance(HASH_256_ALGORITHM_NAME,
-          CRYPTO_PROVIDER);
-      digest.update(input);
-      return digest.digest();
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException(e);
-    }
-
+    digest = new Keccak256();
+    digest.update(input);
+    return digest.digest();
   }
 
   public static byte[] sha3(byte[] input1, byte[] input2) {
     MessageDigest digest;
     try {
-      digest = MessageDigest.getInstance(HASH_256_ALGORITHM_NAME,
-          CRYPTO_PROVIDER);
+      digest = MessageDigest.getInstance(HASH_256_ALGORITHM_NAME, CRYPTO_PROVIDER);
       digest.update(input1, 0, input1.length);
       digest.update(input2, 0, input2.length);
       return digest.digest();

@@ -8,3 +8,4 @@ target
 /RUNNING_PID
 update-to-dev.sh
 deploy-to-production.sh
+local.conf
