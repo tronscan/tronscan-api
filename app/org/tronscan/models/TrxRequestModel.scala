@@ -33,7 +33,7 @@ class TrxRequestModelRepository @Inject() (val dbConfig: DatabaseConfigProvider)
 
   def findByRecentIp(ip: String) = run {
     val since = DateTime.now.minusHours(1)
-    table.filter(_.dateCreated >= since).result.headOption
+    table.filter(x => x.dateCreated >= since && x.ip === ip).result.headOption
   }
 
 }
