@@ -63,15 +63,34 @@ class TokenApi @Inject()(
         "data" -> items.map { case (asset, account) =>
 
           val frozenSupply = asset.frozenSupply
-          val totalSupply = asset.totalSupply - frozenSupply
-          val issuedTokens = account.tokenBalances.hcursor.downField(asset.name).as[Double].getOrElse(0D)
-          val remainingTokens = totalSupply - issuedTokens
-          val percentage = (remainingTokens / totalSupply.toDouble) * 100
+          val totalSupply = asset.totalSupply.toDouble
+
+          val availableSupply = totalSupply - frozenSupply
+          val availableTokens = account.tokenBalances.hcursor.downField(asset.name).as[Double].getOrElse(0D)
+
+          val issuedTokens = availableSupply - availableTokens
+          val issuedPercentage = (issuedTokens / availableSupply) * 100
+
+          val remainingTokens = totalSupply - frozenSupply - issuedTokens
+          val percentage = (remainingTokens / availableSupply) * 100
+
+          val frozenSupplyPercentage = (frozenSupply / totalSupply) * 100
 
           asset.asJson.deepMerge(Json.obj(
             "price" -> asset.price.asJson,
-            "issued" -> remainingTokens.asJson,
-            "percentage" -> percentage.asJson
+
+            "issued" -> issuedTokens.asJson,
+            "issuedPercentage" -> issuedPercentage.asJson,
+
+            "available" -> availableTokens.asJson,
+            "availableSupply" -> availableSupply.asJson,
+
+            "remaining" -> remainingTokens.asJson,
+            "remainingPercentage" -> percentage.asJson,
+            "percentage" -> percentage.asJson,
+
+            "frozen" -> frozenSupply.asJson,
+            "frozenPercentage" -> frozenSupplyPercentage.asJson,
           ))
         }.asJson
       ))
