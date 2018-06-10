@@ -76,12 +76,13 @@ libraryDependencies ++= Seq(
   play.sbt.PlayImport.cacheApi,
   "com.github.karelcemus" %% "play-redis" % "2.1.1",
 
-
-    ehcache,
+  ehcache,
   "com.beachape.metascraper" %% "metascraper" % "0.4.0",
 
   "com.pauldijou" %% "jwt-play-json" % "0.16.0",
   "com.pauldijou" %% "jwt-play" % "0.16.0",
+
+  "org.ocpsoft.prettytime" % "prettytime" % "4.0.1.Final"
 
 ) ++ grpcDeps ++ akkaDeps ++ circeDependencies
 

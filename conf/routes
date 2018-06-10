@@ -56,6 +56,8 @@ POST    /api/testnet/request-coins      org.tronscan.api.TestNetApi.requestTrx
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file                   controllers.Assets.versioned(path="/public", file: Asset)
 
+POST    /api/slack/command              org.tronscan.slack.SlackApi.handleCommand
+
 # Socket IO
 GET     /socket.io/                     play.engineio.EngineIOController.endpoint(transport)
 POST    /socket.io/                     play.engineio.EngineIOController.endpoint(transport)

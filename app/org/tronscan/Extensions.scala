@@ -20,6 +20,9 @@ object Extensions {
     def toAddress = {
       Base58.encode58Check(byteString.toByteArray)
     }
+    def decodeString = {
+      new String(byteString.toByteArray)
+    }
 
   }
 
