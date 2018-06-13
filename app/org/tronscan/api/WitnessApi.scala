@@ -44,6 +44,7 @@ class WitnessApi @Inject()(
           "address"             -> witness.address.toAddress,
           "name"                -> accounts.getOrElse(witness.address.toAddress, "").toString,
           "url"                 -> witness.url,
+          "producer"            -> witness.isJobs,
           "latestBlockNumber"   -> witness.latestBlockNum,
           "latestSlotNumber"    -> witness.latestSlotNum,
           "missedTotal"         -> witness.totalMissed,
@@ -77,11 +78,11 @@ class WitnessApi @Inject()(
       } yield {
         Ok(Json.toJson(geoNodes.map { case GeoNode(node, geo) =>
           Json.obj(
-            "ip" -> ByteArray.toStr(node.getAddress.host.toByteArray),
+            "ip"      -> ByteArray.toStr(node.getAddress.host.toByteArray),
             "country" -> geo.country,
-            "city" -> geo.city,
-            "lat" -> geo.lat,
-            "lng" -> geo.lng,
+            "city"    -> geo.city,
+            "lat"     -> geo.lat,
+            "lng"     -> geo.lng,
           )
         }))
       }

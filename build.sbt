@@ -9,7 +9,6 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
 scalaVersion := "2.12.4"
 
-
 dependencyOverrides += "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.9.2"
 //dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.8"
 //dependencyOverrides += "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.8.8"

@@ -1,10 +1,12 @@
 package org
 package tronscan.api.models
 
+import com.google.protobuf.ByteString
 import io.circe.syntax._
 import io.circe.{Encoder, Json => Js}
 import org.joda.time.DateTime
-import org.tron.common.utils.{Base58, ByteArray, Crypto}
+import org.tron.common.crypto.ECKey
+import org.tron.common.utils.{Base58, ByteArray, Crypto, Sha256Hash}
 import org.tron.protos.Tron.Transaction
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountCreateContract, AccountUpdateContract, AssetIssueContract, DeployContract, FreezeBalanceContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, UpdateAssetContract, VoteAssetContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tronscan.Extensions._
@@ -221,6 +223,7 @@ object TransactionSerializer {
     "signatures" -> transaction.signature.map { signature =>
       Js.obj(
         "bytes" -> Crypto.getBase64FromByteString(signature).asJson,
+//        "address" -> ByteString.copyFrom(ECKey.signatureToAddress(Sha256Hash.of(transaction.getRawData.toByteArray).getBytes, Crypto.getBase64FromByteString(transaction.signature(0)))).toAddress.asJson,
       )
     }.asJson,
   )

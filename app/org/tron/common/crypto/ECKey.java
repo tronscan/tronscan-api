@@ -449,8 +449,7 @@ public class ECKey implements Serializable {
    */
   public static byte[] signatureToAddress(byte[] messageHash, String
       signatureBase64) throws SignatureException {
-    return computeAddress(signatureToKeyBytes(messageHash,
-        signatureBase64));
+    return computeAddress(signatureToKeyBytes(messageHash, signatureBase64));
   }
 
   /**

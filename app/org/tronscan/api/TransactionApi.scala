@@ -17,6 +17,7 @@ import org.tronscan.api.models.TransactionSerializer
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models.{TransactionModel, TransactionModelRepository}
+
 import concurrent.duration._
 import scala.async.Async._
 import scala.concurrent.ExecutionContext.Implicits.global
