@@ -28,9 +28,9 @@ class AuthApi @Inject() (configurationProvider: ConfigurationProvider) extends I
     val jsonData = (req.body.asJson.get \ "transaction").as[String]
 
     val transaction = Transaction.parseFrom(ByteArray.fromHexString(jsonData))
-    val rawHash = transaction.hash
+    val rawHash = transaction.hashBytes
 
-    val signatureAddress = ECKey.signatureToAddress(rawHash.getBytes, Crypto.getBase64FromByteString(transaction.signature.head))
+    val signatureAddress = ECKey.signatureToAddress(rawHash, Crypto.getBase64FromByteString(transaction.signature.head))
 
     val transferContract = org.tron.protos.Contract.TransferContract.parseFrom(transaction.getRawData.contract.head.getParameter.value.toByteArray)
     val transactionAddress = transferContract.ownerAddress.toByteArray

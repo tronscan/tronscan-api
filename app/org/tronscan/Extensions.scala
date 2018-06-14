@@ -14,6 +14,7 @@ object Extensions {
 
   implicit class ImplicitTransaction(trx: Transaction) {
     def hash: String = Sha256Hash.of(trx.getRawData.toByteArray).toString
+    def hashBytes = Sha256Hash.of(trx.getRawData.toByteArray).getBytes
   }
 
   implicit class ByteStringUtils(byteString: ByteString) {
