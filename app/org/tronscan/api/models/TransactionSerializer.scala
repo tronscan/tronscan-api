@@ -218,6 +218,7 @@ object TransactionSerializer {
   }
 
   def serialize(transaction: Transaction) = Js.obj(
+    "hash" -> transaction.hash,
     "timestamp" -> transaction.getRawData.timestamp.asJson,
     "contracts" -> transaction.getRawData.contract.map(contract => serializeContract(contract, includeType = true)).asJson,
     "signatures" -> transaction.signature.map { signature =>

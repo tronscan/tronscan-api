@@ -74,7 +74,7 @@ class SlackApi @Inject() (
                        |Name: ${account.accountName.decodeString}
                        |:trx: ${math.round(account.balance.toDouble / Constants.ONE_TRX)}
                        |:zap: ${math.round(account.frozen.map(_.frozenBalance).sum.toDouble / Constants.ONE_TRX)}
-                       |<https://tronscan.org/#/address/TNNqZuYhMfQvooC4kJwTsMJEQVU3vWGa5u|View on Tronscan>
+                       |<https://tronscan.org/#/address/${text}|View on Tronscan>
                     """.stripMargin
                   ))
               } yield ()
