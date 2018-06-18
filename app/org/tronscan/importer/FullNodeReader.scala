@@ -131,7 +131,7 @@ class FullNodeReader @Inject()(
           hash = block.hash,
           timestamp = new DateTime(header.timestamp),
           txTrieRoot = Base58.encode58Check(header.txTrieRoot.toByteArray),
-          parentHash = Sha256Hash.wrap(header.parentHash.toByteArray).toString,
+          parentHash = Sha256Hash.wrap(header.parentHash).toString,
           witnessId = header.witnessId,
           witnessAddress = Base58.encode58Check(header.witnessAddress.toByteArray),
           nrOfTrx = block.transactions.size,
