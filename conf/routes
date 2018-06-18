@@ -61,7 +61,7 @@ POST    /api/slack/command              org.tronscan.slack.SlackApi.handleComman
 
 # GRPC Full Node Api
 
-GET     /api/grpc/full/getnowblock      org.tronscan.api.GrpcFullApi.getNowBlock
+GET     /api/grpc/full/getnowblock              org.tronscan.api.GrpcFullApi.getNowBlock
 GET     /api/grpc/full/getaccount/:address      org.tronscan.api.GrpcFullApi.getAccount(address: String)
 
 # Socket IO
