@@ -65,6 +65,7 @@ GET     /api/grpc/full/getnowblock                  org.tronscan.api.GrpcFullApi
 GET     /api/grpc/full/getblockbynum/:number        org.tronscan.api.GrpcFullApi.getBlockByNum(number: Long)
 GET     /api/grpc/full/totaltransaction             org.tronscan.api.GrpcFullApi.totalTransaction
 GET     /api/grpc/full/getaccount/:address          org.tronscan.api.GrpcFullApi.getAccount(address: String)
+GET     /api/grpc/full/gettransactionbyid/:hash     org.tronscan.api.GrpcFullApi.getTransactionById(hash: String)
 GET     /api/grpc/full/getaccountnet/:address       org.tronscan.api.GrpcFullApi.getAccountNet(address: String)
 GET     /api/grpc/full/listnodes                    org.tronscan.api.GrpcFullApi.listNodes
 GET     /api/grpc/full/listwitnesses                org.tronscan.api.GrpcFullApi.listWitnesses
