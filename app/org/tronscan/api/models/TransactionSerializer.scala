@@ -1,20 +1,18 @@
 package org
 package tronscan.api.models
 
-import com.google.protobuf.ByteString
 import io.circe.syntax._
 import io.circe.{Encoder, Json => Js}
 import org.joda.time.DateTime
-import org.tron.common.crypto.ECKey
-import org.tron.common.utils.{Base58, ByteArray, Crypto, Sha256Hash}
+import org.tron.common.utils.{Base58, ByteArray, Crypto}
 import org.tron.protos.Tron.Transaction
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountCreateContract, AccountUpdateContract, AssetIssueContract, DeployContract, FreezeBalanceContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, UpdateAssetContract, VoteAssetContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tronscan.Extensions._
-import org.tronscan.protocol.TestNetFormatter
+import org.tronscan.protocol.{MainNetFormatter, TestNetFormatter}
 
 object TransactionSerializer {
 
-  implicit val addressFormatter = new TestNetFormatter
+  implicit val addressFormatter = new MainNetFormatter
 
   implicit val encodeAssetIssueContract = new Encoder[org.tron.protos.Contract.AssetIssueContract] {
     def apply(assetIssueContract: org.tron.protos.Contract.AssetIssueContract): Js = Js.obj(
@@ -48,7 +46,6 @@ object TransactionSerializer {
       "amount" -> transferContract.amount.asJson,
     )
   }
-
 
   implicit val encodeTransferAssetContract = new Encoder[org.tron.protos.Contract.TransferAssetContract] {
     def apply(transferAssetContract: org.tron.protos.Contract.TransferAssetContract): Js = Js.obj(
@@ -142,6 +139,7 @@ object TransactionSerializer {
       "ownerAddress" -> Base58.encode58Check(contract.ownerAddress.toByteArray).asJson,
     )
   }
+
   implicit val encodeDeployContract = new Encoder[org.tron.protos.Contract.DeployContract] {
     def apply(contract: org.tron.protos.Contract.DeployContract): Js = Js.obj(
       "ownerAddress" -> Base58.encode58Check(contract.ownerAddress.toByteArray).asJson,
