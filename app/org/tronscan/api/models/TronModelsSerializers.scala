@@ -2,11 +2,11 @@ package org.tronscan.api.models
 
 import io.circe.syntax._
 import io.circe.{Encoder, Json}
-import org.tron.common.utils.{ByteArray, Sha256Hash}
+import org.tron.common.utils.{ByteArray, ByteUtil, Sha256Hash}
 import org.tron.protos.Tron.Transaction.Result.code
 import org.tronscan.Extensions._
 
-object TronModelsSerializers {
+class TronModelsSerializers(includeLinks: Boolean = false) {
 
   implicit val encodeBlock = new Encoder[org.tron.protos.Tron.Block] {
     def apply(block: org.tron.protos.Tron.Block): Json = Json.obj(
@@ -17,6 +17,19 @@ object TronModelsSerializers {
       "witnessId" -> block.getBlockHeader.getRawData.witnessId.asJson,
       "witnessAddress" -> block.getBlockHeader.getRawData.witnessAddress.toAddress.asJson,
       "transactions" -> block.transactions.map(TransactionSerializer.serialize).asJson,
+    )
+  }
+
+  implicit val encodeWitness = new Encoder[org.tron.protos.Tron.Witness] {
+    def apply(witness: org.tron.protos.Tron.Witness): Json = Json.obj(
+      "voteCount" -> witness.voteCount.asJson,
+      "pubKey" -> ByteUtil.toHexString(witness.pubKey.toByteArray).asJson,
+      "url" -> witness.url.asJson,
+      "totalProduced" -> witness.totalProduced.asJson,
+      "totalMissed" -> witness.totalMissed.asJson,
+      "latestBlockNum" -> witness.latestBlockNum.asJson,
+      "latestSlotNum" -> witness.latestSlotNum.asJson,
+      "isJobs" -> witness.isJobs.asJson,
     )
   }
 
@@ -54,6 +67,19 @@ object TronModelsSerializers {
       "freeAssetNetUsage" -> account.freeAssetNetUsage.asJson,
       "latestConsumeTime" -> account.latestConsumeTime.asJson,
       "latestConsumeFreeTime" -> account.latestConsumeFreeTime.asJson,
+    )
+  }
+
+  implicit val encodeAccountNet = new Encoder[org.tron.api.api.AccountNetMessage] {
+    def apply(accountNet: org.tron.api.api.AccountNetMessage): Json = Json.obj(
+        "freeNetUsed" -> accountNet.freeNetUsed.asJson,
+        "freeNetLimit" -> accountNet.freeNetLimit.asJson,
+        "netUsed" -> accountNet.netUsed.asJson,
+        "netLimit" -> accountNet.netLimit.asJson,
+        "assetNetUsed" -> accountNet.assetNetUsed.asJson,
+        "assetNetLimit" -> accountNet.assetNetLimit.asJson,
+        "totalNetLimit" -> accountNet.totalNetLimit.asJson,
+        "totalNetWeight" -> accountNet.totalNetWeight.asJson,
     )
   }
 }
