@@ -41,15 +41,15 @@ class WitnessApi @Inject()(
     } yield {
       Ok(Json.toJson(witnesses.map { witness =>
         Json.obj(
-          "address"             -> witness.address.toAddress,
-          "name"                -> accounts.getOrElse(witness.address.toAddress, "").toString,
+          "address"             -> witness.address.encodeAddress,
+          "name"                -> accounts.getOrElse(witness.address.encodeAddress, "").toString,
           "url"                 -> witness.url,
           "producer"            -> witness.isJobs,
           "latestBlockNumber"   -> witness.latestBlockNum,
           "latestSlotNumber"    -> witness.latestSlotNum,
           "missedTotal"         -> witness.totalMissed,
           "producedTotal"       -> witness.totalProduced,
-          "producedTrx"         -> witnessTrx.getOrElse(witness.address.toAddress, 0L).toLong,
+          "producedTrx"         -> witnessTrx.getOrElse(witness.address.encodeAddress, 0L).toLong,
           "votes"               -> witness.voteCount,
         )
       }))

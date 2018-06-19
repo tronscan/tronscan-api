@@ -16,7 +16,7 @@ import scala.concurrent.ExecutionContext
 
 class TransactionBuilder @Inject() (wallet: Wallet) {
 
-  def buildTransferContract(contract: Transaction.Contract) = {
+  def buildTransactionWithContract(contract: Transaction.Contract) = {
     Transaction(
       rawData = Some(Transaction.raw(
         contract = Seq(contract)
@@ -36,7 +36,7 @@ class TransactionBuilder @Inject() (wallet: Wallet) {
       parameter = Some(Any.pack(transferContract))
     )
 
-    buildTransferContract(contract)
+    buildTransactionWithContract(contract)
   }
 
   /**

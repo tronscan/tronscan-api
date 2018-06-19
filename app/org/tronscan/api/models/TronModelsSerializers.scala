@@ -15,7 +15,7 @@ class TronModelsSerializers(includeLinks: Boolean = false) {
       "txTrieRoot" -> ByteArray.toHexString(block.getBlockHeader.getRawData.txTrieRoot.toByteArray).asJson,
       "parentHash" -> Sha256Hash.wrap(block.getBlockHeader.getRawData.parentHash).toString.asJson,
       "witnessId" -> block.getBlockHeader.getRawData.witnessId.asJson,
-      "witnessAddress" -> block.getBlockHeader.getRawData.witnessAddress.toAddress.asJson,
+      "witnessAddress" -> block.getBlockHeader.getRawData.witnessAddress.encodeAddress.asJson,
       "transactions" -> block.transactions.map(TransactionSerializer.serialize).asJson,
     )
   }
@@ -38,10 +38,10 @@ class TronModelsSerializers(includeLinks: Boolean = false) {
       "accountName" -> account.accountName.decodeString.asJson,
       "type" -> account.`type`.value.asJson,
       "typeName" -> account.`type`.name.asJson,
-      "address" -> account.address.toAddress.asJson,
+      "address" -> account.address.encodeAddress.asJson,
       "balance" -> account.balance.asJson,
       "votes" -> account.votes.map(vote => Json.obj(
-        "voteAddress" -> vote.voteAddress.toAddress.asJson,
+        "voteAddress" -> vote.voteAddress.encodeAddress.asJson,
         "voteCount" -> vote.voteCount.asJson,
       )).asJson,
       "asset" -> account.asset.asJson,
