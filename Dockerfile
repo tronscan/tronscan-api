@@ -10,5 +10,4 @@ RUN cd /opt/tronscan-api && unzip tronscan.zip
 
 CMD /opt/tronscan-api/tronscan-1.0-SNAPSHOT/bin/tronscan \
     -J-Xms128M -J-Xmx8096m \
-    -Dplay.http.secret.key=lkjasdjlksafdkjlfsadlkjafdsjksafd \
     -Dconfig.resource=docker.conf
