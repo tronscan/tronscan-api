@@ -1,6 +1,6 @@
 import Dependencies._
 
-name := """tron-explorer"""
+name := "tronscan"
 organization := "org.tronscan"
 
 version := "1.0-SNAPSHOT"
