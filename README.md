@@ -108,7 +108,7 @@ All contract endpoints return the same result
 
 ```json
 {
-  "success": true|false,
+  "success": true,
   "result": {
     "code": "SUCCESS",
     "message": ""
@@ -130,6 +130,56 @@ All contract endpoints return the same result
     "ownerAddress": "TPwJS5eC5BPGyMGtYTHNhPTB89sUWjDSSu",
     "toAddress": "TWxKPGEyGWEP87Z4GrBccQiWQCf5iUHx9E",
     "amount": 100000
-  }
+  },
+  ...
+}
+```
+
+#### POST /api/transaction-builder/contract/transferasset
+
+`ownerAddress` From Account  
+`toAddress` To Account  
+`assetName` Token Name  
+`amount` Amount of coins to send in sun
+
+```json
+{
+  "contract": {
+    "ownerAddress": "TPwJS5eC5BPGyMGtYTHNhPTB89sUWjDSSu",
+    "toAddress": "TWxKPGEyGWEP87Z4GrBccQiWQCf5iUHx9E",
+    "assetName": "ExampleToken",
+    "amount": 100000
+  },
+  ...
+}
+```
+
+#### POST /api/transaction-builder/contract/accountcreate
+
+`ownerAddress` Owner Account  
+`accountAddress` Account Address to create  
+
+```json
+{
+  "contract": {
+    "ownerAddress": "TPwJS5eC5BPGyMGtYTHNhPTB89sUWjDSSu",
+    "accountAddress": "TWxKPGEyGWEP87Z4GrBccQiWQCf5iUHx9E"
+  },
+  ...
+}
+```
+
+#### POST /api/transaction-builder/contract/accountupdate
+
+`ownerAddress` Owner Account  
+`accountName` Account Address  
+
+```json
+{
+  "contract": {
+    "ownerAddress": "TPwJS5eC5BPGyMGtYTHNhPTB89sUWjDSSu",
+    "accountName": "NewName"
+  },
+  ...
 }
 ```

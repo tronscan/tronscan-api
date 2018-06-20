@@ -1,4 +1,4 @@
-version: '2'
+version: '3.1'
 
 services:
   tronexplorer:
@@ -6,10 +6,17 @@ services:
       dockerfile: ./Dockerfile
       context: ./
     container_name: tron_explorer
-    external_links:
-      - pg-9.6
+    restart: always
     ports:
-      - "9022:9000"
-    expose:
-      - "9022"
-    network_mode: "bridge"
+      - "9000:9000"
+    volumes:
+      - ~/.ivy2:/root/.ivy2
+      - ~/.sbt:/root/.sbt
+  redis:
+    image: redis:4.0
+    restart: always
+  pgsql:
+    restart: always
+    image: postgres:9.6
+    environment:
+      POSTGRES_PASSWORD: postgres
