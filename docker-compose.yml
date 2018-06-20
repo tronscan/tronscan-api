@@ -12,8 +12,9 @@ services:
       NODE_FULL_PORT: "50051"
       NODE_SOLIDITY_IP: "39.105.66.80"
       NODE_SOLIDITY_PORT: "50051"
-      ENABLE_SYNC: "false"
-      ENABLE_NETWORK_SCANNER: "false"
+      ENABLE_SYNC: "true"
+      ENABLE_NETWORK_SCANNER: "true"
+      SECRET_KEY: "aSLtAkzrIY9pTPyboOih"
 
   redis:
     image: redis:4.0
