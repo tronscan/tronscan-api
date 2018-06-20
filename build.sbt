@@ -3,7 +3,7 @@ import Dependencies._
 name := "tronscan"
 organization := "org.tronscan"
 
-version := "1.0-SNAPSHOT"
+version := "latest"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
@@ -12,7 +12,6 @@ scalaVersion := "2.12.4"
 dependencyOverrides += "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.9.2"
 //dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.8"
 //dependencyOverrides += "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.8.8"
-
 
 libraryDependencies += guice
 libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test
