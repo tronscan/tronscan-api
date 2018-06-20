@@ -1,4 +1,3 @@
-create sequence analytics.vote_snapshot_id_seq;
 
 create table if not exists blocks
 (
@@ -146,6 +145,8 @@ create table if not exists sr_account
 )
 ;
 
+CREATE SCHEMA analytics;
+
 create table if not exists analytics.vote_snapshot
 (
   id bigserial not null
@@ -203,3 +204,25 @@ create index if not exists transfers_transfer_from_address_index
 create index if not exists transfers_transfer_to_address_index
   on transfers (transfer_to_address)
 ;
+
+create table if not exists analytics.requests
+(
+  id uuid not null,
+  timestamp timestamp with time zone default now() not null,
+  host text default ''::text,
+  uri text default ''::text,
+  referer text default ''::text not null,
+  ip text default ''::text not null
+)
+;
+
+create table if not exists trx_request
+(
+  address text not null
+    constraint trx_request_pkey
+    primary key,
+  ip text not null,
+  date_created timestamp with time zone default now() not null
+)
+;
+

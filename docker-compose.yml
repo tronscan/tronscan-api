@@ -1,22 +1,27 @@
 version: '3.1'
 
 services:
-  tronexplorer:
+  tronscan:
     build:
       dockerfile: ./Dockerfile
-      context: ./
-    container_name: tron_explorer
-    restart: always
+      context: .
     ports:
-      - "9000:9000"
-    volumes:
-      - ~/.ivy2:/root/.ivy2
-      - ~/.sbt:/root/.sbt
+      - "9001:9000"
+    environment:
+      NODE_FULL_IP: "39.104.116.191"
+      NODE_FULL_PORT: "50051"
+      NODE_SOLIDITY_IP: "39.105.66.80"
+      NODE_SOLIDITY_PORT: "50051"
+      ENABLE_SYNC: "false"
+      ENABLE_NETWORK_SCANNER: "false"
+
   redis:
     image: redis:4.0
-    restart: always
   pgsql:
-    restart: always
     image: postgres:9.6
     environment:
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tronscan
+      POSTGRES_USER: postgres
+    volumes:
+      - ./schema/schema.sql:/docker-entrypoint-initdb.d/schema.sql
