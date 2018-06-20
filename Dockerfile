@@ -9,5 +9,5 @@ ADD ./target/universal/tronscan-1.0-SNAPSHOT.zip /opt/tronscan-api/tronscan.zip
 RUN cd /opt/tronscan-api && unzip tronscan.zip
 
 CMD /opt/tronscan-api/tronscan-1.0-SNAPSHOT/bin/tronscan \
-    -J-Xms128M -J-Xmx8096m \
+    -J-Xms128M -J-Xmx2048m \
     -Dconfig.resource=docker.conf
