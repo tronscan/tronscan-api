@@ -176,14 +176,14 @@ class FullNodeReader @Inject()(
                 transactionHash = transactionHash,
                 block = header.number,
                 timestamp = transactionTime,
-                transferFromAddress = transferContract.ownerAddress.toAddress,
-                transferToAddress = transferContract.toAddress.toAddress,
+                transferFromAddress = transferContract.ownerAddress.encodeAddress,
+                transferToAddress = transferContract.toAddress.encodeAddress,
                 amount = transferContract.amount,
                 confirmed = header.number == 0,
               )
 
-              redisCache.removeMatching(s"address/${transferContract.toAddress.toAddress}/*")
-              redisCache.removeMatching(s"address/${transferContract.ownerAddress.toAddress}/*")
+              redisCache.removeMatching(s"address/${transferContract.toAddress.encodeAddress}/*")
+              redisCache.removeMatching(s"address/${transferContract.ownerAddress.encodeAddress}/*")
 
               context.system.eventStream.publish(TransferCreated(trxModel))
 
@@ -196,15 +196,15 @@ class FullNodeReader @Inject()(
                 transactionHash = transactionHash,
                 block = header.number,
                 timestamp = transactionTime,
-                transferFromAddress = transferContract.ownerAddress.toAddress,
-                transferToAddress = transferContract.toAddress.toAddress,
+                transferFromAddress = transferContract.ownerAddress.encodeAddress,
+                transferToAddress = transferContract.toAddress.encodeAddress,
                 amount = transferContract.amount,
                 tokenName = new String(transferContract.assetName.toByteArray),
                 confirmed = header.number == 0,
               )
 
-              redisCache.removeMatching(s"address/${transferContract.toAddress.toAddress}/*")
-              redisCache.removeMatching(s"address/${transferContract.ownerAddress.toAddress}/*")
+              redisCache.removeMatching(s"address/${transferContract.toAddress.encodeAddress}/*")
+              redisCache.removeMatching(s"address/${transferContract.ownerAddress.encodeAddress}/*")
 
               context.system.eventStream.publish(AssetTransferCreated(trxModel))
 
@@ -212,7 +212,7 @@ class FullNodeReader @Inject()(
 
             case VoteWitnessContract if !syncSolidity =>
               val voteWitnessContract = org.tron.protos.Contract.VoteWitnessContract.parseFrom(any.value.toByteArray)
-              val voterAddress = voteWitnessContract.ownerAddress.toAddress
+              val voterAddress = voteWitnessContract.ownerAddress.encodeAddress
 
               val inserts = for (vote <- voteWitnessContract.votes) yield {
                 VoteWitnessContractModel(
@@ -220,7 +220,7 @@ class FullNodeReader @Inject()(
                   block = header.number,
                   timestamp = transactionTime,
                   voterAddress = voterAddress,
-                  candidateAddress = vote.voteAddress.toAddress,
+                  candidateAddress = vote.voteAddress.encodeAddress,
                   votes = vote.voteCount,
                 )
               }

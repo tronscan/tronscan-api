@@ -1,20 +1,18 @@
 package org
 package tronscan.api.models
 
-import com.google.protobuf.ByteString
 import io.circe.syntax._
-import io.circe.{Encoder, Json => Js}
+import io.circe.{Decoder, Encoder, HCursor, Json => Js}
 import org.joda.time.DateTime
-import org.tron.common.crypto.ECKey
-import org.tron.common.utils.{Base58, ByteArray, Crypto, Sha256Hash}
-import org.tron.protos.Tron.Transaction
+import org.tron.common.utils.{Base58, ByteArray, Crypto}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountCreateContract, AccountUpdateContract, AssetIssueContract, DeployContract, FreezeBalanceContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, UpdateAssetContract, VoteAssetContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
+import org.tron.protos.Tron.{AccountType, Transaction}
 import org.tronscan.Extensions._
-import org.tronscan.protocol.TestNetFormatter
+import org.tronscan.protocol.MainNetFormatter
 
 object TransactionSerializer {
 
-  implicit val addressFormatter = new TestNetFormatter
+  implicit val addressFormatter = new MainNetFormatter
 
   implicit val encodeAssetIssueContract = new Encoder[org.tron.protos.Contract.AssetIssueContract] {
     def apply(assetIssueContract: org.tron.protos.Contract.AssetIssueContract): Js = Js.obj(
@@ -49,16 +47,48 @@ object TransactionSerializer {
     )
   }
 
+  implicit val decodeTransferContract = new Decoder[org.tron.protos.Contract.TransferContract] {
+    def apply(c: HCursor) = {
+      for {
+        from <- c.downField("ownerAddress").as[String]
+        to <- c.downField("toAddress").as[String]
+        amount <- c.downField("amount").as[Long]
+      } yield {
+        org.tron.protos.Contract.TransferContract(
+          ownerAddress = from.decodeAddress,
+          toAddress = to.decodeAddress,
+          amount = amount
+        )
+      }
+    }
+  }
 
   implicit val encodeTransferAssetContract = new Encoder[org.tron.protos.Contract.TransferAssetContract] {
     def apply(transferAssetContract: org.tron.protos.Contract.TransferAssetContract): Js = Js.obj(
-      "from" -> Base58.encode58Check(transferAssetContract.ownerAddress.toByteArray).asJson,
-      "to" -> Base58.encode58Check(transferAssetContract.toAddress.toByteArray).asJson,
+      "from" -> transferAssetContract.ownerAddress.encodeAddress.asJson,
+      "to" -> transferAssetContract.toAddress.encodeAddress.asJson,
       "amount" -> transferAssetContract.amount.asJson,
-      "token" -> new String(transferAssetContract.assetName.toByteArray).asJson
+      "token" -> transferAssetContract.assetName.decodeString.asJson
     )
   }
 
+  implicit val decodeTransferAssetContract = new Decoder[org.tron.protos.Contract.TransferAssetContract] {
+    def apply(c: HCursor) = {
+      for {
+        from <- c.downField("ownerAddress").as[String]
+        assetName <- c.downField("assetName").as[String]
+        to <- c.downField("toAddress").as[String]
+        amount <- c.downField("amount").as[Long]
+      } yield {
+        org.tron.protos.Contract.TransferAssetContract(
+          ownerAddress = from.decodeAddress,
+          toAddress = to.decodeAddress,
+          assetName = assetName.decodeAddress,
+          amount = amount
+        )
+      }
+    }
+  }
 
   implicit val encodeParticipateAssetIssueContract = new Encoder[org.tron.protos.Contract.ParticipateAssetIssueContract] {
     def apply(participateAssetIssueContract: org.tron.protos.Contract.ParticipateAssetIssueContract): Js = Js.obj(
@@ -86,10 +116,10 @@ object TransactionSerializer {
 
   implicit val encodeVoteWitnessContract = new Encoder[org.tron.protos.Contract.VoteWitnessContract] {
     def apply(voteWitnessContract: org.tron.protos.Contract.VoteWitnessContract): Js = Js.obj(
-      "ownerAddress" -> voteWitnessContract.ownerAddress.toAddress.asJson,
+      "ownerAddress" -> voteWitnessContract.ownerAddress.encodeAddress.asJson,
       "votes" -> voteWitnessContract.votes.map { vote =>
         Js.obj(
-          "voteAddress" -> vote.voteAddress.toAddress.asJson,
+          "voteAddress" -> vote.voteAddress.encodeAddress.asJson,
           "voteCount" -> vote.voteCount.asJson,
         )
       }.asJson
@@ -103,12 +133,39 @@ object TransactionSerializer {
     )
   }
 
+  implicit val decodeAccountUpdateContract = new Decoder[org.tron.protos.Contract.AccountUpdateContract] {
+    def apply(c: HCursor) = {
+      for {
+        ownerAddress <- c.downField("ownerAddress").as[String]
+        name <- c.downField("accountName").as[String]
+      } yield org.tron.protos.Contract.AccountUpdateContract(
+        ownerAddress = ownerAddress.decodeAddress,
+        accountName = name.encodeString
+      )
+    }
+  }
+
   implicit val encodeAccountCreateContract = new Encoder[org.tron.protos.Contract.AccountCreateContract] {
     def apply(contract: org.tron.protos.Contract.AccountCreateContract): Js = Js.obj(
       "ownerAddress" -> Base58.encode58Check(contract.ownerAddress.toByteArray).asJson,
       "accountAddress" -> new String(contract.accountAddress.toByteArray).asJson,
       "type" -> contract.`type`.value.asJson,
     )
+  }
+
+  implicit val decodeAccountCreateContract = new Decoder[org.tron.protos.Contract.AccountCreateContract] {
+    def apply(c: HCursor) = {
+      for {
+        ownerAddress <- c.downField("ownerAddress").as[String]
+        accountAddress <- c.downField("accountAddress").as[String]
+      } yield {
+        org.tron.protos.Contract.AccountCreateContract(
+          ownerAddress = ownerAddress.decodeAddress,
+          accountAddress = accountAddress.decodeAddress,
+          `type` = AccountType.Normal
+        )
+      }
+    }
   }
 
   implicit val encodeVoteAssetContract = new Encoder[org.tron.protos.Contract.VoteAssetContract] {
@@ -142,6 +199,7 @@ object TransactionSerializer {
       "ownerAddress" -> Base58.encode58Check(contract.ownerAddress.toByteArray).asJson,
     )
   }
+
   implicit val encodeDeployContract = new Encoder[org.tron.protos.Contract.DeployContract] {
     def apply(contract: org.tron.protos.Contract.DeployContract): Js = Js.obj(
       "ownerAddress" -> Base58.encode58Check(contract.ownerAddress.toByteArray).asJson,

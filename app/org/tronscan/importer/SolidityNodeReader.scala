@@ -226,8 +226,8 @@ class SolidityNodeReader @Inject()(
               contract.`type` match {
                 case TransferContract =>
                   val transferContract = org.tron.protos.Contract.TransferContract.parseFrom(any.value.toByteArray)
-                  val from = transferContract.ownerAddress.toAddress
-                  val to = transferContract.toAddress.toAddress
+                  val from = transferContract.ownerAddress.encodeAddress
+                  val to = transferContract.toAddress.encodeAddress
 
                   if (replace) {
                     val trxModel = TransferModel(
@@ -248,8 +248,8 @@ class SolidityNodeReader @Inject()(
 
                 case TransferAssetContract if replace =>
                   val transferContract = org.tron.protos.Contract.TransferAssetContract.parseFrom(any.value.toByteArray)
-                  val from = transferContract.ownerAddress.toAddress
-                  val to = transferContract.toAddress.toAddress
+                  val from = transferContract.ownerAddress.encodeAddress
+                  val to = transferContract.toAddress.encodeAddress
 
                   if (replace) {
 
@@ -288,7 +288,7 @@ class SolidityNodeReader @Inject()(
 
                 case VoteWitnessContract =>
                   val voteWitnessContract = org.tron.protos.Contract.VoteWitnessContract.parseFrom(any.value.toByteArray)
-                  val voterAddress = voteWitnessContract.ownerAddress.toAddress
+                  val voterAddress = voteWitnessContract.ownerAddress.encodeAddress
 
                   val inserts = for (vote <- voteWitnessContract.votes) yield {
                     VoteWitnessContractModel(
@@ -296,7 +296,7 @@ class SolidityNodeReader @Inject()(
                       block = header.number,
                       timestamp = transactionTime,
                       voterAddress = voterAddress,
-                      candidateAddress = vote.voteAddress.toAddress,
+                      candidateAddress = vote.voteAddress.encodeAddress,
                       votes = vote.voteCount,
                     )
                   }
@@ -375,28 +375,28 @@ class SolidityNodeReader @Inject()(
                   val witnessUpdateContract = org.tron.protos.Contract.WitnessUpdateContract.parseFrom(any.value.toByteArray)
 
                   val witnessModel = WitnessModel(
-                    address = witnessUpdateContract.ownerAddress.toAddress,
+                    address = witnessUpdateContract.ownerAddress.encodeAddress,
                     url = new String(witnessUpdateContract.updateUrl.toByteArray),
                   )
 
-                  addresses.append(witnessUpdateContract.ownerAddress.toAddress)
+                  addresses.append(witnessUpdateContract.ownerAddress.encodeAddress)
                   queries.append(witnessModelRepository.buildUpdate(witnessModel))
 
                 case UnfreezeBalanceContract =>
                   val unfreezeBalanceContract = org.tron.protos.Contract.UnfreezeBalanceContract.parseFrom(any.value.toByteArray)
-                  addresses.append(unfreezeBalanceContract.ownerAddress.toAddress)
+                  addresses.append(unfreezeBalanceContract.ownerAddress.encodeAddress)
 
                 case WithdrawBalanceContract =>
                   val withdrawBalanceContract = org.tron.protos.Contract.UnfreezeBalanceContract.parseFrom(any.value.toByteArray)
-                  addresses.append(withdrawBalanceContract.ownerAddress.toAddress)
+                  addresses.append(withdrawBalanceContract.ownerAddress.encodeAddress)
 
                 case AccountUpdateContract =>
                   val accountUpdateContract = org.tron.protos.Contract.AccountUpdateContract.parseFrom(any.value.toByteArray)
-                  addresses.append(accountUpdateContract.ownerAddress.toAddress)
+                  addresses.append(accountUpdateContract.ownerAddress.encodeAddress)
 
                 case UnfreezeAssetContract =>
                   val unfreezeAssetContract = org.tron.protos.Contract.UnfreezeBalanceContract.parseFrom(any.value.toByteArray)
-                  addresses.append(unfreezeAssetContract.ownerAddress.toAddress)
+                  addresses.append(unfreezeAssetContract.ownerAddress.encodeAddress)
 
                 case _ =>
               }

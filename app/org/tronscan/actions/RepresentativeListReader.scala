@@ -16,7 +16,7 @@ class RepresentativeListReader @Inject() (
   def execute(implicit executionContext: ExecutionContext) = {
     for {
       witnesses <- wallet.listWitnesses(EmptyMessage()).map(_.witnesses)
-      accounts <- accountModelRepository.findByAddresses(witnesses.map(_.address.toAddress)).map(_.map(x => x.address -> x.name).toMap)
+      accounts <- accountModelRepository.findByAddresses(witnesses.map(_.address.encodeAddress)).map(_.map(x => x.address -> x.name).toMap)
       witnessTrx <- witnessModelRepository.findTransactionsByWitness()
     } yield (witnesses, accounts, witnessTrx)
   }

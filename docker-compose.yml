@@ -1,15 +1,28 @@
-version: '2'
+version: '3.1'
 
 services:
-  tronexplorer:
+  tronscan:
     build:
       dockerfile: ./Dockerfile
-      context: ./
-    container_name: tron_explorer
-    external_links:
-      - pg-9.6
+      context: .
     ports:
-      - "9022:9000"
-    expose:
-      - "9022"
-    network_mode: "bridge"
+      - "9001:9000"
+    environment:
+      NODE_FULL_IP: "39.104.116.191"
+      NODE_FULL_PORT: "50051"
+      NODE_SOLIDITY_IP: "39.105.66.80"
+      NODE_SOLIDITY_PORT: "50051"
+      ENABLE_SYNC: "true"
+      ENABLE_NETWORK_SCANNER: "true"
+      SECRET_KEY: "aSLtAkzrIY9pTPyboOih"
+
+  redis:
+    image: redis:4.0
+  pgsql:
+    image: postgres:9.6
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tronscan
+      POSTGRES_USER: postgres
+    volumes:
+      - ./schema/schema.sql:/docker-entrypoint-initdb.d/schema.sql

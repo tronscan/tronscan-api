@@ -54,15 +54,15 @@ class VoteList @Inject() (
 
     for {
       witnesses <- wallet.listWitnesses(EmptyMessage()).map(_.witnesses)
-      accounts <- accountModelRepository.findByAddresses(witnesses.map(_.address.toAddress)).map(_.map(x => x.address -> x.name).toMap)
+      accounts <- accountModelRepository.findByAddresses(witnesses.map(_.address.encodeAddress)).map(_.map(x => x.address -> x.name).toMap)
       previousHour <- getTotals("previous-hour").map(_.toMap)
       previousDay <- getTotals("previous-day").map(_.toMap)
       superRepresentatives <- srRepo.findAll
     } yield {
 
-      val witnessAddresses = witnesses.map(x => (x.address.toAddress, x.url)).toMap
+      val witnessAddresses = witnesses.map(x => (x.address.encodeAddress, x.url)).toMap
       val witnessesCurrent = witnesses
-        .map(w => (w.address.toAddress, w.voteCount))
+        .map(w => (w.address.encodeAddress, w.voteCount))
         .toMap
 
       val totalVotes = witnesses.map(_.voteCount).sum

@@ -1,7 +1,7 @@
 package org.tronscan
 
 import com.google.protobuf.ByteString
-import org.tron.common.utils.{Base58, Sha256Hash}
+import org.tron.common.utils.{Base58, ByteArray, Sha256Hash}
 import org.tron.protos.Tron.{Block, Transaction}
 
 object Extensions {
@@ -18,13 +18,23 @@ object Extensions {
   }
 
   implicit class ByteStringUtils(byteString: ByteString) {
-    def toAddress = {
+    def encodeAddress = {
       Base58.encode58Check(byteString.toByteArray)
     }
+
     def decodeString = {
       new String(byteString.toByteArray)
     }
+  }
 
+  implicit class StringUtils(str: String) {
+    def decodeAddress = {
+      ByteString.copyFrom(Base58.decode58Check(str))
+    }
+
+    def encodeString = {
+      ByteString.copyFromUtf8(str)
+    }
   }
 
 }
