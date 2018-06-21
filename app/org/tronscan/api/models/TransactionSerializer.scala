@@ -83,7 +83,7 @@ object TransactionSerializer {
         org.tron.protos.Contract.TransferAssetContract(
           ownerAddress = from.decodeAddress,
           toAddress = to.decodeAddress,
-          assetName = assetName.decodeAddress,
+          assetName = assetName.encodeString,
           amount = amount
         )
       }

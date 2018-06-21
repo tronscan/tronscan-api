@@ -1,6 +1,7 @@
 package org
 package tronscan.api
 
+import com.google.protobuf.any.Any
 import io.circe.{Decoder, Json}
 import io.swagger.annotations._
 import javax.inject.Inject
@@ -14,6 +15,9 @@ import play.api.mvc.{AnyContent, Request, Result}
 
 import scala.concurrent.Future
 import io.circe.syntax._
+import org.tron.protos.Contract.{AccountCreateContract, AccountUpdateContract, TransferAssetContract, TransferContract}
+import org.tron.protos.Tron.Transaction.Contract.ContractType
+import scalapb.Message
 
 case class TransactionAction(
   contract: Transaction.Contract,
@@ -33,18 +37,42 @@ class TransactionBuilderApi @Inject()(
   import scala.concurrent.ExecutionContext.Implicits.global
   import TransactionSerializer._
 
-  def handleTransaction[T]()(implicit request: Request[AnyContent], contractDecoder: Decoder[T]): Future[Result] = {
+  def handleTransaction[T]()(implicit request: Request[AnyContent], contractDecoder: Decoder[T]): Future[Result] = async {
     val json: io.circe.Json = request.body.asJson.get
 
     val transactionRequest = for {
       contract <- json.hcursor.downField("contract").as[T]
       broadcast <- json.hcursor.downField("broadcast").as[Option[Boolean]]
       key <- json.hcursor.downField("key").as[Option[String]]
-    } yield TransactionAction(contract.asInstanceOf[Transaction.Contract], broadcast.getOrElse(false), key)
+    } yield {
+      val transactionContract = contract match {
+        case c: TransferContract =>
+          Transaction.Contract(
+            `type` = ContractType.TransferContract,
+            parameter = Some(Any.pack(c.asInstanceOf[TransferContract])))
+        case c: TransferAssetContract =>
+          Transaction.Contract(
+            `type` = ContractType.TransferAssetContract,
+            parameter = Some(Any.pack(c.asInstanceOf[TransferAssetContract])))
+
+        case c: AccountCreateContract =>
+          Transaction.Contract(
+            `type` = ContractType.AccountCreateContract,
+            parameter = Some(Any.pack(c.asInstanceOf[AccountCreateContract])))
+
+        case c: AccountUpdateContract =>
+          Transaction.Contract(
+            `type` = ContractType.AccountUpdateContract,
+            parameter = Some(Any.pack(c.asInstanceOf[AccountUpdateContract])))
+      }
+
+      TransactionAction(transactionContract, broadcast.getOrElse(false), key)
+    }
 
     transactionRequest match {
       case Right(TransactionAction(contract: Transaction.Contract, broadcast, key)) =>
         var transaction = transactionBuilder.buildTransactionWithContract(contract)
+        transaction = await(transactionBuilder.setReference(transaction))
 
         key.foreach { k =>
           transaction = transactionBuilder.sign(transaction, ByteArray.fromHexString(k))
@@ -53,7 +81,7 @@ class TransactionBuilderApi @Inject()(
         val serializedTransaction = TransactionSerializer.serialize(transaction)
 
         if (broadcast) {
-          for {
+          await(for {
             full <- walletClient.full
             result <- full.broadcastTransaction(transaction)
           } yield {
@@ -65,22 +93,18 @@ class TransactionBuilderApi @Inject()(
                 "message" -> new String(result.message.toByteArray).toString.asJson,
               )
             ))
-          }
+          })
         } else {
-          Future.successful {
-            Ok(Json.obj(
-              "transaction" -> serializedTransaction.asJson,
-              "success" -> true.asJson,
-            ))
-          }
-        }
-      case Left(failure) =>
-        Future.successful {
-          BadRequest(Json.obj(
-            "message" -> failure.toString().asJson,
+          Ok(Json.obj(
+            "transaction" -> serializedTransaction.asJson,
             "success" -> true.asJson,
           ))
         }
+      case Left(failure) =>
+        BadRequest(Json.obj(
+          "message" -> failure.toString().asJson,
+          "success" -> true.asJson,
+        ))
     }
   }
 
