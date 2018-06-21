@@ -7,15 +7,20 @@ import org.tron.protos.Tron.{Block, Transaction}
 object Extensions {
 
   implicit class ImplicitBlock(block: Block) {
-    def hash: String = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray).toString
-    def hashBytes = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray).getBytes
+    def hash: String = hashBytes.toString
+    def hashBytes = {
+      val numBytes = ByteArray.fromLong(number)
+      val hash = block.getBlockHeader.getRawData.toByteArray
+      Array.copy(numBytes, 0, hash, 0, 8)
+      Sha256Hash.of(numBytes)
+    }
     def number: Long = block.getBlockHeader.getRawData.number
 
     def parentHash = {
       val numBytes = ByteArray.fromLong(number - 1)
       val hash = block.getBlockHeader.getRawData.parentHash.toByteArray
-      val parentHashBytes = hash.slice(0, 8) ++ numBytes.slice(8, numBytes.length)
-      Sha256Hash.of(parentHashBytes)
+      Array.copy(numBytes, 0, hash, 0, 8)
+      Sha256Hash.of(numBytes)
     }
   }
 
