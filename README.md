@@ -96,7 +96,7 @@ Broadcast a signed transfer contract to the network
     "toAddress": "TWxKPGEyGWEP87Z4GrBccQiWQCf5iUHx9E",
     "amount": 100000
   },
-  "key: "FFA5EA61073FB13E1559F182F91E25C3E51C03906428C7BC8C865A335AED7617",
+  "key": "FFA5EA61073FB13E1559F182F91E25C3E51C03906428C7BC8C865A335AED7617",
   "broadcast": true
 }
 ```
