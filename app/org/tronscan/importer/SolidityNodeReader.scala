@@ -184,7 +184,7 @@ class SolidityNodeReader @Inject()(
                 hash = blockHash,
                 timestamp = new DateTime(header.timestamp),
                 txTrieRoot = Base58.encode58Check(header.txTrieRoot.toByteArray),
-                parentHash = ByteArray.toHexString(solidityBlock.parentHash.toString),
+                parentHash = ByteArray.toHexString(solidityBlock.parentHash),
                 witnessId = header.witnessId,
                 witnessAddress = Base58.encode58Check(header.witnessAddress.toByteArray),
                 nrOfTrx = solidityBlock.transactions.size,
