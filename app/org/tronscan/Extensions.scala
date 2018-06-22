@@ -1,29 +1,18 @@
 package org.tronscan
 
 import com.google.protobuf.ByteString
+import org.tron.common.BlockId
 import org.tron.common.utils.{Base58, ByteArray, Sha256Hash}
 import org.tron.protos.Tron.{Block, Transaction}
 
 object Extensions {
 
   implicit class ImplicitBlock(block: Block) {
-    def hash: String = hashBytes.toString
-//    def hashBytes = {
-//      val numBytes = ByteArray.fromLong(number)
-//      val hash = block.getBlockHeader.getRawData.toByteArray
-//      Array.copy(numBytes, 0, hash, 0, 8)
-//      Sha256Hash.of(numBytes)
-//    }
-    def hashBytes = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray)
-    def rawHashBytes = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray)
+    def hash: String = ByteArray.toHexString(hashBytes)
+    def rawHash = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray)
+    def hashBytes = BlockId(number, rawHash.getBytes).hash
     def number: Long = block.getBlockHeader.getRawData.number
-
-    def parentHash = {
-      val numBytes = ByteArray.fromLong(number - 1)
-      val hash = block.getBlockHeader.getRawData.parentHash.toByteArray
-      Array.copy(numBytes, 0, hash, 0, 8)
-      Sha256Hash.of(numBytes)
-    }
+    def parentHash = BlockId(number - 1, block.getBlockHeader.getRawData.parentHash.toByteArray).hash
   }
 
   implicit class ImplicitTransaction(trx: Transaction) {

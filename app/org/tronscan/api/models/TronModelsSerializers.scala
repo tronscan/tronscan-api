@@ -11,6 +11,7 @@ class TronModelsSerializers(includeLinks: Boolean = false) {
   implicit val encodeBlock = new Encoder[org.tron.protos.Tron.Block] {
     def apply(block: org.tron.protos.Tron.Block): Json = Json.obj(
       "number" -> block.getBlockHeader.getRawData.number.asJson,
+      "hash" -> block.hash.asJson,
       "timestamp" -> block.getBlockHeader.getRawData.timestamp.asJson,
       "txTrieRoot" -> ByteArray.toHexString(block.getBlockHeader.getRawData.txTrieRoot.toByteArray).asJson,
       "parentHash" -> Sha256Hash.wrap(block.getBlockHeader.getRawData.parentHash).toString.asJson,

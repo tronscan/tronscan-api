@@ -6,6 +6,5 @@ target
 /.project
 /.settings
 /RUNNING_PID
-update-to-dev.sh
-deploy-to-production.sh
+update-to-*
 local.conf
