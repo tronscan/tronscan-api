@@ -15,7 +15,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
 import org.tron.api.api.{EmptyMessage, NumberMessage}
-import org.tron.common.utils.{Base58, ByteUtil, Sha256Hash}
+import org.tron.common.utils.{Base58, ByteArray, ByteUtil, Sha256Hash}
 import org.tron.protos.Tron.Account
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountUpdateContract, AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tronscan.Extensions._
@@ -184,7 +184,7 @@ class SolidityNodeReader @Inject()(
                 hash = blockHash,
                 timestamp = new DateTime(header.timestamp),
                 txTrieRoot = Base58.encode58Check(header.txTrieRoot.toByteArray),
-                parentHash = solidityBlock.parentHash.toString,
+                parentHash = ByteArray.toHexString(solidityBlock.parentHash.toString),
                 witnessId = header.witnessId,
                 witnessAddress = Base58.encode58Check(header.witnessAddress.toByteArray),
                 nrOfTrx = solidityBlock.transactions.size,
