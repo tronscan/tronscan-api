@@ -14,6 +14,8 @@ object Extensions {
       Array.copy(numBytes, 0, hash, 0, 8)
       Sha256Hash.of(numBytes)
     }
+    def rawHashBytes = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray)
+
     def number: Long = block.getBlockHeader.getRawData.number
 
     def parentHash = {

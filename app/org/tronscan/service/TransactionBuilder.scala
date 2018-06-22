@@ -47,7 +47,7 @@ class TransactionBuilder @Inject() (wallet: Wallet) {
       latestBlock <- wallet.getNowBlock(EmptyMessage())
     } yield {
       val raw = transaction.rawData.get
-        .withRefBlockHash(ByteString.copyFrom(ByteArray.subArray(latestBlock.hashBytes.getBytes, 8, 16)))
+        .withRefBlockHash(ByteString.copyFrom(ByteArray.subArray(latestBlock.rawHashBytes.getBytes, 8, 16)))
         .withRefBlockBytes(ByteString.copyFrom(ByteArray.subArray(ByteArray.fromLong(latestBlock.getBlockHeader.getRawData.number), 6, 8)))
         .withExpiration(latestBlock.getBlockHeader.getRawData.timestamp + (60 * 5 * 1000))
 
