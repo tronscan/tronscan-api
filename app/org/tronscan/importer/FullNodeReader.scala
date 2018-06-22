@@ -11,7 +11,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
 import org.tron.api.api.{EmptyMessage, NumberMessage}
-import org.tron.common.utils.{Base58, ByteUtil, Sha256Hash}
+import org.tron.common.utils.{Base58, ByteArray, ByteUtil, Sha256Hash}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
 import org.tronscan.Extensions._
 import org.tronscan.api.models.TransactionSerializer
@@ -131,7 +131,7 @@ class FullNodeReader @Inject()(
           hash = block.hash,
           timestamp = new DateTime(header.timestamp),
           txTrieRoot = Base58.encode58Check(header.txTrieRoot.toByteArray),
-          parentHash = block.parentHash.toString,
+          parentHash = ByteArray.toHexString(block.parentHash),
           witnessId = header.witnessId,
           witnessAddress = Base58.encode58Check(header.witnessAddress.toByteArray),
           nrOfTrx = block.transactions.size,
