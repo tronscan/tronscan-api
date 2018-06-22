@@ -8,14 +8,14 @@ object Extensions {
 
   implicit class ImplicitBlock(block: Block) {
     def hash: String = hashBytes.toString
-    def hashBytes = {
-      val numBytes = ByteArray.fromLong(number)
-      val hash = block.getBlockHeader.getRawData.toByteArray
-      Array.copy(numBytes, 0, hash, 0, 8)
-      Sha256Hash.of(numBytes)
-    }
+//    def hashBytes = {
+//      val numBytes = ByteArray.fromLong(number)
+//      val hash = block.getBlockHeader.getRawData.toByteArray
+//      Array.copy(numBytes, 0, hash, 0, 8)
+//      Sha256Hash.of(numBytes)
+//    }
+    def hashBytes = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray)
     def rawHashBytes = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray)
-
     def number: Long = block.getBlockHeader.getRawData.number
 
     def parentHash = {
