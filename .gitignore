@@ -8,3 +8,4 @@ target
 /RUNNING_PID
 update-to-*
 local.conf
+modules/protobuf/app/

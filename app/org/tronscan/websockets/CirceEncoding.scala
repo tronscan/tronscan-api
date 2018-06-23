@@ -1,5 +1,5 @@
 package org
-package tronscan.realtime
+package tronscan.websockets
 
 import java.nio.charset.StandardCharsets
 

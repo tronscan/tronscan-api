@@ -8,7 +8,7 @@ import org.tronscan.actions.VoteScraper
 import org.tronscan.grpc.GrpcPool
 import org.tronscan.importer.{FullNodeReader, ImportManager, SolidityNodeReader}
 import org.tronscan.protocol.{AddressFormatter, TestNetFormatter}
-import org.tronscan.realtime.SocketIOEngine
+import org.tronscan.websockets.SocketIOEngine
 import org.tronscan.service.{ActionRunner, Bootstrap}
 import org.tronscan.watchdog.NodeWatchDog
 import play.api.inject.ConfigurationProvider

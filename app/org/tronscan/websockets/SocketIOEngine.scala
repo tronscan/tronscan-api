@@ -1,4 +1,4 @@
-package org.tronscan.realtime
+package org.tronscan.websockets
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.pattern.ask
@@ -11,7 +11,7 @@ import org.tron.api.api.{EmptyMessage, WalletGrpc, WalletSolidityGrpc}
 import org.tronscan.events._
 import org.tronscan.grpc.GrpcPool
 import org.tronscan.grpc.GrpcPool.Channel
-import org.tronscan.realtime.SocketCodecs._
+import org.tronscan.websockets.SocketCodecs._
 import org.tronscan.tester.{FullNodeTest, NodeTest, SolidityTest}
 import org.tronscan.tools.nodetester.NodeStatus
 import play.api.libs.json.JsString

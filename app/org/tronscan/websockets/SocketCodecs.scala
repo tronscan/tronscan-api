@@ -1,5 +1,5 @@
 package org
-package tronscan.realtime
+package tronscan.websockets
 
 import play.socketio.scaladsl.SocketIOEventCodec._
 import CirceDecoder._
