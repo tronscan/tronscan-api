@@ -1,25 +1,25 @@
-package org.tronscan.cache
+package org.tronscan.service
 
 import akka.actor.Actor
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import javax.inject.Inject
-import org.apache.commons.lang3.exception.ExceptionUtils
+import org.tronscan.actions.{RepresentativeListReader, VoteList, VoteScraper}
+import play.api.Logger
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
-import org.tronscan.actions.{RepresentativeListReader, VoteList}
 
-import concurrent.duration._
+import scala.concurrent.duration._
 
-class CacheWarmer @Inject() (
+class ActionRunner @Inject()(
   @NamedCache("redis") redisCache: CacheAsyncApi,
   representativeListReader: RepresentativeListReader,
-  voteList: VoteList) extends Actor {
+  voteList: VoteList,
+  voteScraper: VoteScraper) extends Actor {
 
-  val decider: Supervision.Decider = {
-    case exc =>
-      println("CACHE WARMER ERROR", exc, ExceptionUtils.getStackTrace(exc))
-      Supervision.Resume
+  val decider: Supervision.Decider = { exception =>
+    Logger.error("CACHE WARMER ERROR", exception)
+    Supervision.Resume
   }
 
   implicit val materializer = ActorMaterializer(
@@ -40,6 +40,11 @@ class CacheWarmer @Inject() (
       .runWith(writeToKey("votes.candidates_total", 1.minute))
   }
 
+  def startVoteScraper() = {
+    Source.tick(10.minutes, 10.minutes, "refresh")
+      .mapAsyncUnordered(1)(_ => voteScraper.execute)
+      .runWith(Sink.ignore)
+  }
 
   def writeToKey[T](name: String, duration: Duration = Duration.Inf) = {
     Sink.foreachParallel[T](1)(x => redisCache.set(name, x, duration))
@@ -48,6 +53,7 @@ class CacheWarmer @Inject() (
   override def preStart(): Unit = {
     startWitnessReader()
     startVoteListWarmer()
+    startVoteScraper()
   }
 
   def receive = {

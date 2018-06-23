@@ -11,7 +11,7 @@ import scala.concurrent.ExecutionContext
 class RepresentativeListReader @Inject() (
   witnessModelRepository: WitnessModelRepository,
   accountModelRepository: AccountModelRepository,
-  wallet: Wallet) {
+  wallet: Wallet) extends AsyncAction {
 
   def execute(implicit executionContext: ExecutionContext) = {
     for {

@@ -4,13 +4,12 @@ import javax.inject.{Inject, Singleton}
 import org.tron.api.api.WalletGrpc.Wallet
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tron.api.api.{WalletGrpc, WalletSolidityGrpc}
-import org.tronscan.actors.VoteScraper
-import org.tronscan.cache.CacheWarmer
+import org.tronscan.actions.VoteScraper
 import org.tronscan.grpc.GrpcPool
 import org.tronscan.importer.{FullNodeReader, ImportManager, SolidityNodeReader}
 import org.tronscan.protocol.{AddressFormatter, TestNetFormatter}
 import org.tronscan.realtime.SocketIOEngine
-import org.tronscan.service.Bootstrap
+import org.tronscan.service.{ActionRunner, Bootstrap}
 import org.tronscan.watchdog.NodeWatchDog
 import play.api.inject.ConfigurationProvider
 import play.api.libs.concurrent.AkkaGuiceSupport
@@ -22,10 +21,9 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActor[FullNodeReader]("fullnode-reader")
     bindActor[SolidityNodeReader]("solidity-reader")
     bindActor[ImportManager]("blockchain-importer")
-    bindActor[VoteScraper]("vote-scraper")
     bindActor[NodeWatchDog]("node-watchdog")
     bindActor[GrpcPool]("grpc-pool")
-    bindActor[CacheWarmer]("cache-warmer")
+    bindActor[ActionRunner]("action-runner")
     bind(classOf[WalletSolidity]).to(classOf[WalletSolidityGrpc.WalletSolidityStub])
     bind(classOf[AddressFormatter]).to(classOf[TestNetFormatter])
     bind(classOf[EngineIOController]).toProvider(classOf[SocketIOEngine])

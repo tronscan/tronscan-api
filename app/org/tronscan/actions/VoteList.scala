@@ -18,7 +18,7 @@ class VoteList @Inject() (
   accountModelRepository: AccountModelRepository,
   voteSnapshotModelRepository: VoteSnapshotModelRepository,
   walletSolidity: WalletSolidity,
-  wallet: Wallet) {
+  wallet: Wallet) extends AsyncAction {
 
   def execute(implicit executionContext: ExecutionContext) = {
 
