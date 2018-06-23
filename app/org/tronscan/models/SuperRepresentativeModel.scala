@@ -23,7 +23,8 @@ class SuperRepresentativeModelTable(tag: Tag) extends Table[SuperRepresentativeM
 }
 
 @Singleton()
-class SuperRepresentativeModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends TableRepository[SuperRepresentativeModelTable, SuperRepresentativeModel] {
+class SuperRepresentativeModelRepository @Inject() (
+  val dbConfig: DatabaseConfigProvider) extends TableRepository[SuperRepresentativeModelTable, SuperRepresentativeModel] {
 
   lazy val table = TableQuery[SuperRepresentativeModelTable]
 
