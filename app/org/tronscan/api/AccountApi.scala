@@ -26,7 +26,7 @@ import org.tronscan.Constants
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
-
+import org.tronscan.Extensions._
 import scala.async.Async.{async, await}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -112,7 +112,7 @@ class AccountApi @Inject()(
       wallet <- walletClient.full
 
       account = Account(
-        address = ByteString.copyFrom(Base58.decode58Check(address))
+        address = address.decodeAddress
       )
 
       // Run in parallel
@@ -184,7 +184,7 @@ class AccountApi @Inject()(
     for {
       wallet <- walletClient.full
       account <- wallet.getAccount(Account(
-        address = ByteString.copyFrom(Base58.decode58Check(address))
+        address = address.decodeAddress
       ))
     } yield {
 
