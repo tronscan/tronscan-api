@@ -71,8 +71,8 @@ class FullNodeReader @Inject()(
 
     val wallet = await(walletClient.full)
 
-    var firstChainBlock = await(wallet.getBlockByNum(NumberMessage(2)))
-    var firstDbBlock = await(blockModelRepository.findByNumber(2))
+    var firstChainBlock = await(wallet.getBlockByNum(NumberMessage(0)))
+    var firstDbBlock = await(blockModelRepository.findByNumber(0))
     var chainBlockHash = firstChainBlock.hash
 
     if (firstDbBlock.isDefined && (chainBlockHash != firstDbBlock.get.hash)) {
@@ -81,8 +81,8 @@ class FullNodeReader @Inject()(
 
       // Reset blocks
       latestBlockNum = await(blockModelRepository.findLatest).map(_.number + 1).getOrElse(0)
-      firstChainBlock = await(wallet.getBlockByNum(NumberMessage(2)))
-      firstDbBlock = await(blockModelRepository.findByNumber(2))
+      firstChainBlock = await(wallet.getBlockByNum(NumberMessage(0)))
+      firstDbBlock = await(blockModelRepository.findByNumber(0))
       chainBlockHash = firstChainBlock.hash
     }
 
@@ -91,7 +91,7 @@ class FullNodeReader @Inject()(
       .sequence(clients.fullClients.map { client =>
         for {
           latestBlock <- client.getNowBlock(EmptyMessage())
-          firstBlock <- client.getBlockByNum(NumberMessage(2))
+          firstBlock <- client.getBlockByNum(NumberMessage(0))
         } yield (client, latestBlock.number, firstBlock.hash)
       })).filter { x => x._3 == chainBlockHash }
 
