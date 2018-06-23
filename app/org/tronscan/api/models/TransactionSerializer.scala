@@ -128,7 +128,7 @@ object TransactionSerializer {
 
   implicit val encodeAccountUpdateContract = new Encoder[org.tron.protos.Contract.AccountUpdateContract] {
     def apply(accountUpdateContract: org.tron.protos.Contract.AccountUpdateContract): Js = Js.obj(
-      "ownerAddress" -> Base58.encode58Check(accountUpdateContract.ownerAddress.toByteArray).asJson,
+      "ownerAddress" -> accountUpdateContract.ownerAddress.encodeAddress.asJson,
       "name" -> new String(accountUpdateContract.accountName.toByteArray).asJson,
     )
   }
@@ -147,8 +147,8 @@ object TransactionSerializer {
 
   implicit val encodeAccountCreateContract = new Encoder[org.tron.protos.Contract.AccountCreateContract] {
     def apply(contract: org.tron.protos.Contract.AccountCreateContract): Js = Js.obj(
-      "ownerAddress" -> Base58.encode58Check(contract.ownerAddress.toByteArray).asJson,
-      "accountAddress" -> new String(contract.accountAddress.toByteArray).asJson,
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+      "accountAddress" -> contract.accountAddress.encodeAddress.asJson,
       "type" -> contract.`type`.value.asJson,
     )
   }
