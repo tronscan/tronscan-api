@@ -186,11 +186,13 @@ class SolidityNodeReader @Inject()(
                 txTrieRoot = Base58.encode58Check(header.txTrieRoot.toByteArray),
                 parentHash = ByteArray.toHexString(solidityBlock.parentHash),
                 witnessId = header.witnessId,
-                witnessAddress = Base58.encode58Check(header.witnessAddress.toByteArray),
+                witnessAddress = header.witnessAddress.encodeAddress,
                 nrOfTrx = solidityBlock.transactions.size,
                 confirmed = true,
               )))
             }
+
+            addresses.append(header.witnessAddress.encodeAddress)
 
             queries.appendAll(for {
               transaction <- solidityBlock.transactions
