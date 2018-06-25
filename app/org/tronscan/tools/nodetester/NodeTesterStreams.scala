@@ -2,17 +2,21 @@ package org.tronscan.tools.nodetester
 
 import akka.NotUsed
 import akka.actor.ActorRef
+import akka.pattern.ask
 import akka.stream.scaladsl.{Flow, Source}
+import akka.util.Timeout
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.tron.api.api.{EmptyMessage, WalletGrpc, WalletSolidityGrpc}
 import org.tronscan.grpc.GrpcPool
 import org.tronscan.grpc.GrpcPool.Channel
-import akka.pattern.ask
 
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 object NodeTesterStreams {
+
+  implicit val timeout = Timeout(10.seconds)
+  import ExecutionContext.Implicits.global
 
   type IpPort = (String, Int)
 
@@ -21,7 +25,7 @@ object NodeTesterStreams {
     *
     * First try full node, if it throws error then try solidity
     */
-  def detectNodeType(grpcPool: ActorRef) = {
+  def detectNodeType(grpcPool: ActorRef): Flow[(String, Int), Option[NodeTest], NotUsed] = {
     Flow[IpPort]
       .mapAsync(1) { case (ip, port) =>
 

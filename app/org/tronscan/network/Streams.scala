@@ -10,8 +10,6 @@ import play.api.libs.concurrent.Futures
 import play.api.libs.concurrent.Futures._
 
 import scala.concurrent.duration._
-import org.tronscan.network.NetworkScanner.{NetworkNode, NodeChannel}
-
 import scala.concurrent.{ExecutionContext, Future}
 
 object Streams {
@@ -31,8 +29,7 @@ object Streams {
             new String(n.address.get.host.toByteArray)
           }
         }).recover {
-          case x =>
-            //            println(s"ERROR READING $ip", x)
+          case _ =>
             List.empty
         }
       }

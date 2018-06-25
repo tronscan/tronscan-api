@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.Actor
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 import org.tronscan.grpc.GrpcPool.{Channels, RequestChannel, RequestChannels}
-import org.tronscan.network.NetworkScanner.NetworkNode
+import org.tronscan.network.NetworkNode
 
 object GrpcPool {
 
