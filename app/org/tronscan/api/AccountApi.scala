@@ -248,7 +248,7 @@ class AccountApi @Inject()(
     } yield {
 
       Ok(Json.obj(
-        "data" -> sr,
+        "data" -> sr.asJson,
       ))
     }
   }
@@ -259,9 +259,10 @@ class AccountApi @Inject()(
   )
   def updateSr(address: String) = Action.async { req =>
 
+    val json: io.circe.Json = req.body.asJson.get
+
     (for {
-      json <- req.body.asJson
-      model <- json.asOpt[SuperRepresentativeModel]
+      model <- json.as[SuperRepresentativeModel].toOption
       keyHeader <- req.headers.get("X-Key")
       key <- JwtJson.decodeJson(keyHeader, key, Seq(JwtAlgorithm.HS256)).toOption.map(x => (x \ "address").as[String])
       if address == key

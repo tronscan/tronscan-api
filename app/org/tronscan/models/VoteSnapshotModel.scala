@@ -10,11 +10,6 @@ import org.tronscan.App._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-
-object VoteSnapshotModel {
-  implicit val format = Json.format[VoteSnapshotModel]
-}
-
 case class VoteSnapshotModel(
   id: Option[Long] = None,
   address: String,
@@ -26,7 +21,7 @@ class VoteSnapshotModelTable(tag: Tag) extends Table[VoteSnapshotModel](tag, Som
   def address = column[String]("address")
   def timestamp = column[DateTime]("timestamp")
   def votes = column[Long]("votes")
-  def * = (id.?, address, timestamp, votes) <> ((VoteSnapshotModel.apply _).tupled, VoteSnapshotModel.unapply)
+  def * = (id.?, address, timestamp, votes) <> (VoteSnapshotModel.tupled, VoteSnapshotModel.unapply)
 }
 
 @Singleton()

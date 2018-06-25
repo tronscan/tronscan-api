@@ -10,6 +10,11 @@ import scala.concurrent.ExecutionContext
 
 case class MakeSnapshot()
 
+/**
+  * Vote Scraper
+  *
+  * Periodically make a snapshot of all votes and save it to the database
+  */
 class VoteScraper @Inject() (
   walletSolidity: WalletSolidity,
   repo: VoteWitnessContractModelRepository,

@@ -8,10 +8,6 @@ import org.tronscan.db.TableRepository
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object SuperRepresentativeModel {
-  implicit val format = Json.format[SuperRepresentativeModel]
-}
-
 case class SuperRepresentativeModel(
   address: String,
   githubLink: Option[String] = None)
@@ -19,7 +15,7 @@ case class SuperRepresentativeModel(
 class SuperRepresentativeModelTable(tag: Tag) extends Table[SuperRepresentativeModel](tag, "sr_account") {
   def address = column[String]("address", O.PrimaryKey)
   def githubLink = column[String]("github_link")
-  def * = (address, githubLink.?) <> ((SuperRepresentativeModel.apply _).tupled, SuperRepresentativeModel.unapply)
+  def * = (address, githubLink.?) <> (SuperRepresentativeModel.tupled, SuperRepresentativeModel.unapply)
 }
 
 @Singleton()

@@ -10,10 +10,6 @@ import org.tronscan.App._
 
 import scala.concurrent.Future
 
-object BlockModel {
-  implicit val format = Json.format[BlockModel]
-}
-
 case class BlockModel(
     number: Long,
     hash: String,
@@ -37,7 +33,7 @@ class BlockModelTable(tag: Tag) extends Table[BlockModel](tag, "blocks") {
   def witnessAddress = column[String]("witness_address")
   def nrOfTrx = column[Int]("transactions")
   def confirmed = column[Boolean]("confirmed")
-  def * = (number, hash, size, timestamp, trieRoot, parentHash, witnessId, witnessAddress, nrOfTrx, confirmed) <> ((BlockModel.apply _).tupled, BlockModel.unapply)
+  def * = (number, hash, size, timestamp, trieRoot, parentHash, witnessId, witnessAddress, nrOfTrx, confirmed) <> (BlockModel.tupled, BlockModel.unapply)
 }
 
 @Singleton()

@@ -13,6 +13,9 @@ import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext
 
+/**
+  * Voting List Cache Warmer
+  */
 class VoteList @Inject() (
   srRepo: SuperRepresentativeModelRepository,
   accountModelRepository: AccountModelRepository,

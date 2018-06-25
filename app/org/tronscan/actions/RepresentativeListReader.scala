@@ -8,6 +8,9 @@ import org.tronscan.models.{AccountModelRepository, WitnessModelRepository}
 
 import scala.concurrent.ExecutionContext
 
+/**
+  * Represenative List Reader Cache Warmer
+  */
 class RepresentativeListReader @Inject() (
   witnessModelRepository: WitnessModelRepository,
   accountModelRepository: AccountModelRepository,

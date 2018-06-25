@@ -8,9 +8,6 @@ import play.api.db.slick.DatabaseConfigProvider
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
 
-object TransferModel {
-//  implicit val format = Json.format[TransferModel]
-}
 
 case class TransferModel(
   id: UUID = UUID.randomUUID(),
@@ -33,7 +30,7 @@ class TransferModelTable(tag: Tag) extends Table[TransferModel](tag, "transfers"
   def amount = column[Long]("amount")
   def tokenName = column[String]("token_name")
   def confirmed = column[Boolean]("confirmed")
-  def * = (id, transactionHash, block, timestamp, transferFromAddress, transferToAddress, amount, tokenName, confirmed) <> ((TransferModel.apply _).tupled, TransferModel.unapply)
+  def * = (id, transactionHash, block, timestamp, transferFromAddress, transferToAddress, amount, tokenName, confirmed) <> (TransferModel.tupled, TransferModel.unapply)
 }
 
 @Singleton()

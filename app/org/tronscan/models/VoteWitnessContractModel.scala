@@ -12,10 +12,6 @@ import play.api.libs.json.JodaWrites._
 import play.api.libs.json.JodaReads._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object VoteWitnessContractModel {
-  implicit val format = Json.format[VoteWitnessContractModel]
-}
-
 case class VoteWitnessContractModel(
   id: UUID = UUID.randomUUID(),
   block: Long,
@@ -33,7 +29,7 @@ class VoteWitnessContractModelTable(tag: Tag) extends Table[VoteWitnessContractM
   def voterAddress = column[String]("voter_address")
   def candidateAddress = column[String]("candidate_address")
   def votes = column[Long]("votes")
-  def * = (id, block, transaction, timestamp, voterAddress, candidateAddress, votes) <> ((VoteWitnessContractModel.apply _).tupled, VoteWitnessContractModel.unapply)
+  def * = (id, block, transaction, timestamp, voterAddress, candidateAddress, votes) <> (VoteWitnessContractModel.tupled, VoteWitnessContractModel.unapply)
 }
 
 @Singleton()

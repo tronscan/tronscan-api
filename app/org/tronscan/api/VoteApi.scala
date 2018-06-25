@@ -1,25 +1,22 @@
 package org
 package tronscan.api
 
+import io.circe.generic.auto._
+import io.circe.syntax._
 import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
-import org.tron.common.utils.Base58
-import play.api.cache.{Cached, NamedCache}
-import play.api.libs.json.{JsObject, Json}
-import play.api.mvc.InjectedController
 import org.tronscan.App._
 import org.tronscan.Constants
-import org.tronscan.Extensions._
+import org.tronscan.actions.VoteList
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
-import org.tronscan.protocol.AddressFormatter
-import io.circe.generic.auto._
-import io.circe.syntax._
 import play.api.cache.redis.CacheAsyncApi
-import org.tronscan.actions.VoteList
+import play.api.cache.{Cached, NamedCache}
+import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.mvc.InjectedController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -67,7 +64,8 @@ class VoteApi @Inject()(
         "total" -> total,
         "totalVotes" -> totalVotes,
         "data" -> accounts.map { case (vote, witness, candidateAccount, voterAccounts) => {
-          Json.toJson(vote).as[JsObject] ++ Json.obj(
+          val voteJson: JsObject = vote.asJson
+          voteJson ++ Json.obj(
             "candidateUrl" -> witness.url,
             "candidateName" -> candidateAccount.name,
             "voterAvailableVotes" -> (voterAccounts.power / Constants.ONE_TRX),
@@ -78,7 +76,7 @@ class VoteApi @Inject()(
   }
 
   def currentCycle = cached.status(x => "current_votes_cycle", 200, 10.seconds) {
-    Action.async { request =>
+    Action.async {
       repo.votesByAddress.map { votes =>
         Ok(io.circe.Json.obj(
           "data" -> votes.asJson

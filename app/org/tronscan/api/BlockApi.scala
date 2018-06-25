@@ -1,21 +1,25 @@
-package org.tronscan.api
+package org
+package tronscan.api
 
 import io.swagger.annotations._
 import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.common.utils.{Base58, ByteUtil}
-import play.api.cache.NamedCache
-import play.api.cache.redis.CacheAsyncApi
-import play.api.libs.json.Json
-import play.api.mvc.InjectedController
 import org.tronscan.App._
+import org.tronscan.Extensions._
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models.{BlockModel, BlockModelRepository}
-import org.tronscan.Extensions._
+import play.api.cache.NamedCache
+import play.api.cache.redis.CacheAsyncApi
+import play.api.libs.json.Json
+import io.circe.generic.auto._
+import io.circe.syntax._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import io.circe.generic.auto._
+import io.circe.syntax._
 import scala.concurrent.duration._
 
 @Api(
@@ -108,7 +112,7 @@ class BlockApi @Inject() (
     } yield {
       Ok(Json.obj(
         "total" -> total,
-        "data" -> accounts,
+        "data" -> accounts.asJson,
       ))
     }
   }
@@ -122,7 +126,7 @@ class BlockApi @Inject() (
       .findByNumber(id)
       .map {
         case Some(block) =>
-          Ok(Json.toJson(block))
+          Ok(block.asJson)
         case _ =>
           NotFound
       }
@@ -137,7 +141,7 @@ class BlockApi @Inject() (
       block <- wallet.getNowBlock(EmptyMessage())
     } yield {
       val header = block.getBlockHeader.getRawData
-      Ok(Json.toJson(BlockModel(
+      Ok(BlockModel(
         number = header.number,
         size = block.toByteArray.length,
         hash = block.hash,
@@ -147,7 +151,7 @@ class BlockApi @Inject() (
         witnessId = header.witnessId,
         witnessAddress = Base58.encode58Check(header.witnessAddress.toByteArray),
         nrOfTrx = block.transactions.size,
-      )))
+      ).asJson)
     }
   }
 
