@@ -31,7 +31,13 @@ class NodeApi @Inject()(
 
       (actorRef ? RequestStatus()).mapTo[NodeStatus].map { status =>
 
-        val nodes = status.nodes.filter(_.permanent == false)
+        val nodes = status.nodes.filter(_.permanent == false).map { node =>
+          // Disable for now
+          node.copy(
+            ip = "-",
+            hostname = "-"
+          )
+        }
 
         Ok(Json.obj(
           "nodes" -> nodes.asJson,
