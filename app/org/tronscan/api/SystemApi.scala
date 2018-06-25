@@ -10,6 +10,7 @@ import play.api.mvc.InjectedController
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models.BlockModelRepository
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class SystemApi @Inject()(
@@ -52,7 +53,7 @@ class SystemApi @Inject()(
         Ok(
           Json.obj(
             "network" -> Json.obj(
-              "type" -> networkType
+              "type" -> networkType,
             ),
             "sync" -> Json.obj(
               "progress" -> totalProgress,

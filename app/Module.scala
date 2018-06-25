@@ -10,7 +10,7 @@ import org.tronscan.importer.{FullNodeReader, ImportManager, SolidityNodeReader}
 import org.tronscan.protocol.{AddressFormatter, TestNetFormatter}
 import org.tronscan.websockets.SocketIOEngine
 import org.tronscan.service.{ActionRunner, Bootstrap}
-import org.tronscan.watchdog.NodeWatchDog
+import org.tronscan.network.NetworkScanner
 import play.api.inject.ConfigurationProvider
 import play.api.libs.concurrent.AkkaGuiceSupport
 import play.engineio.EngineIOController
@@ -21,11 +21,12 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActor[FullNodeReader]("fullnode-reader")
     bindActor[SolidityNodeReader]("solidity-reader")
     bindActor[ImportManager]("blockchain-importer")
-    bindActor[NodeWatchDog]("node-watchdog")
+    bindActor[NetworkScanner]("node-watchdog")
     bindActor[GrpcPool]("grpc-pool")
     bindActor[ActionRunner]("action-runner")
+
     bind(classOf[WalletSolidity]).to(classOf[WalletSolidityGrpc.WalletSolidityStub])
-    bind(classOf[AddressFormatter]).to(classOf[TestNetFormatter])
+
     bind(classOf[EngineIOController]).toProvider(classOf[SocketIOEngine])
     bind(classOf[Bootstrap]).asEagerSingleton()
   }

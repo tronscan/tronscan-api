@@ -102,9 +102,7 @@ class VoteApi @Inject()(
         "nextCycle" -> (nextMaintenanceTime - currentTime)
       ))
     }
-
   }
-
 
   def stats = Action.async {
     import voteSnapshotModelRepository._

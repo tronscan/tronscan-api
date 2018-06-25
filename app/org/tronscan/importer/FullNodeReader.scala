@@ -20,8 +20,8 @@ import org.tronscan.grpc.{GrpcClients, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
 import org.tronscan.protocol.TransactionUtils
-import org.tronscan.watchdog.NodeWatchDog
-import org.tronscan.watchdog.NodeWatchDog.GetBestNodes
+import org.tronscan.network.NetworkScanner
+import org.tronscan.network.NetworkScanner.GetBestNodes
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
 import play.api.inject.ConfigurationProvider
@@ -319,7 +319,7 @@ class FullNodeReader @Inject()(
 
   def getClients = {
     implicit val timeout = util.Timeout(10.seconds)
-    (nodeWatchDog ? GetBestNodes(10, n => n.nodeType == NodeWatchDog.full && n.permanent)).mapTo[GrpcClients]
+    (nodeWatchDog ? GetBestNodes(10, n => n.nodeType == NetworkScanner.full && n.permanent)).mapTo[GrpcClients]
   }
 
   def waiting: Receive = {

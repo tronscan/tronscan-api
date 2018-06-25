@@ -6,12 +6,12 @@ import java.util.concurrent.TimeUnit
 import akka.actor.Actor
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 import org.tronscan.grpc.GrpcPool.{Channels, RequestChannel, RequestChannels}
-import org.tronscan.watchdog.NodeWatchDog.Node
+import org.tronscan.network.NetworkScanner.NetworkNode
 
 object GrpcPool {
 
   case class RequestChannel(ip: String, port: Int)
-  case class RequestChannels(nodes: List[Node])
+  case class RequestChannels(nodes: List[NetworkNode])
   case class Channel(channel: ManagedChannel)
 
   case class Channels(channel: List[ManagedChannel])

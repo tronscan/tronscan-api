@@ -12,11 +12,17 @@ import org.tron.protos.Tron.Transaction
 import org.tron.protos.Tron.Transaction.Contract.ContractType
 import org.tronscan.Extensions._
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
+/**
+  * Transaction Builder Utils
+  */
 class TransactionBuilder @Inject() (wallet: Wallet) {
 
-  def buildTransactionWithContract(contract: Transaction.Contract) = {
+  /**
+    * Build transaction which includes the given contract
+    */
+  def buildTransactionWithContract(contract: Transaction.Contract): Transaction = {
     Transaction(
       rawData = Some(Transaction.raw(
         contract = Seq(contract)
@@ -24,7 +30,10 @@ class TransactionBuilder @Inject() (wallet: Wallet) {
     )
   }
 
-  def buildTrxTransfer(from: Array[Byte], to: String, amount: Long) = {
+  /**
+    * Build transfer contract
+    */
+  def buildTrxTransfer(from: Array[Byte], to: String, amount: Long): Transaction = {
 
     val transferContract = TransferContract(
       ownerAddress = ByteString.copyFrom(from),
@@ -42,7 +51,7 @@ class TransactionBuilder @Inject() (wallet: Wallet) {
   /**
     * Add block reference
     */
-  def setReference(transaction: Transaction)(implicit executionContext: ExecutionContext) = {
+  def setReference(transaction: Transaction)(implicit executionContext: ExecutionContext): Future[Transaction] = {
     for {
       latestBlock <- wallet.getNowBlock(EmptyMessage())
     } yield {
@@ -57,9 +66,9 @@ class TransactionBuilder @Inject() (wallet: Wallet) {
   }
 
   /**
-    * Add block reference
+    * Add signature to the transaction
     */
-  def sign(transaction: Transaction, pk: Array[Byte]) = {
+  def sign(transaction: Transaction, pk: Array[Byte]): Transaction = {
     val ecKey = ECKey.fromPrivate(pk)
     val signature = ecKey.sign(Sha256Hash.hash(transaction.getRawData.toByteArray))
     val sig = ByteString.copyFrom(signature.toByteArray)

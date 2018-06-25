@@ -11,17 +11,8 @@ class Bootstrap @Inject() (configurationProvider: ConfigurationProvider) {
   def getNet = config.get[String]("net.type")
 
   def loadAddressFormat() = {
-
-    getNet.toLowerCase match {
-      case "testnet" =>
-        StaticAddressFormatter.formatter = new TestNetFormatter
-
-      case "mainnet" =>
-        StaticAddressFormatter.formatter = new MainNetFormatter
-    }
+    StaticAddressFormatter.formatter = new MainNetFormatter
   }
-
-
 
   loadAddressFormat()
 }

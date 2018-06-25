@@ -1,4 +1,4 @@
-package org.tronscan.watchdog
+package org.tronscan.network
 
 import java.util.concurrent.TimeUnit
 
@@ -16,53 +16,28 @@ import org.tron.api.api.{Node => _, _}
 import org.tronscan.grpc.GrpcClients
 import org.tronscan.grpc.GrpcPool.{Channel, RequestChannel}
 import org.tronscan.service.GeoIPService
-import org.tronscan.watchdog.NodeWatchDog._
+import org.tronscan.network.NetworkScanner._
+import play.api.Logger
 import play.api.inject.ConfigurationProvider
 import play.api.libs.concurrent.Futures
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-object NodeWatchDog {
+object NetworkScanner {
 
   val solidity = 1
   val full = 2
 
-  case class Node(
-    ip: String,
-    port: Int,
-    nodeType: Int = full,
-    hostname: String = "",
-    lastSeen: DateTime = DateTime.now,
-    permanent: Boolean = false,
-    lastBlock: Long = 0L,
-    grpcEnabled: Boolean = false,
-    grpcResponseTime: Long = 0,
-    country: String = "",
-    city: String = "",
-    lat: Double = 0,
-    lng: Double = 0)
-
   case class RefreshNodes()
   case class CleanupNodes()
   case class RequestStatus()
-  case class NodeStatus(nodes: List[Node], status: String = "waiting_for_first_sync")
-  case class UpdateNode(node: Node)
-  case class GetBestNodes(number: Int, filter: Node => Boolean = b => true)
-
-  case class NodeChannel(ip: String, port: Int = 50051, channel: ManagedChannel) {
-    lazy val full = WalletGrpc.stub(channel)
-    lazy val solidity = WalletSolidityGrpc.stub(channel)
-
-    def close() : Unit = {
-      channel.shutdown()
-      channel.awaitTermination(6, TimeUnit.SECONDS)
-    }
-  }
-
+  case class NodeStatus(nodes: List[NetworkNode], status: String = "waiting_for_first_sync")
+  case class UpdateNode(node: NetworkNode)
+  case class GetBestNodes(number: Int, filter: NetworkNode => Boolean = b => true)
 }
 
-class NodeWatchDog @Inject()(
+class NetworkScanner @Inject()(
   configurationProvider: ConfigurationProvider,
   @Named("grpc-pool") actorRef: ActorRef,
   geoIPService: GeoIPService,
@@ -70,11 +45,10 @@ class NodeWatchDog @Inject()(
 
   val workContext = context.system.dispatchers.lookup("contexts.node-watcher")
 
-  var networkNodes = Map[String, Node]()
+  var networkNodes = Map[String, NetworkNode]()
   var syncStatus = "waiting_for_first_sync"
 
-  val decider: Supervision.Decider = {
-    case exc =>
+  val decider: Supervision.Decider = { exc =>
       println("WATCHDOG ERROR", exc, ExceptionUtils.getStackTrace(exc))
       Supervision.Resume
   }
@@ -83,7 +57,6 @@ class NodeWatchDog @Inject()(
     ActorMaterializerSettings(context.system)
       .withSupervisionStrategy(decider))(context)
 
-
   def channelFromIp(ip: String, port: Int = 50051) = {
     implicit val executionContext = workContext
     implicit val timeout = Timeout(5.seconds)
@@ -91,7 +64,7 @@ class NodeWatchDog @Inject()(
   }
 
 
-  def channelFromNode(node: Node) = {
+  def channelFromNode(node: NetworkNode) = {
     implicit val executionContext = workContext
     implicit val timeout = Timeout(5.seconds)
     (actorRef ? RequestChannel(node.ip, node.port)).mapTo[Channel].map(_.channel)
@@ -119,7 +92,7 @@ class NodeWatchDog @Inject()(
       .via(buildReadStream)
   }
 
-  def readNodeHealth: Flow[String, Node, NotUsed] = {
+  def readNodeHealth: Flow[String, NetworkNode, NotUsed] = {
     implicit val executionContext = workContext
     Flow[String]
       .via(Streams.networkPinger(nodeFromIp(_), 4))
@@ -149,7 +122,7 @@ class NodeWatchDog @Inject()(
     }.toList
   }
 
-  def includeGeo(node: Node) = {
+  def includeGeo(node: NetworkNode) = {
     implicit val executionContext = workContext
 
     geoIPService.findForIp(node.ip).map { geo =>
@@ -175,23 +148,27 @@ class NodeWatchDog @Inject()(
       })
       .toMat(Sink.ignore)(Keep.right)
       .run
-      .recover {
-        case x =>
-          println("STREAM CRASH", x)
+      .recover { case x =>
+        Logger.error("STREAM CRASH", x)
       }
   }
 
-  def getBestNodes(count: Int, filter: Node => Boolean = n => true) = {
-    networkNodes.values.filter(filter).filter(_.grpcEnabled).toList.sortBy(_.grpcResponseTime).take(count)
+  def getBestNodes(count: Int, filter: NetworkNode => Boolean = n => true) = {
+    networkNodes.values
+      .filter(filter)
+      // Only take nodes which have their GRPC ports open
+      .filter(_.grpcEnabled).toList
+      // Sort by the best response time first
+      .sortBy(_.grpcResponseTime).take(count)
   }
 
   def cleanup() = {
     val cleanupAfter = DateTime.now.minusMinutes(30)
     networkNodes = networkNodes
       .filter {
-        case (ip, node) if node.permanent =>
+        case (_, node) if node.permanent =>
           true
-        case (ip, node) if node.lastSeen.isAfter(cleanupAfter) =>
+        case (_, node) if node.lastSeen.isAfter(cleanupAfter) =>
           true
         case _ =>
           false
@@ -203,7 +180,7 @@ class NodeWatchDog @Inject()(
 
     seedNodes.map { case (ip, port) =>
       nodeFromIp(ip, port).map { _ =>
-        self ! UpdateNode(Node(
+        self ! UpdateNode(NetworkNode(
           ip = ip,
           permanent = true,
           port = port,
@@ -215,9 +192,9 @@ class NodeWatchDog @Inject()(
 
     soliditySeedNodes.map { case (ip, port) =>
       nodeFromIp(ip, port).map { _ =>
-        self ! UpdateNode(Node(
+        self ! UpdateNode(NetworkNode(
           ip = ip,
-          nodeType = NodeWatchDog.solidity,
+          nodeType = NetworkScanner.solidity,
           permanent = true,
           port = port,
           grpcEnabled = true,
@@ -226,7 +203,7 @@ class NodeWatchDog @Inject()(
       }
     }
 
-    val watchdogEnabled = configurationProvider.get.get[Boolean]("nodeWatchdog")
+    val watchdogEnabled = configurationProvider.get.get[Boolean]("network.scanner.enabled")
     println("WATCHDOG ENABLED", watchdogEnabled)
     if (watchdogEnabled) {
       startReader()
@@ -234,7 +211,7 @@ class NodeWatchDog @Inject()(
     }
   }
 
-  def updateNode(node: Node) = {
+  def updateNode(node: NetworkNode) = {
     networkNodes.get(node.ip) match {
       case Some(existingNode) if !existingNode.permanent =>
         networkNodes = networkNodes + (node.ip -> node)

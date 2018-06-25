@@ -1,4 +1,4 @@
-package org.tronscan.watchdog
+package org.tronscan.network
 
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
@@ -10,7 +10,7 @@ import play.api.libs.concurrent.Futures
 import play.api.libs.concurrent.Futures._
 
 import scala.concurrent.duration._
-import org.tronscan.watchdog.NodeWatchDog.{Node, NodeChannel}
+import org.tronscan.network.NetworkScanner.{NetworkNode, NodeChannel}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -45,7 +45,7 @@ object Streams {
     * @param nodeFromIp factory which creates a node from a string
     * @param parallel parallel number of processes
     */
-  def networkPinger(nodeFromIp: String => Future[NodeChannel], parallel: Int = 4)(implicit executionContext: ExecutionContext, futures: Futures): Flow[String, Node, NotUsed] = {
+  def networkPinger(nodeFromIp: String => Future[NodeChannel], parallel: Int = 4)(implicit executionContext: ExecutionContext, futures: Futures): Flow[String, NetworkNode, NotUsed] = {
     Flow[String]
       .mapAsyncUnordered(parallel) { ip =>
 
@@ -60,7 +60,7 @@ object Streams {
           hostname <- Future(ia.getCanonicalHostName).withTimeout(6.seconds).recover { case _ => ip }
         } yield {
 
-          Node(
+          NetworkNode(
             ip = ip,
             port = 500051,
             lastBlock = r.getBlockHeader.getRawData.number,
@@ -69,7 +69,7 @@ object Streams {
             grpcResponseTime = response)
         }).recover {
           case _ =>
-            Node(
+            NetworkNode(
               ip = ip,
               hostname = ia.getCanonicalHostName,
               port = 500051,
