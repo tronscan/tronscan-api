@@ -23,6 +23,7 @@ GET     /api/account/:address/balance   org.tronscan.api.AccountApi.getAddressBa
 GET     /api/account/:address/stats     org.tronscan.api.AccountApi.getStats(address: String)
 GET     /api/account/:address/votes     org.tronscan.api.AccountApi.getVotes(address: String)
 GET     /api/account/:address/sr        org.tronscan.api.AccountApi.getSr(address: String)
+GET     /api/account/:address/sr-pages  org.tronscan.api.AccountApi.getSrPages(address: String)
 POST    /api/account/:address/sr        org.tronscan.api.AccountApi.updateSr(address: String)
 
 # Node

@@ -15,7 +15,6 @@ import play.api.libs.json.Json
 import play.api.mvc.InjectedController
 import org.tronscan.Extensions._
 
-
 class AuthApi @Inject() (configurationProvider: ConfigurationProvider) extends InjectedController {
 
   val key = configurationProvider.get.get[String]("play.http.secret.key")
@@ -32,8 +31,8 @@ class AuthApi @Inject() (configurationProvider: ConfigurationProvider) extends I
 
     val signatureAddress = ECKey.signatureToAddress(rawHash, Crypto.getBase64FromByteString(transaction.signature.head))
 
-    val transferContract = org.tron.protos.Contract.TransferContract.parseFrom(transaction.getRawData.contract.head.getParameter.value.toByteArray)
-    val transactionAddress = transferContract.ownerAddress.toByteArray
+    val witnessUpdate = org.tron.protos.Contract.WitnessUpdateContract.parseFrom(transaction.getRawData.contract.head.getParameter.value.toByteArray)
+    val transactionAddress = witnessUpdate.ownerAddress.toByteArray
 
     val addressEncoded = Base58.encode58Check(signatureAddress)
 
