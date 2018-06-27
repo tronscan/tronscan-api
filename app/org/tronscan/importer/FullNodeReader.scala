@@ -143,7 +143,7 @@ class FullNodeReader @Inject()(
         } yield {
 
           val transactionHash = transaction.hash
-          val transactionTime = new DateTime(header.timestamp)
+          val transactionTime = new DateTime(transaction.getRawData.timestamp)
 
           val transactionModel = TransactionModel(
             hash = transactionHash,
@@ -164,7 +164,7 @@ class FullNodeReader @Inject()(
           val any = contract.getParameter
 
           val transactionHash = transaction.hash
-          val transactionTime = new DateTime(header.timestamp)
+          val transactionTime = new DateTime(transaction.getRawData.timestamp)
 
           //            println(s"block: ${header.number}", s"transaction hash: $transactionHash", "timestamp: " + transaction.getRawData.timestamp)
 
