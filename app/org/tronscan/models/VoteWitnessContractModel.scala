@@ -63,6 +63,10 @@ class VoteWitnessContractModelRepository @Inject() (val dbConfig: DatabaseConfig
     Seq(table.filter(_.voterAddress === address).delete) ++ votes.map(x => table += x)
   }
 
+  def buildDeleteVotesForAddress(address: String) = {
+    table.filter(_.voterAddress === address).delete
+  }
+
   def readTotalVotes[TR, TG](func: QueryType => QueryType) = run {
     func(table).map(_.votes).sum.result
   }

@@ -386,6 +386,7 @@ class SolidityNodeReader @Inject()(
 
                 case UnfreezeBalanceContract =>
                   val unfreezeBalanceContract = org.tron.protos.Contract.UnfreezeBalanceContract.parseFrom(any.value.toByteArray)
+                  queries.append(voteWitnessContractModelRepository.buildDeleteVotesForAddress(unfreezeBalanceContract.ownerAddress.encodeAddress))
                   addresses.append(unfreezeBalanceContract.ownerAddress.encodeAddress)
 
                 case WithdrawBalanceContract =>
