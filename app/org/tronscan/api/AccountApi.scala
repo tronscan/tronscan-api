@@ -20,13 +20,15 @@ import org.tron.protos.Tron.Account
 import pdi.jwt.{JwtAlgorithm, JwtJson}
 import play.api.cache.Cached
 import play.api.inject.ConfigurationProvider
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.InjectedController
 import org.tronscan.Constants
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
 import org.tronscan.Extensions._
+import org.tronscan.service.SRService
+
 import scala.async.Async.{async, await}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -45,7 +47,8 @@ class AccountApi @Inject()(
   addressBalanceModelRepository: AddressBalanceModelRepository,
   configurationProvider: ConfigurationProvider,
   walletClient: WalletClient,
-  witnessRepository: WitnessModelRepository) extends InjectedController {
+  witnessRepository: WitnessModelRepository,
+  srService: SRService) extends InjectedController {
 
   val key = configurationProvider.get.get[String]("play.http.secret.key")
 
@@ -240,16 +243,9 @@ class AccountApi @Inject()(
   )
   def getSr(address: String) = Action.async {
     for {
-      wallet <- walletClient.full
-      account <- wallet.getAccount(Account(
-        address = ByteString.copyFrom(Base58.decode58Check(address))
-      ))
       sr <- srRepository.findByAddress(address)
     } yield {
-
-      Ok(Json.obj(
-        "data" -> sr.asJson,
-      ))
+      Ok(Json.toJson(sr))
     }
   }
 
@@ -257,6 +253,24 @@ class AccountApi @Inject()(
     value = "",
     hidden = true
   )
+  def getSrPages(address: String) = Action.async { request =>
+    async {
+      val language = request.getQueryString("lang").getOrElse("en")
+
+      await(srRepository.findByAddress(address)) match {
+        case Some(sr) if sr.githubLink.isDefined =>
+          val pages = await(srService.getPages(sr.githubLink.get, language))
+          val response: JsObject = pages.asJson
+          Ok(Json.toJson(response))
+        case _ =>
+          NotFound
+      }
+    }
+  }
+
+  @ApiOperation(
+    value = "",
+    hidden = true)
   def updateSr(address: String) = Action.async { req =>
 
     val json: io.circe.Json = req.body.asJson.get
