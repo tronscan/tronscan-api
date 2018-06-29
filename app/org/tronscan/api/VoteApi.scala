@@ -8,9 +8,9 @@ import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tronscan.App._
-import org.tronscan.Constants
 import org.tronscan.actions.VoteList
 import org.tronscan.db.PgProfile.api._
+import org.tronscan.domain.Constants
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
 import play.api.cache.redis.CacheAsyncApi

@@ -20,13 +20,14 @@ import org.tron.protos.Tron.Account
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountUpdateContract, AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tronscan.Extensions._
 import org.tronscan.api.models.TransactionSerializer
-import org.tronscan.events._
-import org.tronscan.grpc.{GrpcClients, WalletClient}
+import org.tronscan.domain.Events.{AssetIssueCreated, ParticipateAssetIssueModelCreated, VoteCreated}
+import org.tronscan.grpc.{FullNodeBlockChain, GrpcClients, SolidityBlockChain, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
 import org.tronscan.protocol.TransactionUtils
 import org.tronscan.network.NetworkScanner
 import org.tronscan.network.NetworkScanner.GetBestNodes
+import org.tronscan.service.SynchronisationService
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
 import play.api.inject.ConfigurationProvider
@@ -50,63 +51,14 @@ class SolidityNodeReader @Inject()(
   addressBalanceModelRepository: AddressBalanceModelRepository,
   assetIssueContractModelRepository: AssetIssueContractModelRepository,
   configurationProvider: ConfigurationProvider,
+  synchronisationService: SynchronisationService,
+
   walletClient: WalletClient,
   @NamedCache("redis") redisCache: CacheAsyncApi,
   @Named("node-watchdog") nodeWatchDog: ActorRef) extends Actor {
 
   var resumeFromBlock = -1L
   var addressSyncer = ActorRef.noSender
-
-  def latestDbBlockSource = Source.unfoldAsync(0L) { x =>
-    println("PREVIOUS BLOCK SOURCE", x)
-    for {
-      latest <- blockModelRepository.findLatest
-    } yield latest.map(_.number -> x)
-  }
-
-  def latestUnconfirmedBlockSource = Source.unfoldAsync(0L) { x =>
-    println("PREVIOUS DB BLOCK", x)
-    for {
-      latest <- blockModelRepository.findLatestUnconfirmed
-    } yield latest.map(_.number -> x)
-  }
-
-  def latestFullNodeBlock = Source.unfoldAsync(0L) { x =>
-    println("latestFullNodeBlock", x)
-    for {
-      walletFull <- walletClient.full
-      fullNodeBlockId <- walletFull
-        .withDeadlineAfter(1, TimeUnit.SECONDS)
-        .getNowBlock(EmptyMessage())
-        .map(_.getBlockHeader.getRawData.number)
-    } yield Some(fullNodeBlockId -> x)
-  }
-
-
-  def buildSource = {
-    RunnableGraph.fromGraph(GraphDSL.create() { implicit b =>
-      import GraphDSL.Implicits._
-
-      val ticker = Source.tick(10.seconds, 3.seconds, "run")
-
-      val zip = b.add(Zip[Long, Long]())
-
-      latestFullNodeBlock ~> zip.in0
-      latestDbBlockSource ~> zip.in1
-
-      val t = zip.out ~> Flow[(Long, Long)]
-        .takeWhile {
-          case (fullNodeBlockNumber, latestDbBlockNumber) =>
-            100 > (fullNodeBlockNumber - latestDbBlockNumber)
-        }
-        .map { case (_, latestDbBlockNumber) => latestDbBlockNumber }
-
-
-      ClosedShape
-    })
-
-  }
-
 
   def syncChain(): Future[Unit] = async {
 
@@ -127,29 +79,35 @@ class SolidityNodeReader @Inject()(
 
     // Check if we should allow full to sync first
     val walletFull = await(walletClient.full)
-    val fullNodeBlockId = await(walletFull.withDeadlineAfter(1, TimeUnit.SECONDS).getNowBlock(EmptyMessage())).getBlockHeader.getRawData.number
+    val fullBlockChain = new FullNodeBlockChain(walletFull)
+    val fullNodeBlockId = await(fullBlockChain.headBlock).getBlockHeader.getRawData.number
 
-    val latestDbBlockNumber: Long = await(blockModelRepository.findLatest).map(_.number).getOrElse(0)
-    if (100 < (fullNodeBlockId - latestDbBlockNumber)) {
+    val latestDbBlockNumber: Long = await(synchronisationService.currentSynchronizedBlock).map(_.number).getOrElse(0)
+    val fullNodeBlockDifference = Math.abs(fullNodeBlockId - latestDbBlockNumber)
+    if (100 < fullNodeBlockDifference) {
       throw new Exception("WAIT FOR FULL NODE TO CATCH UP")
     }
 
     val walletSolidity = await(walletClient.solidity)
-    val latestBlock = await(walletSolidity.withDeadlineAfter(10, TimeUnit.SECONDS).getNowBlock(EmptyMessage()))
+    val solidityBlockChain = new SolidityBlockChain(walletSolidity)
+    val latestBlock = await(solidityBlockChain.headBlock)
     val blockNum = latestBlock.getBlockHeader.getRawData.number
 
     val syncToBlock = if (blockNum > latestDbBlockNumber) latestDbBlockNumber else blockNum
 
     val latestUnconfirmedBlock: Long = await(blockModelRepository.findLatestUnconfirmed).map(_.number).getOrElse(0)
     println(s"SOLIDITY SYNCING FROM $latestUnconfirmedBlock to $syncToBlock")
+    val solidityBlockDifference = Math.abs(latestDbBlockNumber - latestUnconfirmedBlock)
+
+    val solidityStreamBuilder = new SolidityNodeStreamBuilder(solidityBlockChain)
+
+    val blocks = solidityStreamBuilder.readBlocks(latestUnconfirmedBlock, syncToBlock)
 
     if ((syncToBlock - latestUnconfirmedBlock) > 0) {
-      val syncTask = Source(latestUnconfirmedBlock to syncToBlock)
-        .take(2000)
-        .mapAsync(12) { i =>
+      val syncTask = blocks
+        .mapAsync(12) { solidityBlock =>
           for {
-            solidityBlock <- walletSolidity.withDeadlineAfter(10, TimeUnit.SECONDS).getBlockByNum(NumberMessage(i))
-            databaseBlock <- blockModelRepository.findByNumber(i)
+            databaseBlock <- blockModelRepository.findByNumber(solidityBlock.getBlockHeader.getRawData.number)
           } yield (solidityBlock, databaseBlock.get)
         }
         .filter(x => x._1.blockHeader.isDefined && !x._2.confirmed)
@@ -361,11 +319,9 @@ class SolidityNodeReader @Inject()(
                   val witnessCreateContract = org.tron.protos.Contract.WitnessCreateContract.parseFrom(any.value.toByteArray)
                   val owner = Base58.encode58Check(witnessCreateContract.ownerAddress.toByteArray)
 
-
                   val witnessModel = WitnessModel(
                     address = owner,
-                    url = new String(witnessCreateContract.url.toByteArray),
-                  )
+                    url = new String(witnessCreateContract.url.toByteArray))
 
                   addresses.append(owner)
                   queries.append(witnessModelRepository.buildInsertOrUpdate(witnessModel))

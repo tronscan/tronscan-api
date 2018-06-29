@@ -5,23 +5,23 @@ import akka.pattern.ask
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, KillSwitches, Supervision}
 import akka.util
-import cats.kernel.instances.hash
 import javax.inject.{Inject, Named}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
-import org.tron.api.api.{EmptyMessage, NumberMessage}
-import org.tron.common.utils.{Base58, ByteArray, ByteUtil, Sha256Hash}
+import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
 import org.tronscan.Extensions._
 import org.tronscan.api.models.TransactionSerializer
-import org.tronscan.events._
-import org.tronscan.grpc.{GrpcClients, WalletClient}
+import org.tronscan.domain.Events.{AssetTransferCreated, TransferCreated, VoteCreated, WitnessCreated}
+import org.tronscan.grpc.{FullNodeBlockChain, GrpcClients, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
-import org.tronscan.protocol.TransactionUtils
 import org.tronscan.network.NetworkScanner
 import org.tronscan.network.NetworkScanner.GetBestNodes
+import org.tronscan.protocol.TransactionUtils
+import org.tronscan.service.SynchronisationService
+import play.api.Logger._
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
 import play.api.inject.ConfigurationProvider
@@ -30,7 +30,6 @@ import slick.sql.FixedSqlAction
 
 import scala.async.Async._
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
@@ -41,6 +40,7 @@ class FullNodeReader @Inject()(
   voteWitnessContractModelRepository: VoteWitnessContractModelRepository,
   witnessModelRepository: WitnessModelRepository,
   walletClient: WalletClient,
+  syncService: SynchronisationService,
   @Named("node-watchdog") nodeWatchDog: ActorRef,
   @NamedCache("redis") redisCache: CacheAsyncApi,
   configurationProvider: ConfigurationProvider) extends Actor {
@@ -63,59 +63,30 @@ class FullNodeReader @Inject()(
       ActorMaterializerSettings(context.system)
         .withSupervisionStrategy(decider))(context)
 
-    var latestBlockNum: Long = await(blockModelRepository.findLatest).map(_.number + 1).getOrElse(0)
-
-    val clients = await(getClients)
-
-    println("got clients", clients.clients.size)
-
     val wallet = await(walletClient.full)
+    val fullNodeBlockChain = new FullNodeBlockChain(wallet)
+    val streamBuilder = new FullNodeStreamBuilder(fullNodeBlockChain)
 
-    var firstChainBlock = await(wallet.getBlockByNum(NumberMessage(0)))
-    var firstDbBlock = await(blockModelRepository.findByNumber(0))
-    var chainBlockHash = firstChainBlock.hash
-
-    if (firstDbBlock.isDefined && (chainBlockHash != firstDbBlock.get.hash)) {
-      println("CHAIN CHANGED, RESETTING")
-      await(blockModelRepository.clearAll)
-
-      // Reset blocks
-      latestBlockNum = await(blockModelRepository.findLatest).map(_.number + 1).getOrElse(0)
-      firstChainBlock = await(wallet.getBlockByNum(NumberMessage(0)))
-      firstDbBlock = await(blockModelRepository.findByNumber(0))
-      chainBlockHash = firstChainBlock.hash
+    // Check if we are still on the same chain, if not then reset the database
+    if (await(syncService.hasData)) {
+      if (!await(syncService.isSameChain(fullNodeBlockChain))) {
+        warn("CHAIN CHANGED, RESETTING")
+        await(syncService.resetDatabase())
+      }
     }
 
-    val latestBlock = await(wallet.getNowBlock(EmptyMessage()))
-    val clientNumbers = await(Future
-      .sequence(clients.fullClients.map { client =>
-        for {
-          latestBlock <- client.getNowBlock(EmptyMessage())
-          firstBlock <- client.getBlockByNum(NumberMessage(0))
-        } yield (client, latestBlock.number, firstBlock.hash)
-      })).filter { x => x._3 == chainBlockHash }
+    val lastSynchronizedBlockNumber: Long = await(syncService.currentSynchronizedBlock).map(_.number + 1).getOrElse(0)
+    val latestBlock = await(fullNodeBlockChain.headBlock)
+    val latestBlockNumber = latestBlock.getBlockHeader.getRawData.number
+    val blockDifference = Math.abs(latestBlockNumber - lastSynchronizedBlockNumber)
 
-    if (clientNumbers.isEmpty) {
-      throw new Exception("NO CLIENTS!")
-    }
+    info(s"BLOCKCHAIN SYNC FROM $lastSynchronizedBlockNumber to $latestBlockNumber")
 
-    def randomWithBlockNumber(blockNumber: Long) = {
-      val forNumber = clientNumbers.filter(_._2 >= blockNumber)
-      forNumber((new scala.util.Random).nextInt(forNumber.size))._1
-    }
+    val blocks =
+      if (blockDifference < 100)  streamBuilder.readBlocks(lastSynchronizedBlockNumber, latestBlockNumber)
+      else                        streamBuilder.readBlocksBatched(lastSynchronizedBlockNumber, latestBlockNumber)
 
-    val blockNum = latestBlock.getBlockHeader.getRawData.number
-
-    println(s"BLOCKCHAIN SYNC FROM $latestBlockNum to $blockNum")
-
-    val (killSwitch, syncTask) = Source(latestBlockNum to blockNum)
-      .take(1000)
-      .mapAsync(12) { i => randomWithBlockNumber(i).getBlockByNum(NumberMessage(i)) }
-      .filter(block => {
-        if (latestBlockNum > 0) {
-          block.getBlockHeader.getRawData.number > 0
-        } else true
-      })
+    val (killSwitch, syncTask) = blocks
       .viaMat(KillSwitches.single)(Keep.right)
       .map { block =>
 
@@ -143,7 +114,7 @@ class FullNodeReader @Inject()(
         } yield {
 
           val transactionHash = transaction.hash
-          val transactionTime = new DateTime(transaction.getRawData.timestamp)
+          val transactionTime = new DateTime(header.timestamp)
 
           val transactionModel = TransactionModel(
             hash = transactionHash,
@@ -164,9 +135,7 @@ class FullNodeReader @Inject()(
           val any = contract.getParameter
 
           val transactionHash = transaction.hash
-          val transactionTime = new DateTime(transaction.getRawData.timestamp)
-
-          //            println(s"block: ${header.number}", s"transaction hash: $transactionHash", "timestamp: " + transaction.getRawData.timestamp)
+          val transactionTime = new DateTime(header.timestamp)
 
           contract.`type` match {
             case TransferContract =>

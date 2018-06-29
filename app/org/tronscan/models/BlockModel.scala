@@ -84,6 +84,7 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
     TRUNCATE TABLE ip_geo;
     TRUNCATE TABLE participate_asset_issue;
     TRUNCATE TABLE transactions;
+    TRUNCATE TABLE transfers;
     TRUNCATE TABLE vote_witness_contract;
     TRUNCATE TABLE witness_create_contract;
     """.asUpdate

@@ -4,12 +4,12 @@ import javax.inject.{Inject, Singleton}
 import org.tron.api.api.WalletGrpc.Wallet
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tron.api.api.{WalletGrpc, WalletSolidityGrpc}
-import org.tronscan.actions.VoteScraper
+import org.tronscan.actions.{ActionRunner, VoteScraper}
 import org.tronscan.grpc.GrpcPool
 import org.tronscan.importer.{FullNodeReader, ImportManager, SolidityNodeReader}
 import org.tronscan.protocol.{AddressFormatter, TestNetFormatter}
 import org.tronscan.websockets.SocketIOEngine
-import org.tronscan.service.{ActionRunner, Bootstrap}
+import org.tronscan.service.Bootstrap
 import org.tronscan.network.NetworkScanner
 import play.api.inject.ConfigurationProvider
 import play.api.libs.concurrent.AkkaGuiceSupport

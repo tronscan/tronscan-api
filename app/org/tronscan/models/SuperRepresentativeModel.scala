@@ -1,10 +1,9 @@
 package org.tronscan.models
 
 import com.google.inject.{Inject, Singleton}
-import play.api.db.slick.DatabaseConfigProvider
-import play.api.libs.json.{JsValue, Json}
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
+import play.api.db.slick.DatabaseConfigProvider
 
 import scala.concurrent.{ExecutionContext, Future}
 

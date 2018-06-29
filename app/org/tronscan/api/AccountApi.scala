@@ -22,12 +22,14 @@ import play.api.cache.Cached
 import play.api.inject.ConfigurationProvider
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.InjectedController
-import org.tronscan.Constants
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
 import org.tronscan.Extensions._
 import org.tronscan.service.SRService
+import io.circe.syntax._
+import io.circe.generic.auto._
+import org.tronscan.domain.Constants
 
 import scala.async.Async.{async, await}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -245,7 +247,7 @@ class AccountApi @Inject()(
     for {
       sr <- srRepository.findByAddress(address)
     } yield {
-      Ok(Json.toJson(sr))
+      Ok(sr.get.asJson)
     }
   }
 

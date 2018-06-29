@@ -1,10 +1,9 @@
-package org.tronscan.service
+package org.tronscan.actions
 
 import akka.actor.Actor
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import javax.inject.Inject
-import org.tronscan.actions.{RepresentativeListReader, VoteList, VoteScraper}
 import play.api.Logger
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi

@@ -1,6 +1,7 @@
 package org.tronscan
 
 import com.google.protobuf.ByteString
+import org.tronscan.domain.Types.{BlockHash, TxHash}
 import org.tron.common.BlockId
 import org.tron.common.utils.{Base58, ByteArray, Sha256Hash}
 import org.tron.protos.Tron.{Block, Transaction}
@@ -8,7 +9,7 @@ import org.tron.protos.Tron.{Block, Transaction}
 object Extensions {
 
   implicit class ImplicitBlock(block: Block) {
-    def hash: String = ByteArray.toHexString(hashBytes)
+    def hash: BlockHash = ByteArray.toHexString(hashBytes)
     def rawHash = Sha256Hash.of(block.getBlockHeader.getRawData.toByteArray)
     def hashBytes = BlockId(number, rawHash.getBytes).hash
     def number: Long = block.getBlockHeader.getRawData.number
@@ -16,7 +17,7 @@ object Extensions {
   }
 
   implicit class ImplicitTransaction(trx: Transaction) {
-    def hash: String = Sha256Hash.of(trx.getRawData.toByteArray).toString
+    def hash: TxHash = Sha256Hash.of(trx.getRawData.toByteArray).toString
     def hashBytes = Sha256Hash.of(trx.getRawData.toByteArray).getBytes
   }
 

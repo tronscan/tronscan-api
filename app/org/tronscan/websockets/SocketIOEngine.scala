@@ -5,8 +5,9 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{Materializer, OverflowStrategy}
 import akka.util.Timeout
 import javax.inject.{Inject, Named, Provider}
-import org.tronscan.events._
+import org.tronscan.domain.Events.{AddressEvent, BlockChainEvent}
 import org.tronscan.tools.nodetester._
+import org.tronscan.tools.signing.{AppLogin, RequestTransactionSign, SignEvent, SignRequestCallback}
 import org.tronscan.websockets.SocketCodecs._
 import play.api.Logger
 import play.api.libs.json.JsString

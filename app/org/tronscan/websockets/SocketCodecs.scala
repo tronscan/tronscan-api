@@ -1,13 +1,14 @@
 package org
 package tronscan.websockets
 
-import play.socketio.scaladsl.SocketIOEventCodec._
-import CirceDecoder._
-import CirceEncoder._
 import io.circe.generic.auto._
-import org.tronscan.events._
+import org.tronscan.domain.Events._
 import org.tronscan.models._
 import org.tronscan.tools.nodetester.NodeStatus
+import org.tronscan.tools.signing._
+import org.tronscan.websockets.CirceDecoder._
+import org.tronscan.websockets.CirceEncoder._
+import play.socketio.scaladsl.SocketIOEventCodec._
 
 object SocketCodecs {
 

@@ -131,4 +131,10 @@ class TransactionBuilderApi @Inject()(
   def accountUpdate = Action.async { implicit req =>
     handleTransaction[org.tron.protos.Contract.AccountUpdateContract]()
   }
+
+  @ApiOperation(
+    value = "Build WithdrawBalancecontract" )
+  def withdrawBalance = Action.async { implicit req =>
+    handleTransaction[org.tron.protos.Contract.WithdrawBalanceContract]()
+  }
 }
