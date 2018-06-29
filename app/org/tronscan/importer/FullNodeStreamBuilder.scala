@@ -36,13 +36,12 @@ class FullNodeStreamBuilder @Inject() (client: FullNodeClient) {
         grpc
           .getBlockByLimitNext(BlockLimit(prev, toBlock))
           .map { blocks =>
-            Some((toBlock, blocks.block))
+            Some((toBlock, blocks.block.filter(_.blockHeader.isDefined).sortBy(_.getBlockHeader.getRawData.number)))
           }
       } else {
         Future.successful(None)
       }
     }
     .flatMapConcat(x => Source(x.toList))
-    .filter(_.blockHeader.isDefined)
   }
 }
