@@ -34,7 +34,7 @@ class FullNodeStreamBuilder @Inject() (client: FullNodeClient) {
         val toBlock = if (prev + batchSize > to) to else prev + batchSize
 
         grpc
-          .getBlockByLimitNext(BlockLimit(prev + 1, toBlock))
+          .getBlockByLimitNext(BlockLimit(prev, toBlock))
           .map { blocks =>
             Some((toBlock, blocks.block))
           }

@@ -84,7 +84,7 @@ class FullNodeReader @Inject()(
 
     val blocks =
       if (blockDifference < 100)  streamBuilder.readBlocks(lastSynchronizedBlockNumber, latestBlockNumber)
-      else                        streamBuilder.readBlocksBatched(lastSynchronizedBlockNumber, latestBlockNumber)
+      else                        streamBuilder.readBlocksBatched(lastSynchronizedBlockNumber, latestBlockNumber, 100)
 
     val (killSwitch, syncTask) = blocks
       .viaMat(KillSwitches.single)(Keep.right)
