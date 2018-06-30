@@ -15,6 +15,7 @@ GET     /api/transaction                org.tronscan.api.TransactionApi.findAll
 POST    /api/transaction                org.tronscan.api.TransactionApi.create
 GET     /api/transaction/:hash          org.tronscan.api.TransactionApi.findByHash(hash: String)
 
+POST    /api/account                    org.tronscan.api.AccountApi.create
 GET     /api/account                    org.tronscan.api.AccountApi.findAll
 GET     /api/account/richlist           org.tronscan.api.AccountApi.richList
 GET     /api/account/:address           org.tronscan.api.AccountApi.findByAddress(address: String)

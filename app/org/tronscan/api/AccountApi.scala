@@ -15,7 +15,7 @@ import io.swagger.annotations._
 import javax.inject.Inject
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
-import org.tron.common.utils.Base58
+import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Account
 import pdi.jwt.{JwtAlgorithm, JwtJson}
 import play.api.cache.Cached
@@ -29,8 +29,10 @@ import org.tronscan.Extensions._
 import org.tronscan.service.SRService
 import io.circe.syntax._
 import io.circe.generic.auto._
+import org.spongycastle.util.encoders.Hex
+import org.tron.common.crypto.ECKey
 import org.tronscan.domain.Constants
-
+import org.tronscan.Extensions._
 import scala.async.Async.{async, await}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -472,5 +474,19 @@ class AccountApi @Inject()(
         ))
       }
     }
+  }
+
+  def create = Action {
+
+    val ecKey = new ECKey()
+    val priKey = ecKey.getPrivKeyBytes
+    val address = ecKey.getAddress
+    val addressStr = ByteString.copyFrom(address).encodeAddress
+    val priKeyStr = ByteArray.toHexString(priKey)
+
+    Ok(Json.obj(
+      "key" -> priKeyStr,
+      "address" -> addressStr
+    ))
   }
 }
