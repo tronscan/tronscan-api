@@ -29,10 +29,13 @@ POST    /api/account/:address/sr        org.tronscan.api.AccountApi.updateSr(add
 
 # Node
 
-GET     /api/node                       org.tronscan.api.NodeApi.status
+GET     /api/node                               org.tronscan.api.NodeApi.status
 
-GET     /api/system/status              org.tronscan.api.SystemApi.status
-GET     /api/system/sync-accounts       org.tronscan.api.AccountApi.resync
+# System
+
+GET     /api/system/status                      org.tronscan.api.SystemApi.status
+GET     /api/system/sync-accounts               org.tronscan.api.AccountApi.resync
+GET     /api/system/sync-account/:address       org.tronscan.api.AccountApi.sync(address: String)
 
 GET     /api/vote                       org.tronscan.api.VoteApi.findAll
 GET     /api/vote/live                  org.tronscan.api.VoteApi.currentCycle
