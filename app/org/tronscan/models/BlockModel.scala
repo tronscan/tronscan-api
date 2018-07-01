@@ -4,11 +4,31 @@ import com.google.inject.{Inject, Singleton}
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
 import org.joda.time.DateTime
+import org.tron.common.utils.{Base58, ByteArray}
+import org.tron.protos.Tron.Block
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.libs.json.Json
 import org.tronscan.App._
 
 import scala.concurrent.Future
+import org.tronscan.Extensions._
+
+object BlockModel {
+  def fromProto(block: Block) = {
+    BlockModel(
+      number = block.getBlockHeader.getRawData.number,
+      size = block.toByteArray.length,
+      hash = block.hash,
+      timestamp = new DateTime(block.getBlockHeader.getRawData.timestamp),
+      txTrieRoot = Base58.encode58Check(block.getBlockHeader.getRawData.txTrieRoot.toByteArray),
+      parentHash = ByteArray.toHexString(block.parentHash),
+      witnessId = block.getBlockHeader.getRawData.witnessId,
+      witnessAddress = block.getBlockHeader.getRawData.witnessAddress.encodeAddress,
+      nrOfTrx = block.transactions.size,
+      confirmed = true,
+    )
+  }
+}
 
 case class BlockModel(
     number: Long,
@@ -33,7 +53,7 @@ class BlockModelTable(tag: Tag) extends Table[BlockModel](tag, "blocks") {
   def witnessAddress = column[String]("witness_address")
   def nrOfTrx = column[Int]("transactions")
   def confirmed = column[Boolean]("confirmed")
-  def * = (number, hash, size, timestamp, trieRoot, parentHash, witnessId, witnessAddress, nrOfTrx, confirmed) <> (BlockModel.tupled, BlockModel.unapply)
+  def * = (number, hash, size, timestamp, trieRoot, parentHash, witnessId, witnessAddress, nrOfTrx, confirmed) <> ((BlockModel.apply _).tupled, BlockModel.unapply)
 }
 
 @Singleton()

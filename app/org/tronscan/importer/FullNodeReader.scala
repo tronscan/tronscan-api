@@ -1,24 +1,20 @@
 package org.tronscan.importer
 
 import akka.actor.{Actor, ActorRef}
-import akka.pattern.ask
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, KillSwitches, Supervision}
-import akka.util
 import javax.inject.{Inject, Named}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
-import org.tron.common.utils.{Base58, ByteArray}
+import org.tron.common.utils.ByteArray
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
 import org.tronscan.Extensions._
 import org.tronscan.api.models.TransactionSerializer
 import org.tronscan.domain.Events.{AssetTransferCreated, TransferCreated, VoteCreated, WitnessCreated}
-import org.tronscan.grpc.{FullNodeBlockChain, GrpcClients, WalletClient}
+import org.tronscan.grpc.{FullNodeBlockChain, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
-import org.tronscan.network.NetworkScanner
-import org.tronscan.network.NetworkScanner.GetBestNodes
 import org.tronscan.protocol.TransactionUtils
 import org.tronscan.service.SynchronisationService
 import play.api.Logger._
@@ -41,6 +37,7 @@ class FullNodeReader @Inject()(
   witnessModelRepository: WitnessModelRepository,
   walletClient: WalletClient,
   syncService: SynchronisationService,
+  databaseImporter: DatabaseImporter,
   @Named("node-watchdog") nodeWatchDog: ActorRef,
   @NamedCache("redis") redisCache: CacheAsyncApi,
   configurationProvider: ConfigurationProvider) extends Actor {
@@ -49,19 +46,19 @@ class FullNodeReader @Inject()(
   val syncFull = configurationProvider.get.get[Boolean]("sync.full")
   val syncSolidity = configurationProvider.get.get[Boolean]("sync.solidity")
 
+  val decider: Supervision.Decider = {
+    case exc =>
+      println("FULL NODE ERROR", exc, ExceptionUtils.getStackTrace(exc))
+      Supervision.Resume
+  }
+
+  implicit val materializer = ActorMaterializer(
+    ActorMaterializerSettings(context.system)
+      .withSupervisionStrategy(decider))(context)
+
   def syncChain() = async {
 
     println("START BLOCKCHAIN SYNC")
-
-    val decider: Supervision.Decider = {
-      case exc =>
-        println("FULL NODE ERROR", exc, ExceptionUtils.getStackTrace(exc))
-        Supervision.Resume
-    }
-
-    implicit val materializer = ActorMaterializer(
-      ActorMaterializerSettings(context.system)
-        .withSupervisionStrategy(decider))(context)
 
     val wallet = await(walletClient.full)
     val fullNodeBlockChain = new FullNodeBlockChain(wallet)
@@ -96,18 +93,7 @@ class FullNodeReader @Inject()(
 
         println("FULL NODE BLOCK", header.number)
 
-        queries.append(blockModelRepository.buildInsert(BlockModel(
-          number = header.number,
-          size = block.toByteArray.length,
-          hash = block.hash,
-          timestamp = new DateTime(header.timestamp),
-          txTrieRoot = Base58.encode58Check(header.txTrieRoot.toByteArray),
-          parentHash = ByteArray.toHexString(block.parentHash),
-          witnessId = header.witnessId,
-          witnessAddress = Base58.encode58Check(header.witnessAddress.toByteArray),
-          nrOfTrx = block.transactions.size,
-          confirmed = header.number == 0,
-        )))
+        queries.append(databaseImporter.buildImportBlock(BlockModel.fromProto(block)))
 
         queries.appendAll(for {
           transaction <- block.transactions
@@ -241,10 +227,9 @@ class FullNodeReader @Inject()(
 
             case WitnessCreateContract =>
               val witnessCreateContract = org.tron.protos.Contract.WitnessCreateContract.parseFrom(any.value.toByteArray)
-              val owner = Base58.encode58Check(witnessCreateContract.ownerAddress.toByteArray)
 
               val witnessModel = WitnessModel(
-                address = owner,
+                address = witnessCreateContract.ownerAddress.encodeAddress,
                 url = new String(witnessCreateContract.url.toByteArray),
               )
 
@@ -284,11 +269,6 @@ class FullNodeReader @Inject()(
 
     case Failure(exc) =>
       println("BLOCKCHAIN SYNC FAILURE", ExceptionUtils.getMessage(exc), ExceptionUtils.getStackTrace(exc))
-  }
-
-  def getClients = {
-    implicit val timeout = util.Timeout(10.seconds)
-    (nodeWatchDog ? GetBestNodes(10, n => n.nodeType == NetworkScanner.full && n.permanent)).mapTo[GrpcClients]
   }
 
   def waiting: Receive = {

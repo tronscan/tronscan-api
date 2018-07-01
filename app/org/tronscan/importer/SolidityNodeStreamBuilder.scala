@@ -21,4 +21,6 @@ class SolidityNodeStreamBuilder @Inject()(client: SolidityClient) {
       .mapAsync(parallel) { i => grpc.getBlockByNum(NumberMessage(i)) }
       .filter(_.blockHeader.isDefined)
   }
+
+
 }

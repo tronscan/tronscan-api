@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.stream._
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, Zip}
+import akka.stream.scaladsl.{BroadcastHub, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, Zip}
 import akka.util
 import com.google.protobuf.ByteString
 import io.circe.syntax._
@@ -51,6 +51,7 @@ class SolidityNodeReader @Inject()(
   addressBalanceModelRepository: AddressBalanceModelRepository,
   assetIssueContractModelRepository: AssetIssueContractModelRepository,
   configurationProvider: ConfigurationProvider,
+  databaseImporter: DatabaseImporter,
   synchronisationService: SynchronisationService,
 
   walletClient: WalletClient,
@@ -97,20 +98,25 @@ class SolidityNodeReader @Inject()(
 
     val latestUnconfirmedBlock: Long = await(blockModelRepository.findLatestUnconfirmed).map(_.number).getOrElse(0)
     println(s"SOLIDITY SYNCING FROM $latestUnconfirmedBlock to $syncToBlock")
-    val solidityBlockDifference = Math.abs(latestDbBlockNumber - latestUnconfirmedBlock)
+//    val solidityBlockDifference = Math.abs(latestDbBlockNumber - latestUnconfirmedBlock)
 
     val solidityStreamBuilder = new SolidityNodeStreamBuilder(solidityBlockChain)
 
     val blocks = solidityStreamBuilder.readBlocks(latestUnconfirmedBlock, syncToBlock)
 
     if ((syncToBlock - latestUnconfirmedBlock) > 0) {
-      val syncTask = blocks
+
+      val blockSource = blocks
         .mapAsync(12) { solidityBlock =>
           for {
             databaseBlock <- blockModelRepository.findByNumber(solidityBlock.getBlockHeader.getRawData.number)
           } yield (solidityBlock, databaseBlock.get)
         }
         .filter(x => x._1.blockHeader.isDefined && !x._2.confirmed)
+        .toMat(BroadcastHub.sink)(Keep.right)
+        .run()
+
+      val syncTask = blockSource
         .map {
           case (solidityBlock, databaseBlock) =>
 
@@ -121,6 +127,7 @@ class SolidityNodeReader @Inject()(
             val header = solidityBlock.getBlockHeader.getRawData
             val blockHash = solidityBlock.hash
 
+            // Block needs to be replaced if the full node block hash is different from the solidity block hash
             val replace = blockHash != databaseBlock.hash
 
             if (!replace) {
@@ -129,22 +136,8 @@ class SolidityNodeReader @Inject()(
               queries.appendAll(blockModelRepository.buildConfirmBlock(databaseBlock.number))
             } else {
               // replace block
-
               println("REPLACING BLOCK", header.number)
-
-              queries.append(blockModelRepository.buildDeleteByNumber(header.number))
-              queries.append(blockModelRepository.buildInsert(BlockModel(
-                number = header.number,
-                size = solidityBlock.toByteArray.length,
-                hash = blockHash,
-                timestamp = new DateTime(header.timestamp),
-                txTrieRoot = Base58.encode58Check(header.txTrieRoot.toByteArray),
-                parentHash = ByteArray.toHexString(solidityBlock.parentHash),
-                witnessId = header.witnessId,
-                witnessAddress = header.witnessAddress.encodeAddress,
-                nrOfTrx = solidityBlock.transactions.size,
-                confirmed = true,
-              )))
+              queries.appendAll(databaseImporter.buildConfirmBlock(BlockModel.fromProto(solidityBlock)))
             }
 
             addresses.append(header.witnessAddress.encodeAddress)
@@ -317,7 +310,7 @@ class SolidityNodeReader @Inject()(
 
                 case WitnessCreateContract =>
                   val witnessCreateContract = org.tron.protos.Contract.WitnessCreateContract.parseFrom(any.value.toByteArray)
-                  val owner = Base58.encode58Check(witnessCreateContract.ownerAddress.toByteArray)
+                  val owner = witnessCreateContract.ownerAddress.encodeAddress
 
                   val witnessModel = WitnessModel(
                     address = owner,
@@ -370,6 +363,14 @@ class SolidityNodeReader @Inject()(
         .toMat(Sink.ignore)(Keep.right)
         .run
 
+      val addresses = blockSource
+          .flatMapConcat { case (block, _) =>
+            Source((for {
+              transaction <- block.transactions
+              contract <- transaction.getRawData.contract
+            } yield ProtoUtils.fromContract(contract)).toList)
+          }
+
       await(syncTask)
     }
 
@@ -389,7 +390,6 @@ class SolidityNodeReader @Inject()(
       case exc =>
         println("ADDRESS SYNC ERROR", exc, ExceptionUtils.getStackTrace(exc))
         Supervision.Resume
-
     }
 
     implicit val materializer = ActorMaterializer(
