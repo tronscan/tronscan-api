@@ -94,14 +94,11 @@ class SolidityNodeReader @Inject()(
       blocks.mapConcat(b => b.transactions.map(t => (b, t)).toList) ~> transactions.in
 
       // Contracts
-      transactions.mapConcat { case (block, t) =>
-        (for {
-          contract <- t.getRawData.contract
-        } yield (block, t, contract)).toList
-      } ~> contracts.in
+      transactions.mapConcat { case (block, t) => t.getRawData.contract.map(c => (block, t, c)).toList } ~> contracts.in
+
 
       // Addresses
-      contracts.mapConcat { case (block, t, c) => ContractUtils.getAddresses(c).toList } ~> addresses
+      contracts.mapConcat(_._3.addresses) ~> addresses
 
       /** Importers **/
 

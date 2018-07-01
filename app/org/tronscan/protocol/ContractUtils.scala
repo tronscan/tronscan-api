@@ -81,8 +81,8 @@ object ContractUtils {
     }
   }
 
-  def getAddresses(contract: Transaction.Contract): Seq[Address] = {
-    Seq(getOwner(contract)) ++ getTo(contract).map(Seq(_)).getOrElse(Seq.empty)
+  def getAddresses(contract: Transaction.Contract): List[Address] = {
+    List(getOwner(contract)) ++ getTo(contract).map(List(_)).getOrElse(List.empty)
   }
 
 }

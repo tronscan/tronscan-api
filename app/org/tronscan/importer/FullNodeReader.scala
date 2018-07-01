@@ -66,7 +66,7 @@ class FullNodeReader @Inject()(
       importStatus.via(readBlocksFromStatus) ~> blocks.in
 
       // Pass block witness addresses to address stream
-      blocks.map(_.getBlockHeader.getRawData.witnessAddress.encodeAddress) ~> addresses
+      blocks.map(_.witness) ~> addresses
 
       // Transactions
       blocks.mapConcat(b => b.transactions.map(t => (b, t)).toList) ~> transactions.in
@@ -75,7 +75,7 @@ class FullNodeReader @Inject()(
       transactions.mapConcat { case (block, t) => t.getRawData.contract.map(c => (block, t, c)).toList } ~> contracts.in
 
       // Addresses
-      contracts.mapConcat(x => ContractUtils.getAddresses(x._3).toList) ~> addresses
+      contracts.mapConcat(_._3.addresses) ~> addresses
 
       /** Importers **/
 
