@@ -12,11 +12,14 @@ object ImportManager {
   case class SyncAccounts()
 }
 
+/**
+  * Handles the Full and Solidity Import
+  */
 class ImportManager @Inject() (
   configurationProvider: ConfigurationProvider,
   blockModelRepository: BlockModelRepository,
   @Named("fullnode-reader") fullNodeReader: ActorRef,
-  @Named("solidity-reader") solidityNodeReader: ActorRef)  extends Actor {
+  @Named("solidity-reader") solidityNodeReader: ActorRef) extends Actor {
 
   override def preStart(): Unit = {
 
@@ -26,15 +29,15 @@ class ImportManager @Inject() (
     val syncFull = configurationProvider.get.get[Boolean]("sync.full")
 
     if (syncFull) {
-      context.system.scheduler.schedule(6.seconds, 2.seconds, fullNodeReader, Sync())
+      context.system.scheduler.scheduleOnce(2.seconds, fullNodeReader, Sync())
     }
 
     if (syncSolidity) {
-      context.system.scheduler.schedule(12.seconds, 2.seconds, solidityNodeReader, Sync())
+      context.system.scheduler.scheduleOnce(12.seconds, solidityNodeReader, Sync())
     }
   }
 
   def receive = {
-    case x =>
+    case _ =>
   }
 }

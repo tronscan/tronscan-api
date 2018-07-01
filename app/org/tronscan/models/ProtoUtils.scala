@@ -1,7 +1,7 @@
 package org.tronscan.models
 
 import org.tron.protos.Tron.Transaction
-import org.tron.protos.Tron.Transaction.Contract.ContractType._
+import org.tronscan.Extensions._
 
 object ProtoUtils {
 
@@ -9,6 +9,8 @@ object ProtoUtils {
     * Convert proto any contract to contract protobuf
     */
   def fromContract(contract: Transaction.Contract): Any = {
+    import org.tron.protos.Tron.Transaction.Contract.ContractType._
+
     val any = contract.getParameter
     contract.`type` match {
       case TransferContract =>
@@ -27,6 +29,8 @@ object ProtoUtils {
         org.tron.protos.Contract.WitnessUpdateContract.parseFrom(any.value.toByteArray)
       case UnfreezeBalanceContract =>
         org.tron.protos.Contract.UnfreezeBalanceContract.parseFrom(any.value.toByteArray)
+      case FreezeBalanceContract =>
+        org.tron.protos.Contract.FreezeBalanceContract.parseFrom(any.value.toByteArray)
       case WithdrawBalanceContract =>
         org.tron.protos.Contract.WithdrawBalanceContract.parseFrom(any.value.toByteArray)
       case AccountUpdateContract =>
@@ -35,5 +39,4 @@ object ProtoUtils {
         org.tron.protos.Contract.UnfreezeAssetContract.parseFrom(any.value.toByteArray)
     }
   }
-
 }

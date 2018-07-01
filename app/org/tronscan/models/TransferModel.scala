@@ -7,6 +7,7 @@ import org.joda.time.DateTime
 import play.api.db.slick.DatabaseConfigProvider
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
+import org.tronscan.domain.Types.Address
 
 
 case class TransferModel(
@@ -14,8 +15,8 @@ case class TransferModel(
   transactionHash: String,
   block: Long,
   timestamp: DateTime,
-  transferFromAddress: String = "",
-  transferToAddress: String = "",
+  transferFromAddress: Address = "",
+  transferToAddress: Address = "",
   amount: Long = 0L,
   tokenName: String = "TRX",
   confirmed: Boolean = false)
@@ -25,8 +26,8 @@ class TransferModelTable(tag: Tag) extends Table[TransferModel](tag, "transfers"
   def transactionHash = column[String]("transaction_hash")
   def block = column[Long]("block")
   def timestamp = column[DateTime]("date_created")
-  def transferFromAddress = column[String]("transfer_from_address")
-  def transferToAddress = column[String]("transfer_to_address")
+  def transferFromAddress = column[Address]("transfer_from_address")
+  def transferToAddress = column[Address]("transfer_to_address")
   def amount = column[Long]("amount")
   def tokenName = column[String]("token_name")
   def confirmed = column[Boolean]("confirmed")

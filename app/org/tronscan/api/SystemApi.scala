@@ -15,7 +15,6 @@ import scala.concurrent.duration._
 
 class SystemApi @Inject()(
   walletClient: WalletClient,
-  walletSolidity: WalletSolidity,
   cached: Cached,
   blockModelRepository: BlockModelRepository,
   configurationProvider: ConfigurationProvider) extends InjectedController {
@@ -29,6 +28,7 @@ class SystemApi @Inject()(
 
       for {
         wallet <- walletClient.full
+        walletSolidity <- walletClient.solidity
 
         lastFulNodeNumberF = wallet.getNowBlock(EmptyMessage())
         lastSolidityNumberF = walletSolidity.getNowBlock(EmptyMessage())

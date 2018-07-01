@@ -6,6 +6,7 @@ object Types {
 
   // Blocks
   type BlockHash = String
+  type Address = String
   type GenesisHash = BlockHash
 
 }
