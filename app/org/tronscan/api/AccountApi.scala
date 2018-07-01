@@ -326,7 +326,6 @@ class AccountApi @Inject()(
       ActorMaterializerSettings(system)
         .withSupervisionStrategy(decider))(system)
 
-
     async {
 
       val accounts = await(repo.findAll).toList
@@ -371,7 +370,38 @@ class AccountApi @Inject()(
 
       Ok("Done")
     }
+  }
 
+  @ApiOperation(
+    value = "",
+    hidden = true)
+  def sync(address: String) = Action.async { req =>
+
+    async {
+
+        val wallet = await(walletClient.full)
+
+        val account = await(wallet.getAccount(Account(
+          address = address.decodeAddress,
+        )))
+
+        if (account != null) {
+
+          val accountModel = AccountModel(
+            address = address,
+            name = new String(account.accountName.toByteArray),
+            balance = account.balance,
+            power = account.frozen.map(_.frozenBalance).sum,
+            tokenBalances = Json.toJson(account.asset),
+            dateUpdated = DateTime.now,
+          )
+
+          await(repo.insertOrUpdate(accountModel))
+          await(addressBalanceModelRepository.updateBalance(accountModel))
+        }
+
+      Ok("Done")
+    }
   }
 
   @ApiOperation(

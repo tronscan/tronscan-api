@@ -1,3 +1,0 @@
-[submodule "app/protobuf"]
-	path = app/protobuf
-	url = https://github.com/tronprotocol/protocol.git
