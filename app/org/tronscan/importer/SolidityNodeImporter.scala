@@ -45,7 +45,7 @@ class SolidityNodeImporter @Inject()(
     .mapAsync(1) { status =>
       walletClient.solidity.map { walletSolidity =>
         val client = new SolidityBlockChain(walletSolidity).client
-        blockChainBuilder.readSolidityBlocks(status.dbLatestBlock, status.soliditySyncToBlock)(client)
+        blockChainBuilder.readSolidityBlocks(status.dbUnconfirmedBlock, status.soliditySyncToBlock)(client)
       }
     }
     .flatMapConcat { blockStream => blockStream }
@@ -75,8 +75,8 @@ class SolidityNodeImporter @Inject()(
       import GraphDSL.Implicits._
       import b._
       val blocks = add(Broadcast[Block](3))
-      val transactions = add(Broadcast[(Block, Transaction)](2))
-      val contracts = add(Broadcast[(Block, Transaction, Transaction.Contract)](4))
+      val transactions = add(Broadcast[(Block, Transaction)](1))
+      val contracts = add(Broadcast[(Block, Transaction, Transaction.Contract)](2))
       val addresses = add(Merge[Address](2))
 
       // Periodically start sync
@@ -143,15 +143,18 @@ class SolidityNodeImporter @Inject()(
       .map {
         case (solidityBlock, databaseBlock) =>
 
+
           val queries = ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]]()
 
           // Block needs to be replaced if the full node block hash is different from the solidity block hash
           val replaceBlock = solidityBlock.hash != databaseBlock.hash
 
           if (replaceBlock) {
+            Logger.info("REPLACE BLOCK: " + solidityBlock.getBlockHeader.getRawData.number)
             // replace block
             queries.appendAll(blockModelRepository.buildReplaceBlock(BlockModel.fromProto(solidityBlock)))
           } else {
+            Logger.info("CONFIRM BLOCK: " + solidityBlock.getBlockHeader.getRawData.number)
             // Update Block
             queries.appendAll(blockModelRepository.buildConfirmBlock(databaseBlock.number))
           }

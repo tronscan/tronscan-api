@@ -49,7 +49,7 @@ case class ImportStatus(
   /**
     * To which block the solidity block will be synced
     */
-  val solidityBlocksToSync = soliditySyncToBlock - dbLatestBlock
+  val solidityBlocksToSync = dbLatestBlock - dbUnconfirmedBlock
 
   /**
     * Total Progress

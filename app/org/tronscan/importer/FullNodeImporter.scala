@@ -55,6 +55,10 @@ class FullNodeImporter @Inject()(
         // Periodically start sync
         val importStatus = Source.tick(0.seconds, 3.seconds, "")
           .via(syncStarter)
+          .map { x =>
+            isActive = true
+            x
+          }
 
         /** *** Channels *****/
 
@@ -128,8 +132,8 @@ class FullNodeImporter @Inject()(
         val fullNodeBlockChain = new FullNodeBlockChain(walletFull)
 
         // Switch between batch or single depending how far the sync is behind
-        if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(status.dbLatestBlock, status.fullNodeBlock)(fullNodeBlockChain.client)
-        else                                    blockChainBuilder.readFullNodeBlocksBatched(status.dbLatestBlock, status.fullNodeBlock, 100)(fullNodeBlockChain.client)
+        if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(status.dbLatestBlock + 1, status.fullNodeBlock)(fullNodeBlockChain.client)
+        else                                    blockChainBuilder.readFullNodeBlocksBatched(status.dbLatestBlock + 1, status.fullNodeBlock, 100)(fullNodeBlockChain.client)
       }
     }
     .flatMapConcat { blockStream => blockStream }
@@ -144,7 +148,7 @@ class FullNodeImporter @Inject()(
         false
       // Stop if there are more then 100 blocks to sync for full node
       case status if status.fullNodeBlocksToSync > 0 =>
-        Logger.info("START SYNC!")
+        Logger.info("START SYNC " + status.toString)
         true
       case status =>
         Logger.info("IGNORE FULL NODE SYNC: " + status.toString)

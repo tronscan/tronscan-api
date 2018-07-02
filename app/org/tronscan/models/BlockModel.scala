@@ -21,7 +21,6 @@ object BlockModel {
       witnessId = block.getBlockHeader.getRawData.witnessId,
       witnessAddress = block.getBlockHeader.getRawData.witnessAddress.encodeAddress,
       nrOfTrx = block.transactions.size,
-      confirmed = true,
     )
   }
 }

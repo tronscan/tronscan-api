@@ -36,6 +36,8 @@ object ProtoUtils {
         org.tron.protos.Contract.AccountUpdateContract.parseFrom(any.value.toByteArray)
       case UnfreezeAssetContract =>
         org.tron.protos.Contract.UnfreezeAssetContract.parseFrom(any.value.toByteArray)
+      case AccountCreateContract =>
+        org.tron.protos.Contract.AccountCreateContract.parseFrom(any.value.toByteArray)
       case _ =>
         throw new Exception("Unknown Contract")
     }
