@@ -12,7 +12,7 @@ import play.api.libs.concurrent.Futures._
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
-object Streams {
+object NetworkStreams {
 
   /**
     * Scans the given IP address
@@ -75,20 +75,4 @@ object Streams {
         }
       }
   }
-
-  /**
-    * Only pass distinct values
-    */
-  def distinct[T] = Flow[T]
-    .statefulMapConcat { () =>
-      var ids = Set.empty[T]
-      ip => {
-        if (ids.contains(ip)) {
-          List.empty
-        } else {
-          ids = ids + ip
-          List(ip)
-        }
-      }
-    }
 }

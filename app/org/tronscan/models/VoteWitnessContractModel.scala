@@ -12,6 +12,10 @@ import play.api.libs.json.JodaWrites._
 import play.api.libs.json.JodaReads._
 import scala.concurrent.ExecutionContext.Implicits.global
 
+case class VoteWitnessList(
+  voterAddress: String,
+  votes: List[VoteWitnessContractModel] = List.empty)
+
 case class VoteWitnessContractModel(
   id: UUID = UUID.randomUUID(),
   block: Long,

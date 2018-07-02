@@ -23,7 +23,6 @@ class SolidityBlockChain(val client: WalletSolidityStub) extends BlockChain with
     client.getNowBlock(EmptyMessage())
   }
 
-
   def getBlockByNum(number: Long)(implicit executionContext: ExecutionContext) = {
     client.getBlockByNum(NumberMessage(number)).map {
       case block if block.blockHeader.isDefined =>

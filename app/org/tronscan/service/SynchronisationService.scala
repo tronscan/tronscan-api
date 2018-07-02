@@ -15,7 +15,8 @@ import play.api.Logger
 import scala.concurrent.duration._
 import io.circe.syntax._
 import io.circe.generic.auto._
-import org.tronscan.network.Streams
+import org.tronscan.network.NetworkStreams
+import org.tronscan.utils.StreamUtils
 
 import scala.async.Async.{async, await}
 
@@ -28,12 +29,12 @@ case class ImportStatus(
   /**
     * Full Node Synchronisation Progress
     */
-  val fullNodeProgress = (dbLatestBlock.toDouble / fullNodeBlock.toDouble) * 100
+  val fullNodeProgress: Double = (dbLatestBlock.toDouble / fullNodeBlock.toDouble) * 100
 
   /**
     * Solidity Synchronisation Progress
     */
-  val solidityBlockProgress = (dbUnconfirmedBlock.toDouble / solidityBlock.toDouble) * 100
+  val solidityBlockProgress: Double = (dbUnconfirmedBlock.toDouble / solidityBlock.toDouble) * 100
 
   /**
     * How many blocks to sync from the full node
@@ -50,6 +51,10 @@ case class ImportStatus(
     */
   val solidityBlocksToSync = soliditySyncToBlock - dbLatestBlock
 
+  /**
+    * Total Progress
+    */
+  val totalProgress = (fullNodeProgress + solidityBlockProgress) / 2
 }
 
 class SynchronisationService @Inject() (
@@ -122,10 +127,10 @@ class SynchronisationService @Inject() (
 
 
   def buildAddressSynchronizer = Flow[Address]
-    .via(Streams.distinct)
-    .groupedWithin(100, 15.seconds)
-    .map { addresses => addresses.distinct }
-    .flatMapConcat(x => Source(x.toList))
+    .via(StreamUtils.distinct)
+//    .groupedWithin(100, 15.seconds)
+//    .map { addresses => addresses.distinct }
+//    .flatMapConcat(x => Source(x.toList))
     .mapAsyncUnordered(8) { address =>
       Logger.info("Syncing Address: " + address)
       async {

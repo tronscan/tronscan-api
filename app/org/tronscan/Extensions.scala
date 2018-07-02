@@ -17,6 +17,8 @@ object Extensions {
     def parentHash = BlockId(number - 1, block.getBlockHeader.getRawData.parentHash.toByteArray).hash
 
     def witness = block.getBlockHeader.getRawData.witnessAddress.encodeAddress
+    def contracts = block.transactions.flatMap(_.getRawData.contract)
+    def transactionContracts = block.transactions.flatMap(t => t.getRawData.contract.map(c => (t, c)))
   }
 
   implicit class ImplicitTransaction(trx: Transaction) {

@@ -1,17 +1,13 @@
 package org.tronscan.models
 
 import com.google.inject.{Inject, Singleton}
-import org.tronscan.db.PgProfile.api._
-import org.tronscan.db.TableRepository
 import org.joda.time.DateTime
 import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Block
-import play.api.db.slick.DatabaseConfigProvider
-import play.api.libs.json.Json
-import org.tronscan.App._
-
-import scala.concurrent.Future
 import org.tronscan.Extensions._
+import org.tronscan.db.PgProfile.api._
+import org.tronscan.db.TableRepository
+import play.api.db.slick.DatabaseConfigProvider
 
 object BlockModel {
   def fromProto(block: Block) = {
@@ -86,11 +82,19 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
       transferTable.filter(_.block === id).map(_.confirmed).update(true),
     )
   }
+
   def buildConfirmBlock(id: Long) = {
     Seq(
       table.filter(_.number === id).map(_.confirmed).update(true),
       transactionTable.filter(_.block === id).map(_.confirmed).update(true),
       transferTable.filter(_.block === id).map(_.confirmed).update(true),
+    )
+  }
+
+  def buildReplaceBlock(block: BlockModel) = {
+    Seq(
+      buildDeleteByNumber(block.number),
+      buildInsert(block.copy(confirmed = true))
     )
   }
 

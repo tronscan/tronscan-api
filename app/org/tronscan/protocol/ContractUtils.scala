@@ -4,7 +4,7 @@ import org.tron.protos.Tron.Transaction
 import org.tronscan.Extensions._
 import org.tronscan.domain.Types.Address
 import org.tron.protos.Contract._
-import org.tronscan.models.ProtoUtils
+import org.tronscan.utils.ProtoUtils
 
 object ContractUtils {
 

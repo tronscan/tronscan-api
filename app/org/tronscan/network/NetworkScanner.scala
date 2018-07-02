@@ -17,6 +17,7 @@ import org.tronscan.grpc.GrpcClients
 import org.tronscan.grpc.GrpcPool.{Channel, RequestChannel}
 import org.tronscan.service.GeoIPService
 import org.tronscan.network.NetworkScanner._
+import org.tronscan.utils.StreamUtils
 import play.api.Logger
 import play.api.inject.ConfigurationProvider
 import play.api.libs.concurrent.Futures
@@ -81,8 +82,8 @@ class NetworkScanner @Inject()(
   def buildReadStream = {
     implicit val executionContext = workContext
     Flow[String]
-        .via(Streams.networkScanner(nodeFromIp(_)))
-        .via(Streams.distinct)
+        .via(NetworkStreams.networkScanner(nodeFromIp(_)))
+        .via(StreamUtils.distinct)
   }
 
   def readNodeChannels(ips: List[String]): Source[String, NotUsed] = {
@@ -95,7 +96,7 @@ class NetworkScanner @Inject()(
   def readNodeHealth: Flow[String, NetworkNode, NotUsed] = {
     implicit val executionContext = workContext
     Flow[String]
-      .via(Streams.networkPinger(nodeFromIp(_), 4))
+      .via(NetworkStreams.networkPinger(nodeFromIp(_), 4))
   }
 
   def seedNodes = {

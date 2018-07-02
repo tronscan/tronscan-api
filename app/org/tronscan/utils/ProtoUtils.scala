@@ -1,7 +1,6 @@
-package org.tronscan.models
+package org.tronscan.utils
 
 import org.tron.protos.Tron.Transaction
-import org.tronscan.Extensions._
 
 object ProtoUtils {
 
@@ -37,6 +36,8 @@ object ProtoUtils {
         org.tron.protos.Contract.AccountUpdateContract.parseFrom(any.value.toByteArray)
       case UnfreezeAssetContract =>
         org.tron.protos.Contract.UnfreezeAssetContract.parseFrom(any.value.toByteArray)
+      case _ =>
+        throw new Exception("Unknown Contract")
     }
   }
 }
