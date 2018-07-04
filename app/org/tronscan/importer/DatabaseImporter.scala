@@ -2,7 +2,7 @@ package org.tronscan.importer
 
 import javax.inject.Inject
 import org.tron.protos.Tron.Transaction
-import org.tron.protos.Tron.Transaction.Contract.ContractType.{AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeBalanceContract, VoteWitnessContract, WitnessCreateContract, WitnessUpdateContract}
+import org.tron.protos.Tron.Transaction.Contract.ContractType.{AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeBalanceContract, UpdateAssetContract, VoteWitnessContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tronscan.models._
 import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
@@ -40,6 +40,11 @@ class DatabaseImporter @Inject() (
       Seq(assetIssueContractModelRepository.buildInsert(assetIssue))
   }
 
+  def importAssetUpdateIssue: ContractQueryBuilder = {
+    case (UpdateAssetContract, _, assetIssue: AssetIssueContractModel) =>
+      Seq(assetIssueContractModelRepository.buildUpdateAsset(assetIssue))
+  }
+
   def importParticipateAssetIssue: ContractQueryBuilder = {
     case (ParticipateAssetIssueContract, _, participate: ParticipateAssetIssueModel) =>
       Seq(participateAssetIssueRepository.buildInsert(participate))
@@ -71,6 +76,7 @@ class DatabaseImporter @Inject() (
     importTransfers orElse
     importAssetIssue orElse
     importParticipateAssetIssue orElse
-    importUnfreezeBalance
+    importUnfreezeBalance orElse
+    importAssetUpdateIssue
   }
 }

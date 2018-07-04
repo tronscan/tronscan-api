@@ -94,6 +94,12 @@ class AssetIssueContractModelRepository @Inject() (val dbConfig: DatabaseConfigP
     table.filter(_.name === name).result.headOption
   }
 
+  def buildUpdateAsset(model: AssetIssueContractModel) = {
+    table
+      .filter(_.name === model.name)
+      .map(a => (a.description, a.url))
+      .update((model.description, model.url))
+  }
 
   def withParticipation() = { query: QueryType =>
     for {

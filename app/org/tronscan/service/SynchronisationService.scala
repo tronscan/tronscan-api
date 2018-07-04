@@ -1,6 +1,7 @@
 package org.tronscan.service
 
 import akka.stream.scaladsl.{Flow, Source}
+import io.circe.syntax._
 import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
@@ -10,21 +11,17 @@ import org.tronscan.domain.BlockChain
 import org.tronscan.domain.Types.Address
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models.{AccountModel, AccountModelRepository, AddressBalanceModelRepository, BlockModelRepository}
+import org.tronscan.utils.StreamUtils
 import play.api.Logger
 
-import scala.concurrent.duration._
-import io.circe.syntax._
-import io.circe.generic.auto._
-import org.tronscan.network.NetworkStreams
-import org.tronscan.utils.StreamUtils
-
 import scala.async.Async.{async, await}
+import scala.concurrent.duration._
 
 case class ImportStatus(
-                         fullNodeBlock: Long,
-                         solidityBlock: Long,
-                         dbUnconfirmedBlock: Long,
-                         dbLatestBlock: Long) {
+  fullNodeBlock: Long,
+  solidityBlock: Long,
+  dbUnconfirmedBlock: Long,
+  dbLatestBlock: Long) {
 
   /**
     * Full Node Synchronisation Progress
@@ -113,8 +110,8 @@ class SynchronisationService @Inject() (
       lastDatabaseBlockF = blockModelRepository.findLatest
       lastUnconfirmedDatabaseBlockF = blockModelRepository.findLatestUnconfirmed
 
-      lastFulNodeNumber <- lastFulNodeNumberF.map(_.getBlockHeader.getRawData.number).recover { case x => -1L }
-      lastSolidityNumber <- lastSolidityNumberF.map(_.getBlockHeader.getRawData.number).recover { case x => -1L }
+      lastFulNodeNumber <- lastFulNodeNumberF.map(_.getBlockHeader.getRawData.number).recover { case _ => -1L }
+      lastSolidityNumber <- lastSolidityNumberF.map(_.getBlockHeader.getRawData.number).recover { case _ => -1L }
       lastDatabaseBlock <- lastDatabaseBlockF
       lastUnconfirmedDatabaseBlock <- lastUnconfirmedDatabaseBlockF
     } yield ImportStatus(

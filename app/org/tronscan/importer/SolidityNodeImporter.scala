@@ -39,8 +39,6 @@ class SolidityNodeImporter @Inject()(
   walletClient: WalletClient,
   @NamedCache("redis") redisCache: CacheAsyncApi) extends Actor {
 
-  var isActive = false
-
   def readBlocksFromStatus = Flow[ImportStatus]
     .mapAsync(1) { status =>
       walletClient.solidity.map { walletSolidity =>
@@ -57,8 +55,6 @@ class SolidityNodeImporter @Inject()(
     Flow[Any]
       .mapAsync(1)(_ => synchronisationService.importStatus)
       .filter {
-        case _ if isActive =>
-          false
         // Stop if there are more then 100 blocks to sync for full node
         case status if status.fullNodeBlocksToSync > 100 =>
           false
@@ -80,12 +76,8 @@ class SolidityNodeImporter @Inject()(
       val addresses = add(Merge[Address](2))
 
       // Periodically start sync
-      val importStatus = Source.tick(0.seconds, 3.seconds, "")
+      val importStatus = Source.single("")
         .via(syncStarter)
-        .map { x =>
-          isActive = true
-          x
-        }
 
       /***** Broadcast channels *****/
 
@@ -142,7 +134,6 @@ class SolidityNodeImporter @Inject()(
       .filter(x => x._1.blockHeader.isDefined && !x._2.confirmed)
       .map {
         case (solidityBlock, databaseBlock) =>
-
 
           val queries = ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]]()
 
@@ -201,14 +192,18 @@ class SolidityNodeImporter @Inject()(
       ActorMaterializerSettings(context.system)
         .withSupervisionStrategy(decider))(context)
 
-    buildSource.run().andThen {
-      case Success(_) =>
-        isActive = false
-        Logger.info("SOLIDITY SYNC SUCCESS")
-      case Failure(exc) =>
-        isActive = false
-        Logger.error("SOLIDITY SYNC FAILURE", exc)
-    }
+    Source.tick(0.seconds, 3.seconds, "")
+      .mapAsync(1) { _ =>
+        Logger.info("START")
+        buildSource.run()
+      }
+      .runWith(Sink.ignore)
+      .andThen {
+        case Success(_) =>
+          Logger.info("BLOCKCHAIN SYNC SUCCESS")
+        case Failure(exc) =>
+          Logger.error("BLOCKCHAIN SYNC FAILURE", exc)
+      }
   }
 
   def receive = {

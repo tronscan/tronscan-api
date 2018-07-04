@@ -1,17 +1,17 @@
 package org.tronscan.importer
 
 import akka.NotUsed
-import akka.actor.{ActorContext, ActorSystem}
-import akka.event.EventStream
+import akka.actor.ActorContext
 import akka.stream.scaladsl.{Flow, Source}
 import org.tron.api.api.WalletGrpc.WalletStub
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidityStub
 import org.tron.api.api.{BlockLimit, NumberMessage}
-import org.tron.protos.Tron.{Block, Transaction}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
+import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.domain.Events._
 import org.tronscan.models._
 import org.tronscan.utils.ProtoUtils
+import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -40,8 +40,22 @@ class BlockChainStreamBuilder {
     */
   def readFullNodeBlocksBatched(from: Long, to: Long, batchSize: Int = 50)(client: WalletStub)(implicit executionContext: ExecutionContext): Source[Block, NotUsed] = {
 
-    Source.unfoldAsync(from) { prev =>
+//    def retry(batchLimit: Int): Future[Some[(Long, Seq[Block])]] = {
+//      val toBlock = if (from + batchLimit > to) to else from + batchLimit
+//
+//      client
+//        .getBlockByLimitNext(BlockLimit(from, toBlock))
+//        .map { blocks =>
+//          Some((to, blocks.block.filter(_.blockHeader.isDefined).sortBy(_.getBlockHeader.getRawData.number)))
+//        }
+////        .recoverWith {
+////          case exc if batchLimit > 5 =>
+////            Logger.error("Error While fetching!", exc)
+////            retry(batchLimit - 10)
+////        }
+//    }
 
+    Source.unfoldAsync(from) { prev =>
       if (prev < to) {
 
         val toBlock = if (prev + batchSize > to) to else prev + batchSize
@@ -55,7 +69,7 @@ class BlockChainStreamBuilder {
         Future.successful(None)
       }
     }
-      .flatMapConcat(x => Source(x.toList))
+    .flatMapConcat(x => Source(x.toList))
   }
 
   def filterContracts(contractTypes: List[Transaction.Contract.ContractType]) = {

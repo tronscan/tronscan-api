@@ -20,6 +20,8 @@ object ProtoUtils {
         org.tron.protos.Contract.VoteWitnessContract.parseFrom(any.value.toByteArray)
       case AssetIssueContract =>
         org.tron.protos.Contract.AssetIssueContract.parseFrom(any.value.toByteArray)
+      case UpdateAssetContract =>
+        org.tron.protos.Contract.UpdateAssetContract.parseFrom(any.value.toByteArray)
       case ParticipateAssetIssueContract =>
         org.tron.protos.Contract.ParticipateAssetIssueContract.parseFrom(any.value.toByteArray)
       case WitnessCreateContract =>

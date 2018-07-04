@@ -79,7 +79,7 @@ class VoteList @Inject() (
       Json.obj(
         "total_votes" -> totalVotes,
         "candidates" -> witnessesCurrent.map { case (address, votes) =>
-          val hasPage = hasPages.get(address).getOrElse(false)
+          val hasPage = hasPages.getOrElse(address, false)
           val name = accounts.get(address) match {
             case Some(accountName) if accountName.trim.isEmpty => ""
             case Some(accountName) => accountName

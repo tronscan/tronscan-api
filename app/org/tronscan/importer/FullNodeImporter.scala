@@ -1,5 +1,6 @@
 package org.tronscan.importer
 
+import akka.NotUsed
 import akka.actor.Actor
 import akka.stream._
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
@@ -13,7 +14,7 @@ import org.tronscan.grpc.{FullNodeBlockChain, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
 import org.tronscan.service.{ImportStatus, SynchronisationService}
-import org.tronscan.utils.{ModelUtils, ProtoUtils}
+import org.tronscan.utils.ModelUtils
 import play.api.Logger
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
@@ -40,25 +41,22 @@ class FullNodeImporter @Inject()(
   val config = configurationProvider.get
   val syncFull = configurationProvider.get.get[Boolean]("sync.full")
   val syncSolidity = configurationProvider.get.get[Boolean]("sync.solidity")
-  var isActive = false
 
-  def buildSource = {
-    RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit b =>
-      sink =>
+  def buildSource(initialSync: Boolean = false) = {
+
+    def redisCleaner = if (initialSync) Flow[Address] else redisCacheCleaner
+
+    RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit b => sink =>
         import GraphDSL.Implicits._
         val blocks = b.add(Broadcast[Block](3))
         val transactions = b.add(Broadcast[(Block, Transaction)](1))
         val contracts = b.add(Broadcast[(Block, Transaction, Transaction.Contract)](2))
         val addresses = b.add(Merge[Address](2))
-        val out = b.add(Merge[Any](2))
+        val out = b.add(Merge[Any](3))
 
         // Periodically start sync
-        val importStatus = Source.tick(0.seconds, 3.seconds, "")
+        val importStatus = Source.single("")
           .via(syncStarter)
-          .map { x =>
-            isActive = true
-            x
-          }
 
         /** *** Channels *****/
 
@@ -80,17 +78,17 @@ class FullNodeImporter @Inject()(
         /** Importers **/
 
         // Synchronize Blocks
-        blocks ~> fullNodeBlockImporter.async ~> out
+        blocks ~> fullNodeBlockImporter ~> out
 
         // Sync addresses
-        addresses ~> redisCacheCleaner ~> accountUpdaterFlow ~> out
+        addresses ~> redisCleaner ~> accountUpdaterFlow ~> out
 
         // Broadcast contract events
         contracts.map(_._3) ~> blockChainBuilder.publishContractEvents(List(
           TransferContract,
           TransferAssetContract,
           WitnessCreateContract
-        )) ~> Sink.ignore
+        )) ~> out
 
         /** Close Stream **/
 
@@ -144,11 +142,9 @@ class FullNodeImporter @Inject()(
   def syncStarter = Flow[Any]
     .mapAsync(1)(_ => syncService.importStatus)
     .filter {
-      case _ if isActive =>
-        false
       // Stop if there are more then 100 blocks to sync for full node
       case status if status.fullNodeBlocksToSync > 0 =>
-        Logger.info("START SYNC " + status.toString)
+        Logger.info(s"START SYNC FROM ${status.dbLatestBlock} TO ${status.fullNodeBlock}. " + status.toString)
         true
       case status =>
         Logger.info("IGNORE FULL NODE SYNC: " + status.toString)
@@ -178,14 +174,14 @@ class FullNodeImporter @Inject()(
         val header = block.getBlockHeader.getRawData
         val queries: ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]] = ListBuffer()
 
-        Logger.info("FULL NODE BLOCK: " + header.number)
+        Logger.info("FULL NODE BLOCK: " + header.number + ", TX: " + block.transactions.size)
 
         // Import Block
-        queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block)))
+        queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block).copy(confirmed = !syncSolidity)))
 
         // Import Transactions
         queries.appendAll(block.transactions.map { trx =>
-          transactionModelRepository.buildInsertOrUpdate(ModelUtils.transactionToModel(trx, block))
+          transactionModelRepository.buildInsertOrUpdate(ModelUtils.transactionToModel(trx, block).copy(confirmed = !syncSolidity))
         })
 
         // Import Contracts
@@ -193,7 +189,7 @@ class FullNodeImporter @Inject()(
           case (trx, contract) =>
             ModelUtils.contractToModel(contract, trx, block).map {
               case transfer: TransferModel =>
-                importer((contract.`type`, contract, transfer.copy(confirmed = block.getBlockHeader.getRawData.number == 0)))
+                importer((contract.`type`, contract, transfer.copy(confirmed = !syncSolidity || block.getBlockHeader.getRawData.number == 0)))
               case x =>
                 importer((contract.`type`, contract, x))
             }.getOrElse(Seq.empty)
@@ -204,7 +200,7 @@ class FullNodeImporter @Inject()(
       // Flatmap the queries
       .flatMapConcat(q => Source(q))
       // Batch queries together
-      .groupedWithin(500, 2.seconds)
+      .groupedWithin(1000, 2.seconds)
       // Insert batched queries in database
       .mapAsync(1)(blockModelRepository.executeQueries)
   }
@@ -222,14 +218,18 @@ class FullNodeImporter @Inject()(
       ActorMaterializerSettings(context.system)
         .withSupervisionStrategy(decider))(context)
 
-    buildSource.run().andThen {
-      case Success(_) =>
-        isActive = false
-        Logger.info("BLOCKCHAIN SYNC SUCCESS")
-      case Failure(exc) =>
-        isActive = false
-        Logger.error("BLOCKCHAIN SYNC FAILURE", exc)
-    }
+    Source.tick(0.seconds, 3.seconds, "")
+        .mapAsync(1) { _ =>
+          Logger.info("START")
+          buildSource().run()
+        }
+        .runWith(Sink.ignore)
+        .andThen {
+          case Success(_) =>
+            Logger.info("BLOCKCHAIN SYNC SUCCESS")
+          case Failure(exc) =>
+            Logger.error("BLOCKCHAIN SYNC FAILURE", exc)
+        }
   }
 
   def receive = {
