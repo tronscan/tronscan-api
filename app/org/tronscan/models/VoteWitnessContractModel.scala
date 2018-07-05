@@ -3,13 +3,11 @@ package org.tronscan.models
 import java.util.UUID
 
 import com.google.inject.{Inject, Singleton}
+import org.joda.time.DateTime
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
-import org.joda.time.DateTime
 import play.api.db.slick.DatabaseConfigProvider
-import play.api.libs.json.Json
-import play.api.libs.json.JodaWrites._
-import play.api.libs.json.JodaReads._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class VoteWitnessList(

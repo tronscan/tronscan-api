@@ -2,13 +2,11 @@ package org.tronscan.models
 
 import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
-import play.api.db.slick.DatabaseConfigProvider
-import play.api.libs.json.Json
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
-import org.tronscan.App._
+import play.api.db.slick.DatabaseConfigProvider
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 case class VoteSnapshotModel(
   id: Option[Long] = None,

@@ -55,10 +55,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-slick" % "3.0.1",
   "com.typesafe.play" %% "play-json-joda" % "2.6.9",
 
-  "com.github.tminglei" %% "slick-pg" % "0.16.1",
-  "com.github.tminglei" %% "slick-pg_play-json" % "0.16.1",
-  "com.github.tminglei" %% "slick-pg_circe-json" % "0.16.1",
-  "com.github.tminglei" %% "slick-pg_joda-time" % "0.16.1",
+  "com.github.tminglei" %% "slick-pg" % "0.16.2",
+  "com.github.tminglei" %% "slick-pg_play-json" % "0.16.2",
+  "com.github.tminglei" %% "slick-pg_circe-json" % "0.16.2",
+  "com.github.tminglei" %% "slick-pg_joda-time" % "0.16.2",
 
   "org.postgresql" %  "postgresql" % "42.2.2",
 
