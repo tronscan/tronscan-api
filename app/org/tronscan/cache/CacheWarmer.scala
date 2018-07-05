@@ -7,18 +7,20 @@ import javax.inject.Inject
 import org.apache.commons.lang3.exception.ExceptionUtils
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
-import org.tronscan.actions.{RepresentativeListReader, VoteList}
+import org.tronscan.actions.{RepresentativeListReader, StatsOverview, VoteList}
+import play.api.Logger
 
 import concurrent.duration._
 
 class CacheWarmer @Inject() (
   @NamedCache("redis") redisCache: CacheAsyncApi,
   representativeListReader: RepresentativeListReader,
+  statsOverview: StatsOverview,
   voteList: VoteList) extends Actor {
 
   val decider: Supervision.Decider = {
     case exc =>
-      println("CACHE WARMER ERROR", exc, ExceptionUtils.getStackTrace(exc))
+      Logger.error("CACHE WARMER ERROR", exc)
       Supervision.Resume
   }
 
@@ -40,6 +42,11 @@ class CacheWarmer @Inject() (
       .runWith(writeToKey("votes.candidates_total", 1.minute))
   }
 
+  def startStatsOverview() = {
+    Source.tick(0.second, 30.minutes, "refresh")
+      .mapAsyncUnordered(1)(_ => statsOverview.execute)
+      .runWith(writeToKey("stats.overview", 1.hour))
+  }
 
   def writeToKey[T](name: String, duration: Duration = Duration.Inf) = {
     Sink.foreachParallel[T](1)(x => redisCache.set(name, x, duration))
