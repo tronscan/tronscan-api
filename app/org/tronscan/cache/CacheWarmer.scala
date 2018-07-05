@@ -1,16 +1,15 @@
 package org.tronscan.cache
 
 import akka.actor.Actor
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import javax.inject.Inject
-import org.apache.commons.lang3.exception.ExceptionUtils
-import play.api.cache.NamedCache
-import play.api.cache.redis.CacheAsyncApi
 import org.tronscan.actions.{RepresentativeListReader, StatsOverview, VoteList}
 import play.api.Logger
+import play.api.cache.NamedCache
+import play.api.cache.redis.CacheAsyncApi
 
-import concurrent.duration._
+import scala.concurrent.duration._
 
 class CacheWarmer @Inject() (
   @NamedCache("redis") redisCache: CacheAsyncApi,
@@ -55,6 +54,7 @@ class CacheWarmer @Inject() (
   override def preStart(): Unit = {
     startWitnessReader()
     startVoteListWarmer()
+    startStatsOverview()
   }
 
   def receive = {
