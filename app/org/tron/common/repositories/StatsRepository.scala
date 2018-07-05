@@ -1,20 +1,19 @@
-package org.tron.common.repositories
+package org
+package tron.common.repositories
 
 import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
-import org.tronscan.db.{Repository, TableRepository}
-import org.tronscan.models.{AccountModel, AccountModelTable}
-import play.api.db.slick.DatabaseConfigProvider
-import slick.lifted.TableQuery
 import org.tronscan.db.PgProfile.api._
+import org.tronscan.db.Repository
+import play.api.db.slick.DatabaseConfigProvider
 
 @Singleton()
 class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends Repository {
 
-  lazy val table = TableQuery[AccountModelTable]
-
   // TODO check this by looking up the genesis block
-  val chainStartedAt = DateTime.parse("2018-06-25T00:00:00")
+  val chainStartedAt = "2018-06-25T00:00:00"
+
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   def accountsCreated = run {
     sql"""
@@ -28,9 +27,9 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
            date_trunc('day', date_created) = date_trunc('day', d)
        )
      FROM
-       generate_series($chainStartedAt, CURRENT_DATE - 1, '1 day'::interval) as d
-    """.as[(DateTime, Int)]
-  }
+       generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
+    """.as[(String, Int)]
+  }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
   def blocksCreated = run {
     sql"""
@@ -44,9 +43,9 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
            date_created < date_trunc('day', d)
        )
      FROM
-       generate_series($chainStartedAt, CURRENT_DATE - 1, '1 day'::interval) as d
-    """.as[(DateTime, Int)]
-  }
+       generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
+    """.as[(String, Int)]
+  }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
   def totalTransactions = run {
     sql"""
@@ -60,9 +59,9 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
            date_created < date_trunc('day', d)
        )
      FROM
-       generate_series($chainStartedAt, CURRENT_DATE - 1, '1 day'::interval) as d
-    """.as[(DateTime, Int)]
-  }
+       generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
+    """.as[(String, Int)]
+  }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
   def averageBlockSize = run {
     sql"""
@@ -76,9 +75,9 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
            date_created = date_trunc('day', d)
        )
      FROM
-       generate_series($chainStartedAt, CURRENT_DATE - 1, '1 day'::interval) as d
-    """.as[(DateTime, Int)]
-  }
+       generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
+    """.as[(String, Int)]
+  }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
 
 }
