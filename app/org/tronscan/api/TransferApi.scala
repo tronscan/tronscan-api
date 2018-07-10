@@ -125,7 +125,6 @@ class TransferApi @Inject()(
               DateTime.parse(value)
           }
           query.filter(x => x.timestamp <= dateStart)
-          query.filter(x => x.timestamp >= dateStart)
         case (query, _) =>
           query
       }
