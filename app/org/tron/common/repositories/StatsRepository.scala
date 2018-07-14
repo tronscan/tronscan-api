@@ -88,7 +88,7 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
            SUM(size) as size
          FROM blocks
          WHERE
-           date_created <= date_trunc('day', d)
+           date_created < date_trunc('day', d)
        )
      FROM
        generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
