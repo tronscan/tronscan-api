@@ -110,7 +110,6 @@ class SolidityNodeReader @Inject()(
 
   }
 
-
   def syncChain(): Future[Unit] = async {
 
     println("START SOLIDITY SYNC")
@@ -209,6 +208,7 @@ class SolidityNodeReader @Inject()(
                 contractData = TransactionSerializer.serializeContract(transaction.getRawData.contract.head),
                 contractType = transaction.getRawData.contract.head.`type`.value,
                 confirmed = true,
+                data = ByteArray.toHexString(transaction.getRawData.data.toByteArray),
               )
 
               transactionModelRepository.buildInsertOrUpdate(transactionModel)
