@@ -1,5 +1,8 @@
 package org.tronscan.api
 
+import java.text.SimpleDateFormat
+import java.util.Calendar
+
 import javax.inject.{Inject, Singleton}
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tron.api.api.{EmptyMessage, Node}
@@ -55,6 +58,23 @@ class WitnessApi @Inject()(
       }))
     }
   }
+
+  def maintenanceStatistic = Action.async { implicit request =>
+
+    for {
+      witnesses <- redisCache.getOrFuture("witness.statistic", 1.second) {
+        representativeListReader.maintenanceStatistic
+      }
+    } yield {
+      Ok(Json.toJson(witnesses.map { witness =>
+        Json.obj(
+          "address"             -> witness._1,
+          "blockNum"            -> witness._2
+        )
+      }))
+    }
+  }
+
 
   def searchForGeo(node: Node) = {
     val ip = ByteArray.toStr(node.getAddress.host.toByteArray)

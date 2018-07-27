@@ -17,6 +17,9 @@
   <a href="https://api.tronscan.org">api.tronscan.org</a>
 </p>
 
+
+// disaBLE cloudflare  on testapi.tronscan.org
+enable test.tronscan.org
 ## Intro
 
 Tronscan API provides data for the Tronscan Frontend. Tronscan API is built with Scala using Play Framework and Akka Streams.

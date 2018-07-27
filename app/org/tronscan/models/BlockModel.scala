@@ -8,7 +8,7 @@ import play.api.db.slick.DatabaseConfigProvider
 import play.api.libs.json.Json
 import org.tronscan.App._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 object BlockModel {
   implicit val format = Json.format[BlockModel]
@@ -112,4 +112,23 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
   def buildDeleteByNumber(number: Long) = {
     table.filter(_.number === number).delete
   }
+
+  def filterByCreateTime(time: Long) = run {
+    table.filter(_.timestamp > new DateTime(time)).result
+  }
+
+  def maintenanceStatistic(time: String)(implicit executionContext: ExecutionContext) = run {
+    sql"""
+      SELECT
+        witness_address,
+        COUNT(*) as blockCount
+      FROM
+        blocks
+       WHERE
+        date_created > #$time
+      GROUP BY
+        witness_address
+    """.as[(String, Long)]
+  }.map(_.toMap)
+
 }
