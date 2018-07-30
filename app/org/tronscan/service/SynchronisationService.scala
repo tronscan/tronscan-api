@@ -122,12 +122,8 @@ class SynchronisationService @Inject() (
     )
   }
 
-
   def buildAddressSynchronizer = Flow[Address]
     .via(StreamUtils.distinct)
-//    .groupedWithin(100, 15.seconds)
-//    .map { addresses => addresses.distinct }
-//    .flatMapConcat(x => Source(x.toList))
     .mapAsyncUnordered(8) { address =>
       Logger.info("Syncing Address: " + address)
       async {
@@ -149,16 +145,9 @@ class SynchronisationService @Inject() (
             dateUpdated = DateTime.now,
           )
 
-          List(accountModelRepository.buildInsertOrUpdate(accountModel)) ++
-            addressBalanceModelRepository.buildUpdateBalance(accountModel)
-        } else {
-          List.empty
+          await(accountModelRepository.insertOrUpdate(accountModel))
+          await(addressBalanceModelRepository.updateBalance(accountModel))
         }
       }
-    }
-    .flatMapConcat(queries => Source(queries))
-    .groupedWithin(150, 10.seconds)
-    .mapAsync(1) { queries =>
-      blockModelRepository.executeQueries(queries)
     }
 }

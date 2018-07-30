@@ -93,7 +93,7 @@ class SolidityNodeImporter @Inject()(
       // Contracts
       transactions.mapConcat { case (block, t) => t.getRawData.contract.map(c => (block, t, c)).toList } ~> contracts.in
 
-      // Addresses
+      // Read addresses from contracts
       contracts.mapConcat(_._3.addresses) ~> addresses
 
       /** Importers **/

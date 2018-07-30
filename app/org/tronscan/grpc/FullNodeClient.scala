@@ -11,10 +11,13 @@ trait FullNodeClient {
   def client: WalletStub
 }
 
+/**
+  * Full Node Blockchain
+  */
 class FullNodeBlockChain(val client: WalletStub) extends BlockChain with FullNodeClient {
 
   def genesisBlock: Future[Block] = {
-    client.getBlockByNum(NumberMessage(0))
+    client.getBlockByNum(NumberMessage(num = 0))
   }
 
   def headBlock: Future[Block] = {
