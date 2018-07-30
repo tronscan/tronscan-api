@@ -4,6 +4,8 @@ import akka.actor.Actor
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import javax.inject.Inject
+import org.apache.commons.lang3.exception.ExceptionUtils
+import org.tronscan.actions.{RepresentativeListReader, StatsOverview, VoteList}
 import play.api.Logger
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
@@ -13,11 +15,12 @@ import scala.concurrent.duration._
 class ActionRunner @Inject()(
   @NamedCache("redis") redisCache: CacheAsyncApi,
   representativeListReader: RepresentativeListReader,
+  statsOverview: StatsOverview,
   voteList: VoteList,
   voteScraper: VoteScraper) extends Actor {
 
-  val decider: Supervision.Decider = { exception =>
-    Logger.error("CACHE WARMER ERROR", exception)
+  val decider: Supervision.Decider = { exc =>
+    Logger.error("CACHE WARMER ERROR", exc)
     Supervision.Resume
   }
 
@@ -45,6 +48,12 @@ class ActionRunner @Inject()(
       .runWith(Sink.ignore)
   }
 
+  def startStatsOverview() = {
+    Source.tick(0.second, 30.minutes, "refresh")
+      .mapAsyncUnordered(1)(_ => statsOverview.execute)
+      .runWith(writeToKey("stats.overview", 1.hour))
+  }
+
   def writeToKey[T](name: String, duration: Duration = Duration.Inf) = {
     Sink.foreachParallel[T](1)(x => redisCache.set(name, x, duration))
   }
@@ -53,6 +62,7 @@ class ActionRunner @Inject()(
     startWitnessReader()
     startVoteListWarmer()
     startVoteScraper()
+    startStatsOverview()
   }
 
   def receive = {

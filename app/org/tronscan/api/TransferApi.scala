@@ -22,6 +22,7 @@ import scala.async.Async._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.{Success, Try}
 
 @Api(
   value = "Transfers",
@@ -109,8 +110,21 @@ class TransferApi @Inject()(
         case (query, ("address", value)) =>
           query.filter(x => x.transferFromAddress === value || x.transferToAddress === value)
         case (query, ("date_start", value)) =>
-          val dateStart = DateTime.parse(value)
+          val dateStart = Try(value.toLong) match {
+            case Success(timestamp) =>
+              new DateTime(timestamp)
+            case _ =>
+              DateTime.parse(value)
+          }
           query.filter(x => x.timestamp >= dateStart)
+        case (query, ("date_to", value)) =>
+          val dateStart = Try(value.toLong) match {
+            case Success(timestamp) =>
+              new DateTime(timestamp)
+            case _ =>
+              DateTime.parse(value)
+          }
+          query.filter(x => x.timestamp <= dateStart)
         case (query, _) =>
           query
       }

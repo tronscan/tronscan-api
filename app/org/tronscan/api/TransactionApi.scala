@@ -22,6 +22,7 @@ import concurrent.duration._
 import scala.async.Async._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.{Success, Try}
 
 
 @Api(
@@ -82,8 +83,21 @@ class TransactionApi @Inject()(
         case (query, ("hash", value)) =>
           query.filter(_.hash === value)
         case (query, ("date_start", value)) =>
-          val dateStart = DateTime.parse(value)
+          val dateStart = Try(value.toLong) match {
+            case Success(timestamp) =>
+              new DateTime(timestamp)
+            case _ =>
+              DateTime.parse(value)
+          }
           query.filter(x => x.timestamp >= dateStart)
+        case (query, ("date_to", value)) =>
+          val dateStart = Try(value.toLong) match {
+            case Success(timestamp) =>
+              new DateTime(timestamp)
+            case _ =>
+              DateTime.parse(value)
+          }
+          query.filter(x => x.timestamp <= dateStart)
         case (query, ("contract_type", value)) =>
           query.filter(x => x.contractType === value.toInt)
         case (query, _) =>

@@ -69,10 +69,26 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
        date_trunc('day', d)::date as d,
        (
          SELECT
-           AVG(size) as avg_size
+           ceil(AVG(size)) as avg_size
          FROM blocks
          WHERE
-           date_created = date_trunc('day', d)
+           date_trunc('day', date_created) = date_trunc('day', d)
+       )
+     FROM
+       generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
+    """.as[(String, Int)]
+  }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
+
+  def totalBlockSize = run {
+    sql"""
+     SELECT
+       date_trunc('day', d)::date as d,
+       (
+         SELECT
+           SUM(size) as size
+         FROM blocks
+         WHERE
+           date_created < date_trunc('day', d)
        )
      FROM
        generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d

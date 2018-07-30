@@ -3,6 +3,7 @@ package org.tronscan.service
 import com.google.protobuf.ByteString
 import com.google.protobuf.any.Any
 import javax.inject.Inject
+import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.api.api.WalletGrpc.Wallet
 import org.tron.common.crypto.ECKey
@@ -59,6 +60,7 @@ class TransactionBuilder @Inject() (wallet: Wallet) {
         .withRefBlockHash(ByteString.copyFrom(ByteArray.subArray(latestBlock.rawHash.getBytes, 8, 16)))
         .withRefBlockBytes(ByteString.copyFrom(ByteArray.subArray(ByteArray.fromLong(latestBlock.getBlockHeader.getRawData.number), 6, 8)))
         .withExpiration(latestBlock.getBlockHeader.getRawData.timestamp + (60 * 5 * 1000))
+        .withTimestamp(DateTime.now().getMillis)
 
       transaction
         .withRawData(raw)

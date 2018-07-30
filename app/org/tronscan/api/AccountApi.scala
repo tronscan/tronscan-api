@@ -15,6 +15,7 @@ import io.swagger.annotations._
 import javax.inject.Inject
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
+import org.tron.common.crypto.ECKey
 import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Account
 import pdi.jwt.{JwtAlgorithm, JwtJson}
