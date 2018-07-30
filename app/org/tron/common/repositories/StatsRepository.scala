@@ -43,7 +43,7 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
            date_created < date_trunc('day', d)
        )
      FROM
-       generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
+       generate_series('#$chainStartedAt', CURRENT_DATE, '1 day'::interval) as d
     """.as[(String, Int)]
   }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
