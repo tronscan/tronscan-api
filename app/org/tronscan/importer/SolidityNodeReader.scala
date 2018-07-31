@@ -148,8 +148,8 @@ class SolidityNodeReader @Inject()(
 
     if ((syncToBlock - latestUnconfirmedBlock) > 0) {
       val syncTask = Source(latestUnconfirmedBlock to syncToBlock)
-        .take(2000)
-        .mapAsync(12) { i =>
+        .take(20000)
+        .mapAsync(100) { i =>
           for {
             solidityBlock <- walletSolidity.withDeadlineAfter(10, TimeUnit.SECONDS).getBlockByNum(NumberMessage(i))
             databaseBlock <- blockModelRepository.findByNumber(i)
