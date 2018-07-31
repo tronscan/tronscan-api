@@ -55,6 +55,9 @@ case class AssetIssueContractModel(
 
   def frozenTokens = frozen.as[List[FrozenToken]].right.get
   def frozenSupply = frozenTokens.map(_.amount).sum
+  def availableSupply = totalSupply - frozenSupply
+
+  def availableTokensFromAccount(account: AccountModel) = account.tokenBalances.hcursor.downField(name).as[Double].getOrElse(0D)
 }
 
 class AssetIssueContractModelTable(tag: Tag) extends Table[AssetIssueContractModel](tag, "asset_issue_contract") {
