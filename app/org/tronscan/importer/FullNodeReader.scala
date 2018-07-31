@@ -154,6 +154,7 @@ class FullNodeReader @Inject()(
             timestamp = transactionTime,
             contractData = TransactionSerializer.serializeContract(transaction.getRawData.contract.head),
             contractType = transaction.getRawData.contract.head.`type`.value,
+            data = ByteArray.toHexString(transaction.getRawData.data.toByteArray)
           )
 
           transactionModelRepository.buildInsert(transactionModel)
