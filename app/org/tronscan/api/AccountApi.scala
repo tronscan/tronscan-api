@@ -462,10 +462,13 @@ class AccountApi @Inject()(
       }
     } catch {
       case _: Exception =>
-        Ok(Json.obj(
-          "success" -> false,
-          "reason" -> "Could not retrieve file"
-        ))
+        Action {
+          Ok(Json.obj(
+            "success" -> false,
+            "reason" -> "Could not retrieve file"
+          ))
+
+        }
     }
   }
 

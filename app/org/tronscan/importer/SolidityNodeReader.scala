@@ -34,6 +34,7 @@ import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
 import io.circe.syntax._
 import io.circe.generic.auto._
+import org.tronscan.utils.ContractUtils
 import shapeless.PolyDefns.~>
 
 import scala.async.Async.{await, _}
@@ -206,6 +207,7 @@ class SolidityNodeReader @Inject()(
                 block = header.number,
                 timestamp = transactionTime,
                 ownerAddress = TransactionUtils.getOwner(transaction.getRawData.contract.head),
+                toAddress = ContractUtils.getTo(transaction.getRawData.contract.head).getOrElse(""),
                 contractData = TransactionSerializer.serializeContract(transaction.getRawData.contract.head),
                 contractType = transaction.getRawData.contract.head.`type`.value,
                 confirmed = true,

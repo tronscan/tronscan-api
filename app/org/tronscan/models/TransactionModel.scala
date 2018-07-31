@@ -17,6 +17,7 @@ case class TransactionModel(
   timestamp: DateTime,
   confirmed: Boolean = false,
   ownerAddress: String = "",
+  toAddress: String = "",
   contractData: Json = io.circe.Json.obj(),
   contractType: Int = -1)
 
@@ -26,9 +27,10 @@ class TransactionModelTable(tag: Tag) extends Table[TransactionModel](tag, "tran
   def timestamp = column[DateTime]("date_created")
   def confirmed = column[Boolean]("confirmed")
   def ownerAddress = column[String]("owner_address")
+  def toAddress = column[String]("to_address")
   def contractData = column[io.circe.Json]("contract_data")
   def contractType = column[Int]("contract_type")
-  def * = (hash, block, timestamp, confirmed, ownerAddress, contractData, contractType) <> ((TransactionModel.apply _).tupled, TransactionModel.unapply)
+  def * = (hash, block, timestamp, confirmed, ownerAddress, toAddress, contractData, contractType) <> ((TransactionModel.apply _).tupled, TransactionModel.unapply)
 }
 
 @Singleton()

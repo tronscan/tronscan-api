@@ -20,6 +20,7 @@ import org.tronscan.grpc.{GrpcClients, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
 import org.tronscan.protocol.TransactionUtils
+import org.tronscan.utils.ContractUtils
 import org.tronscan.watchdog.NodeWatchDog
 import org.tronscan.watchdog.NodeWatchDog.GetBestNodes
 import play.api.cache.NamedCache
@@ -148,7 +149,8 @@ class FullNodeReader @Inject()(
           val transactionModel = TransactionModel(
             hash = transactionHash,
             block = header.number,
-            ownerAddress = TransactionUtils.getOwner(transaction.getRawData.contract.head),
+            ownerAddress = ContractUtils.getOwner(transaction.getRawData.contract.head),
+            toAddress = ContractUtils.getTo(transaction.getRawData.contract.head).getOrElse(""),
             timestamp = transactionTime,
             contractData = TransactionSerializer.serializeContract(transaction.getRawData.contract.head),
             contractType = transaction.getRawData.contract.head.`type`.value,

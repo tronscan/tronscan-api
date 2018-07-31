@@ -41,8 +41,7 @@ class AddressBalanceModelRepository @Inject() (val dbConfig: DatabaseConfigProvi
 
   def buildUpdateBalance(accountModel: AccountModel): Seq[FixedSqlAction[Int, NoStream, Effect.Write]] = {
     (
-      Seq(table.filter(_.address === accountModel.address).delete)
-      ++
+      Seq(table.filter(_.address === accountModel.address).delete)++
       accountModel.tokenBalances.as[Map[String, Long]].right.get.map {
         case (token, balance) =>
           table += AddressBalanceModel(accountModel.address, token, balance)
