@@ -13,8 +13,10 @@ case class TransactionModel(
   timestamp: DateTime,
   confirmed: Boolean = false,
   ownerAddress: String = "",
+  toAddress: String = "",
   contractData: Json = io.circe.Json.obj(),
-  contractType: Int = -1)
+  contractType: Int = -1,
+  data: String = "")
 
 class TransactionModelTable(tag: Tag) extends Table[TransactionModel](tag, "transactions") {
   def hash = column[String]("hash", O.PrimaryKey)
@@ -22,9 +24,11 @@ class TransactionModelTable(tag: Tag) extends Table[TransactionModel](tag, "tran
   def timestamp = column[DateTime]("date_created")
   def confirmed = column[Boolean]("confirmed")
   def ownerAddress = column[String]("owner_address")
+  def toAddress = column[String]("to_address")
   def contractData = column[io.circe.Json]("contract_data")
   def contractType = column[Int]("contract_type")
-  def * = (hash, block, timestamp, confirmed, ownerAddress, contractData, contractType) <> (TransactionModel.tupled, TransactionModel.unapply)
+  def data = column[String]("data")
+  def * = (hash, block, timestamp, confirmed, ownerAddress, toAddress, contractData, contractType, data) <> (TransactionModel.tupled, TransactionModel.unapply)
 }
 
 @Singleton()

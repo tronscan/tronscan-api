@@ -49,7 +49,7 @@ class WitnessApi @Inject()(
           "latestSlotNumber"    -> witness.latestSlotNum,
           "missedTotal"         -> witness.totalMissed,
           "producedTotal"       -> witness.totalProduced,
-          "producedTrx"         -> witnessTrx.getOrElse(witness.address.encodeAddress, 0L).toLong,
+          "producedTrx"         -> 0, //witnessTrx.getOrElse(witness.address.encodeAddress, 0L).toLong,
           "votes"               -> witness.voteCount,
         )
       }))
