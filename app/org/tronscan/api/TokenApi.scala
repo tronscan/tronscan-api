@@ -89,7 +89,7 @@ class TokenApi @Inject()(
             "remainingPercentage" -> percentage.asJson,
             "percentage" -> percentage.asJson,
 
-            "frozen" -> frozenSupply.asJson,
+            "frozenTotal" -> frozenSupply.asJson,
             "frozenPercentage" -> frozenSupplyPercentage.asJson,
           ))
         }.asJson
