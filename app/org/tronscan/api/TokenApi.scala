@@ -17,6 +17,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class TokenApi @Inject()(
     repo: AssetIssueContractModelRepository,
+    accountRepository: AccountModelRepository,
     transferRepository: TransferModelRepository,
     addressBalanceModelRepository: AddressBalanceModelRepository,
     walletClient: WalletClient,
@@ -65,8 +66,8 @@ class TokenApi @Inject()(
           val frozenSupply = asset.frozenSupply
           val totalSupply = asset.totalSupply.toDouble
 
-          val availableSupply = totalSupply - frozenSupply
-          val availableTokens = account.tokenBalances.hcursor.downField(asset.name).as[Double].getOrElse(0D)
+          val availableSupply = asset.availableSupply
+          val availableTokens = asset.availableTokensFromAccount(account)
 
           val issuedTokens = availableSupply - availableTokens
           val issuedPercentage = (issuedTokens / availableSupply) * 100
@@ -99,13 +100,33 @@ class TokenApi @Inject()(
 
   def findByName(name: String) = Action.async {
     for {
-      token <- repo.findByName(name).map(_.get)
-      totalTransactions <- transferRepository.countTokenTransfers(token.name)
-      tokenHolders <- addressBalanceModelRepository.countTokenHolders(token.name)
+      asset <- repo.findByName(name).map(_.get)
+      account <- accountRepository.findByAddress(asset.ownerAddress).map(_.get)
+      totalTransactions <- transferRepository.countTokenTransfers(asset.name)
+      tokenHolders <- addressBalanceModelRepository.countTokenHolders(asset.name)
     } yield {
-      Ok(token.asJson.deepMerge(Json.obj(
+
+      val frozenSupply = asset.frozenSupply
+      val totalSupply = asset.totalSupply.toDouble
+
+      val availableSupply = asset.availableSupply
+      val availableTokens = asset.availableTokensFromAccount(account)
+
+      val issuedTokens = availableSupply - availableTokens
+      val issuedPercentage = (issuedTokens / availableSupply) * 100
+
+      val remainingTokens = totalSupply - frozenSupply - issuedTokens
+      val percentage = (remainingTokens / availableSupply) * 100
+
+
+      Ok(asset.asJson.deepMerge(Json.obj(
         "totalTransactions" -> totalTransactions.asJson,
         "nrOfTokenHolders" -> tokenHolders.asJson,
+        "price" -> asset.price.asJson,
+        "remaining" -> remainingTokens.asJson,
+        "issued" -> issuedTokens.asJson,
+        "issuedPercentage" -> issuedPercentage.asJson,
+        "percentage" -> percentage.asJson,
       )))
     }
   }
