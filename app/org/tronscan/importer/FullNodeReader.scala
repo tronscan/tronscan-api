@@ -283,19 +283,18 @@ class FullNodeReader @Inject()(
 
               queries.append(witnessModelRepository.buildInsertOrUpdate(witnessModel))
 
-            //              case WitnessUpdateContract =>
-            //                val witnessUpdateContract = org.tron.protos.Contract.WitnessUpdateContract.parseFrom(any.value.toByteArray)
-            //
-            //                val witnessModel = WitnessModel(
-            //                  address = Base58.encode58Check(witnessUpdateContract.ownerAddress.toByteArray),
-            //                  url = new String(witnessUpdateContract.updateUrl.toByteArray),
-            //                )
-            //
-            //                witnessModelRepository.update(witnessModel)
+              //              case WitnessUpdateContract =>
+              //                val witnessUpdateContract = org.tron.protos.Contract.WitnessUpdateContract.parseFrom(any.value.toByteArray)
+              //
+              //                val witnessModel = WitnessModel(
+              //                  address = Base58.encode58Check(witnessUpdateContract.ownerAddress.toByteArray),
+              //                  url = new String(witnessUpdateContract.updateUrl.toByteArray),
+              //                )
+              //
+              //                witnessModelRepository.update(witnessModel)
 
             case _ =>
-            //                println("other contract")
-
+              //                println("other contract")
           }
         }
 

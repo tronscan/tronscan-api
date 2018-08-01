@@ -1,17 +1,15 @@
 package org
 package tronscan.api
 
-import com.google.protobuf.ByteString
 import io.circe.Json
+import io.circe.generic.auto._
+import io.circe.syntax._
 import javax.inject.Inject
 import org.joda.time.DateTime
-import play.api.mvc.InjectedController
 import org.tronscan.db.PgProfile.api._
-import org.tronscan.models._
-import io.circe.syntax._
-import io.circe.generic.auto._
-import org.tron.api.api.BytesMessage
 import org.tronscan.grpc.WalletClient
+import org.tronscan.models._
+import play.api.mvc.InjectedController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -118,7 +116,6 @@ class TokenApi @Inject()(
       val remainingTokens = totalSupply - frozenSupply - issuedTokens
       val percentage = (remainingTokens / availableSupply) * 100
 
-
       Ok(asset.asJson.deepMerge(Json.obj(
         "totalTransactions" -> totalTransactions.asJson,
         "nrOfTokenHolders" -> tokenHolders.asJson,
@@ -140,7 +137,7 @@ class TokenApi @Inject()(
       case (t, "balance") => t.balance
     }
 
-    q = q andThen { q1 => q1.filter(_.token === name) }
+    q = q andThen(_.filter(_.token === name))
 
     for {
       total <- readTotals(q)

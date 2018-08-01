@@ -4,18 +4,18 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, Zip}
 import akka.stream._
-import akka.{NotUsed, util}
+import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, Zip}
+import akka.util
 import com.google.protobuf.ByteString
-import io.circe.Json
+import io.circe.syntax._
 import io.grpc.{Status, StatusRuntimeException}
 import javax.inject.{Inject, Named}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
 import org.tron.api.api.{EmptyMessage, NumberMessage}
-import org.tron.common.utils.{Base58, ByteArray, ByteUtil, Sha256Hash}
+import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Account
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountUpdateContract, AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tronscan.Extensions._
@@ -32,9 +32,6 @@ import play.api.cache.redis.CacheAsyncApi
 import play.api.inject.ConfigurationProvider
 import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
-import io.circe.syntax._
-import io.circe.generic.auto._
-import shapeless.PolyDefns.~>
 
 import scala.async.Async.{await, _}
 import scala.collection.mutable.ListBuffer
@@ -477,7 +474,6 @@ class SolidityNodeReader @Inject()(
           } else {
             List.empty
           }
-
         }
       }
       .flatMapConcat(queries => Source(queries))
