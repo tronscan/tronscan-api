@@ -62,7 +62,7 @@ GET     /api/token/:name/address        org.tronscan.api.TokenApi.getAccounts(na
 # Witnesses
 
 GET     /api/witness                    org.tronscan.api.WitnessApi.findAll
-GET     /api/witness/statistic          org.tronscan.api.WitnessApi.maintenanceStatistic
+GET     /api/witness/maintenance-statistic         org.tronscan.api.WitnessApi.maintenanceStatistic
 
 # Nodes
 
