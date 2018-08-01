@@ -419,7 +419,7 @@ class AccountApi @Inject()(
     try {
       Action.async {
 
-        for {
+        (for {
           witness <- witnessRepository.findByAddress(address)
           result <- async {
 
@@ -456,23 +456,22 @@ class AccountApi @Inject()(
                     ))
                 }
 
-              case _ =>
-                Ok(Json.obj(
-                  "success" -> false,
-                  "reason" -> "Account does not contain an URL"
-                ))
-            }
+            case _ =>
+              Ok(Json.obj(
+                "success" -> false,
+                "reason" -> "Account does not contain an URL"
+              ))
           }
-        } yield result
-      }
-    } catch {
-      case _: Exception =>
-        Action {
-          Ok(Json.obj(
-            "success" -> false,
-            "reason" -> "Could not retrieve file"
-          ))
-
+        }
+      } yield result)
+        .recoverWith {
+          case _: Exception =>
+            Future.successful {
+              Ok(Json.obj(
+                "success" -> false,
+                "reason" -> "Could not retrieve file"
+              ))
+            }
         }
     }
   }
