@@ -130,7 +130,8 @@ trait TableRepository[T <: Table[E], E <: Any] extends Repository {
   }
 
 
-  def sortWithRequest(sortParam: String = "sort")(sorter: PartialFunction[(T, String), Rep[_ <: Any]])(implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
+  def sortWithRequest(sortParam: String = "sort")(sorter: PartialFunction[(T, String), Rep[_ <: Any]])
+                     (implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
     (for {
       json <- request.getQueryString(sortParam)
     } yield {
@@ -151,6 +152,8 @@ trait TableRepository[T <: Table[E], E <: Any] extends Repository {
               case (col: Rep[DateTime], "desc") => col.desc
               case (col: Rep[Boolean], "asc") => col.asc
               case (col: Rep[Boolean], "desc") => col.desc
+              case (col: Rep[Long], "asc") => col.asc
+              case (col: Rep[Long], "desc") => col.desc
             }
           }
       }
