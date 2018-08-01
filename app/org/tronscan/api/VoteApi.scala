@@ -25,16 +25,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class VoteApi @Inject()(
-   cached: Cached,
+  cached: Cached,
   repo: VoteWitnessContractModelRepository,
   witnessModelRepository: WitnessModelRepository,
-   srRepo: SuperRepresentativeModelRepository,
-   walletClient: WalletClient,
-   accountModelRepository: AccountModelRepository,
-   voteSnapshotModelRepository: VoteSnapshotModelRepository,
-   walletSolidity: WalletSolidity,
-   voteList: VoteList,
-   @NamedCache("redis") redisCache: CacheAsyncApi) extends InjectedController {
+  srRepo: SuperRepresentativeModelRepository,
+  walletClient: WalletClient,
+  accountModelRepository: AccountModelRepository,
+  voteSnapshotModelRepository: VoteSnapshotModelRepository,
+  walletSolidity: WalletSolidity,
+  voteList: VoteList,
+  @NamedCache("redis") redisCache: CacheAsyncApi) extends InjectedController {
 
   def findAll() = Action.async { implicit request =>
 
