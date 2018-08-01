@@ -1,7 +1,6 @@
 package org.tronscan.importer
 
-import akka.NotUsed
-import akka.actor.Actor
+import akka.actor.{Actor, ActorRef}
 import akka.stream._
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
 import javax.inject.Inject
@@ -21,10 +20,28 @@ import play.api.cache.redis.CacheAsyncApi
 import play.api.inject.ConfigurationProvider
 import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
-
+import scala.async.Async._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+
+case class ImportAction(
+ /**
+   * If all blocks should be confirmed
+   */
+  confirmBlocks: Boolean = false,
+
+ /**
+   * If the accounts should be imported from GRPC and updated into the database
+   */
+  updateAccounts: Boolean = false,
+
+ /**
+   * If redis should be resetted
+   */
+ cleanRedisCache: Boolean = false,
+)
+
 
 class FullNodeImporter @Inject()(
   blockModelRepository: BlockModelRepository,
@@ -41,10 +58,38 @@ class FullNodeImporter @Inject()(
   val config = configurationProvider.get
   val syncFull = configurationProvider.get.get[Boolean]("sync.full")
   val syncSolidity = configurationProvider.get.get[Boolean]("sync.solidity")
+  var addressSync = ActorRef.noSender
 
-  def buildSource(initialSync: Boolean = false) = {
 
-    def redisCleaner = if (initialSync) Flow[Address] else redisCacheCleaner
+  /**
+    * Build import action from import status
+    */
+  def buildImportActionFromImportStatus(importStatus: ImportStatus) = {
+    var autoConfirmBlocks = false
+    var updateAccounts = false
+    var redisCleaner = true
+
+    if (!syncSolidity) {
+      autoConfirmBlocks = true
+      updateAccounts = true
+    }
+
+    if (importStatus.dbLatestBlock == 0) {
+      redisCleaner = false
+    }
+
+    ImportAction(
+      confirmBlocks   = autoConfirmBlocks,
+      updateAccounts  = updateAccounts,
+      redisCleaner    = redisCleaner,
+    )
+  }
+
+  def buildSource(importStatus: ImportStatus) = {
+
+    val importAction = buildImportActionFromImportStatus(importStatus)
+
+    def redisCleaner = if (importAction.cleanRedisCache) redisCacheCleaner else Flow[Address]
 
     RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit b => sink =>
         import GraphDSL.Implicits._
@@ -55,10 +100,10 @@ class FullNodeImporter @Inject()(
         val out = b.add(Merge[Any](3))
 
         // Periodically start sync
-        val importStatus = Source.single("")
+        val importStatus = Source.single(importStatus)
           .via(syncStarter)
 
-        /** *** Channels *****/
+        /***** Channels *****/
 
         // Blocks
         importStatus.via(readBlocksFromStatus) ~> blocks.in
@@ -78,7 +123,7 @@ class FullNodeImporter @Inject()(
         /** Importers **/
 
         // Synchronize Blocks
-        blocks ~> fullNodeBlockImporter ~> out
+        blocks ~> fullNodeBlockImporter(importAction.confirmBlocks) ~> out
 
         // Sync addresses
         addresses ~> redisCleaner ~> accountUpdaterFlow ~> out
@@ -105,7 +150,7 @@ class FullNodeImporter @Inject()(
     */
   def accountUpdaterFlow = {
     if (!syncSolidity) {
-      syncService.buildAddressSynchronizer.async
+      Flow[String].map(address => addressSync ! address)
     } else {
       Flow[Address]
     }
@@ -139,8 +184,7 @@ class FullNodeImporter @Inject()(
   /**
     * Retrieves the latest synchronisation status and checks if the sync should proceed
     */
-  def syncStarter = Flow[Any]
-    .mapAsync(1)(_ => syncService.importStatus)
+  def syncStarter = Flow[ImportStatus]
     .filter {
       // Stop if there are more then 100 blocks to sync for full node
       case status if status.fullNodeBlocksToSync > 0 =>
@@ -165,7 +209,12 @@ class FullNodeImporter @Inject()(
     q orElse elseEmpty
   }
 
-  def fullNodeBlockImporter = {
+  /**
+    * Build block importer
+    *
+    * @param confirmBlocks if all blocks that are being imported should be automatically confirmed
+    */
+  def fullNodeBlockImporter(confirmBlocks: Boolean = false) = {
     val importer = buildContractSqlBuilder
 
     Flow[Block]
@@ -177,11 +226,11 @@ class FullNodeImporter @Inject()(
         Logger.info("FULL NODE BLOCK: " + header.number + ", TX: " + block.transactions.size)
 
         // Import Block
-        queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block).copy(confirmed = !syncSolidity)))
+        queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
 
         // Import Transactions
         queries.appendAll(block.transactions.map { trx =>
-          transactionModelRepository.buildInsertOrUpdate(ModelUtils.transactionToModel(trx, block).copy(confirmed = !syncSolidity))
+          transactionModelRepository.buildInsertOrUpdate(ModelUtils.transactionToModel(trx, block).copy(confirmed = confirmBlocks))
         })
 
         // Import Contracts
@@ -189,7 +238,7 @@ class FullNodeImporter @Inject()(
           case (trx, contract) =>
             ModelUtils.contractToModel(contract, trx, block).map {
               case transfer: TransferModel =>
-                importer((contract.`type`, contract, transfer.copy(confirmed = !syncSolidity || block.getBlockHeader.getRawData.number == 0)))
+                importer((contract.`type`, contract, transfer.copy(confirmed = confirmBlocks || block.getBlockHeader.getRawData.number == 0)))
               case x =>
                 importer((contract.`type`, contract, x))
             }.getOrElse(Seq.empty)
@@ -205,31 +254,30 @@ class FullNodeImporter @Inject()(
       .mapAsync(1)(blockModelRepository.executeQueries)
   }
 
+
   def startSync() = {
 
     Logger.info("START FULL NODE SYNC")
 
-    val decider: Supervision.Decider = {  exc =>
-        Logger.error("FULL NODE ERROR", exc)
-        Supervision.Resume
+    val decider: Supervision.Decider = { exc =>
+      Logger.error("FULL NODE ERROR", exc)
+      Supervision.Resume
     }
 
     implicit val materializer = ActorMaterializer(
       ActorMaterializerSettings(context.system)
         .withSupervisionStrategy(decider))(context)
 
-    Source.tick(0.seconds, 3.seconds, "")
-        .mapAsync(1) { _ =>
-          Logger.info("START")
-          buildSource().run()
-        }
-        .runWith(Sink.ignore)
-        .andThen {
-          case Success(_) =>
-            Logger.info("BLOCKCHAIN SYNC SUCCESS")
-          case Failure(exc) =>
-            Logger.error("BLOCKCHAIN SYNC FAILURE", exc)
-        }
+    Source.tick(0.seconds, 2.seconds, "")
+      .mapAsync(1)(_ => syncService.importStatus)
+      .mapAsync(1)(status => buildSource(status).run())
+      .runWith(Sink.ignore)
+      .andThen {
+        case Success(_) =>
+          Logger.info("BLOCKCHAIN SYNC SUCCESS")
+        case Failure(exc) =>
+          Logger.error("BLOCKCHAIN SYNC FAILURE", exc)
+      }
   }
 
   def receive = {

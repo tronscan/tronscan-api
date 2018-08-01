@@ -122,9 +122,9 @@ class SynchronisationService @Inject() (
     )
   }
 
-  def buildAddressSynchronizer = Flow[Address]
+  def buildAddressSynchronizer(parallel: Int = 8) = Flow[Address]
     .via(StreamUtils.distinct)
-    .mapAsyncUnordered(8) { address =>
+    .mapAsyncUnordered(parallel) { address =>
       Logger.info("Syncing Address: " + address)
       async {
 

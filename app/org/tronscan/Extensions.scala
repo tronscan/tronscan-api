@@ -1,11 +1,11 @@
 package org.tronscan
 
 import com.google.protobuf.ByteString
-import org.tronscan.domain.Types.{BlockHash, TxHash}
 import org.tron.common.BlockId
 import org.tron.common.utils.{Base58, ByteArray, Sha256Hash}
 import org.tron.protos.Tron.{Block, Transaction}
-import org.tronscan.protocol.ContractUtils
+import org.tronscan.domain.Types.{BlockHash, TxHash}
+import org.tronscan.utils.ContractUtils
 
 object Extensions {
 

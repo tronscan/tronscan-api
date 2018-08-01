@@ -4,8 +4,6 @@ import akka.actor.Actor
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import javax.inject.Inject
-import org.apache.commons.lang3.exception.ExceptionUtils
-import org.tronscan.actions.{RepresentativeListReader, StatsOverview, VoteList}
 import play.api.Logger
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi

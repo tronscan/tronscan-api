@@ -102,7 +102,7 @@ class SolidityNodeImporter @Inject()(
       blocks ~> buildSolidityBlockQueryImporter ~> sink.in
 
       // Synchronize Addresses
-      addresses ~> synchronisationService.buildAddressSynchronizer ~> Sink.ignore
+      addresses ~> synchronisationService.buildAddressSynchronizer() ~> Sink.ignore
 
       // Publish Contract Events
       contracts.map(_._3) ~>

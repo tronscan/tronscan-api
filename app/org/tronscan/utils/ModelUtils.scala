@@ -6,7 +6,6 @@ import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.Extensions._
 import org.tronscan.api.models.TransactionSerializer
 import org.tronscan.models._
-import org.tronscan.protocol.ContractUtils
 
 object ModelUtils {
 
