@@ -1,25 +1,22 @@
 package org
 package tronscan.api
 
+import io.circe.Json
+import io.circe.generic.auto._
+import io.circe.syntax._
 import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
-import org.tron.common.utils.Base58
-import play.api.cache.{Cached, NamedCache}
-import play.api.libs.json.{JsObject, Json}
-import play.api.mvc.InjectedController
 import org.tronscan.App._
 import org.tronscan.Constants
-import org.tronscan.Extensions._
+import org.tronscan.actions.VoteList
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
-import org.tronscan.protocol.AddressFormatter
-import io.circe.generic.auto._
-import io.circe.syntax._
 import play.api.cache.redis.CacheAsyncApi
-import org.tronscan.actions.VoteList
+import play.api.cache.{Cached, NamedCache}
+import play.api.mvc.InjectedController
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -40,7 +37,7 @@ class VoteApi @Inject()(
 
     import repo._
 
-    var q = sortWithRequest() {
+    var q =  sortWithRequest() {
       case (t, "timestamp") => t.timestamp
       case (t, "votes") => t.votes
     }
@@ -64,15 +61,15 @@ class VoteApi @Inject()(
       accounts <- readQuery(q andThen withWitness() andThen limitWithRequest())
     } yield {
       Ok(Json.obj(
-        "total" -> total,
-        "totalVotes" -> totalVotes,
-        "data" -> accounts.map { case (vote, witness, candidateAccount, voterAccounts) => {
-          Json.toJson(vote).as[JsObject] ++ Json.obj(
-            "candidateUrl" -> witness.url,
-            "candidateName" -> candidateAccount.name,
-            "voterAvailableVotes" -> (voterAccounts.power / Constants.ONE_TRX),
-          )
-        }},
+        "total" -> total.asJson,
+        "totalVotes" -> totalVotes.asJson,
+        "data" -> accounts.map { case (vote, witness, candidateAccount, voterAccounts) =>
+          vote.asJson.deepMerge(Json.obj(
+            "candidateUrl" -> witness.url.asJson,
+            "candidateName" -> candidateAccount.name.asJson,
+            "voterAvailableVotes" -> (voterAccounts.power / Constants.ONE_TRX).asJson,
+          ))
+        }.asJson
       ))
     }
   }
@@ -101,7 +98,7 @@ class VoteApi @Inject()(
       currentTime <- client.getNowBlock(EmptyMessage()).map(_.getBlockHeader.getRawData.timestamp)
     } yield {
       Ok(Json.obj(
-        "nextCycle" -> (nextMaintenanceTime - currentTime)
+        "nextCycle" -> (nextMaintenanceTime - currentTime).asJson
       ))
     }
   }
@@ -125,10 +122,10 @@ class VoteApi @Inject()(
     } yield {
       Ok(Json.obj(
         "results" -> data.map(row => Json.obj(
-          "address" -> row._1._1,
-          "timestamp" -> row._1._2,
-          "votes" -> row._2,
-        )),
+          "address" -> row._1._1.asJson,
+          "timestamp" -> row._1._2.asJson,
+          "votes" -> row._2.asJson,
+        )).asJson,
       ))
     }
   }
