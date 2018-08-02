@@ -8,6 +8,10 @@ import org.tronscan.Extensions._
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
 import play.api.db.slick.DatabaseConfigProvider
+import play.api.libs.json.Json
+import org.tronscan.App._
+
+import scala.concurrent.{ExecutionContext, Future}
 
 object BlockModel {
   def fromProto(block: Block) = {
@@ -113,6 +117,7 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
     """.asUpdate
   }
 
+
   def findFirst = {
     findByNumber(2)
   }
@@ -132,4 +137,42 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
   def buildDeleteByNumber(number: Long) = {
     table.filter(_.number === number).delete
   }
+
+  def filterByCreateTime(time: Long) = run {
+    table.filter(_.timestamp > new DateTime(time)).result
+  }
+
+  def maintenanceStatistic(time: String)(implicit executionContext: ExecutionContext) = run {
+    sql"""
+       SELECT t2.witness_address, t2.name, w.url, t2.blockCount
+       FROM witness_create_contract w RIGHT JOIN
+          (SELECT
+          a.name, t1.blockCount, t1.witness_address
+          FROM
+          accounts a RIGHT JOIN
+            (SELECT
+              witness_address,
+              COUNT(*) as blockCount
+            FROM
+              blocks
+            WHERE
+              date_created > '#$time'
+            GROUP BY
+              witness_address) t1
+           ON a.address = t1.witness_address)t2
+       ON w.address = t2.witness_address
+
+    """.as[(String, String, String, Long)]
+  }.map(r => r)
+
+  def maintenanceTotalBlocks(time: String)(implicit executionContext: ExecutionContext) = run {
+    sql"""
+       SELECT COUNT(*) as total
+       FROM
+         blocks
+       WHERE
+         date_created > '#$time'
+    """.as[Long]
+  }.map(r => r)
+
 }

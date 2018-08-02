@@ -56,6 +56,28 @@ class WitnessApi @Inject()(
     }
   }
 
+  def maintenanceStatistic = Action.async { implicit request =>
+    for {
+      (witnesses, blocks, total) <- redisCache.getOrFuture("witness.statistic", 1.second) {
+        representativeListReader.maintenanceStatistic
+      }
+    } yield {
+      Ok(Json.toJson(blocks.filter{block =>
+        val list = witnesses.filter(_.address.encodeAddress == block._1)
+        list.size > 0 && list.head.isJobs
+      }.map { block =>
+        Json.obj(
+          "address"          -> block._1,
+          "name"             -> block._2,
+          "url"              -> block._3,
+          "blockProduced"    -> block._4,
+          "total"            -> total.head,
+          "percentage"       -> block._4 * 1.0 / total.head,
+        )
+      }))
+    }
+  }
+
   def searchForGeo(node: Node) = {
     val ip = ByteArray.toStr(node.getAddress.host.toByteArray)
     geoIPService.findForIp(ip).map { geo =>

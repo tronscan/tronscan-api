@@ -1,6 +1,9 @@
 package org
 package tronscan.api
 
+import io.circe.Json
+import io.circe.generic.auto._
+import io.circe.syntax._
 import io.circe.generic.auto._
 import io.circe.syntax._
 import javax.inject.Inject
@@ -8,12 +11,16 @@ import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tronscan.App._
+import org.tronscan.Constants
+import org.tronscan.actions.VoteList
 import org.tronscan.actions.VoteList
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.domain.Constants
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
 import play.api.cache.redis.CacheAsyncApi
+import play.api.cache.{Cached, NamedCache}
+import play.api.mvc.InjectedController
 import play.api.cache.{Cached, NamedCache}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc.InjectedController
@@ -22,22 +29,22 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class VoteApi @Inject()(
-   cached: Cached,
+  cached: Cached,
   repo: VoteWitnessContractModelRepository,
   witnessModelRepository: WitnessModelRepository,
-   srRepo: SuperRepresentativeModelRepository,
-   walletClient: WalletClient,
-   accountModelRepository: AccountModelRepository,
-   voteSnapshotModelRepository: VoteSnapshotModelRepository,
-   walletSolidity: WalletSolidity,
-   voteList: VoteList,
-   @NamedCache("redis") redisCache: CacheAsyncApi) extends InjectedController {
+  srRepo: SuperRepresentativeModelRepository,
+  walletClient: WalletClient,
+  accountModelRepository: AccountModelRepository,
+  voteSnapshotModelRepository: VoteSnapshotModelRepository,
+  walletSolidity: WalletSolidity,
+  voteList: VoteList,
+  @NamedCache("redis") redisCache: CacheAsyncApi) extends InjectedController {
 
   def findAll() = Action.async { implicit request =>
 
     import repo._
 
-    var q = sortWithRequest() {
+    var q =  sortWithRequest() {
       case (t, "timestamp") => t.timestamp
       case (t, "votes") => t.votes
     }
@@ -58,7 +65,7 @@ class VoteApi @Inject()(
     for {
       total <- readTotals(q)
       totalVotes <- readTotalVotes(q).map(_.getOrElse(0L))
-      accounts <- readQuery(q andThen limitWithRequest() andThen withWitness())
+      accounts <- readQuery(q andThen withWitness() andThen limitWithRequest())
     } yield {
       Ok(Json.obj(
         "total" -> total,
@@ -99,7 +106,7 @@ class VoteApi @Inject()(
       currentTime <- client.getNowBlock(EmptyMessage()).map(_.getBlockHeader.getRawData.timestamp)
     } yield {
       Ok(Json.obj(
-        "nextCycle" -> (nextMaintenanceTime - currentTime)
+        "nextCycle" -> (nextMaintenanceTime - currentTime).asJson
       ))
     }
   }
@@ -123,10 +130,10 @@ class VoteApi @Inject()(
     } yield {
       Ok(Json.obj(
         "results" -> data.map(row => Json.obj(
-          "address" -> row._1._1,
-          "timestamp" -> row._1._2,
-          "votes" -> row._2,
-        )),
+          "address" -> row._1._1.asJson,
+          "timestamp" -> row._1._2.asJson,
+          "votes" -> row._2.asJson,
+        )).asJson,
       ))
     }
   }
