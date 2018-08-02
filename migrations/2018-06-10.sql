@@ -1,0 +1,2 @@
+ALTER TABLE transactions ADD to_address text DEFAULT '' NULL;
+CREATE INDEX CONCURRENTLY transactions_owner_address_to_address_date_created_index ON public.transactions (owner_address, to_address, date_created DESC);

@@ -25,16 +25,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class VoteApi @Inject()(
-   cached: Cached,
+  cached: Cached,
   repo: VoteWitnessContractModelRepository,
   witnessModelRepository: WitnessModelRepository,
-   srRepo: SuperRepresentativeModelRepository,
-   walletClient: WalletClient,
-   accountModelRepository: AccountModelRepository,
-   voteSnapshotModelRepository: VoteSnapshotModelRepository,
-   walletSolidity: WalletSolidity,
-   voteList: VoteList,
-   @NamedCache("redis") redisCache: CacheAsyncApi) extends InjectedController {
+  srRepo: SuperRepresentativeModelRepository,
+  walletClient: WalletClient,
+  accountModelRepository: AccountModelRepository,
+  voteSnapshotModelRepository: VoteSnapshotModelRepository,
+  walletSolidity: WalletSolidity,
+  voteList: VoteList,
+  @NamedCache("redis") redisCache: CacheAsyncApi) extends InjectedController {
 
   def findAll() = Action.async { implicit request =>
 
@@ -61,7 +61,7 @@ class VoteApi @Inject()(
     for {
       total <- readTotals(q)
       totalVotes <- readTotalVotes(q).map(_.getOrElse(0L))
-      accounts <- readQuery(q andThen limitWithRequest() andThen withWitness())
+      accounts <- readQuery(q andThen withWitness() andThen limitWithRequest())
     } yield {
       Ok(Json.obj(
         "total" -> total,
@@ -104,9 +104,7 @@ class VoteApi @Inject()(
         "nextCycle" -> (nextMaintenanceTime - currentTime)
       ))
     }
-
   }
-
 
   def stats = Action.async {
     import voteSnapshotModelRepository._

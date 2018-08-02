@@ -411,62 +411,61 @@ class AccountApi @Inject()(
   )
   def getInfo(address: String) = cached.status(x => "address.info." + address, 200, 1.hour) {
 
-    try {
-      Action.async {
+    Action.async {
 
-        for {
-          witness <- witnessRepository.findByAddress(address)
-          result <- async {
+      (for {
+        witness <- witnessRepository.findByAddress(address)
+        result <- async {
 
-            witness.map(_.url) match {
-              case Some(witnessUrl) =>
+          witness.map(_.url) match {
+            case Some(witnessUrl) =>
 
-                val url = Url.parse(witnessUrl)
+              val url = Url.parse(witnessUrl)
 
-                url.hostOption.map(_.value) match {
-                  case Some("twitter.com") =>
+              url.hostOption.map(_.value) match {
+                case Some("twitter.com") =>
 
-                    val modifiedUrl = url.withScheme("https")
+                  val modifiedUrl = url.withScheme("https")
 
-                    println("GOT TWITTER, scraping", modifiedUrl.toAbsoluteUrl.toStringRaw)
-                    val scraper = new Scraper(Http, Seq(modifiedUrl.schemeOption.get))
+                  println("GOT TWITTER, scraping", modifiedUrl.toAbsoluteUrl.toStringRaw)
+                  val scraper = new Scraper(Http, Seq(modifiedUrl.schemeOption.get))
 
-                    val image = await(scraper
-                      .fetch(ScrapeUrl(modifiedUrl.toAbsoluteUrl.toStringRaw))
-                      .map(scrapedData => scrapedData.mainImageUrl))
+                  val image = await(scraper
+                    .fetch(ScrapeUrl(modifiedUrl.toAbsoluteUrl.toStringRaw))
+                    .map(scrapedData => scrapedData.mainImageUrl))
 
-                    Ok(Json.obj(
-                      "success" -> true,
-                      "image" -> image
-                    ))
-                  case _ =>
-                    val scraper = new Scraper(Http, Seq(url.schemeOption.get))
-                    val image = await(scraper
-                      .fetch(ScrapeUrl(url.toAbsoluteUrl.toStringRaw))
-                      .map(scrapedData => scrapedData.mainImageUrl))
+                  Ok(Json.obj(
+                    "success" -> true,
+                    "image" -> image
+                  ))
+                case _ =>
+                  val scraper = new Scraper(Http, Seq(url.schemeOption.get))
+                  val image = await(scraper
+                    .fetch(ScrapeUrl(url.toAbsoluteUrl.toStringRaw))
+                    .map(scrapedData => scrapedData.mainImageUrl))
 
-                    Ok(Json.obj(
-                      "success" -> true,
-                      "image" -> image,
-                    ))
-                }
+                  Ok(Json.obj(
+                    "success" -> true,
+                    "image" -> image,
+                  ))
+              }
 
-              case _ =>
-                Ok(Json.obj(
-                  "success" -> false,
-                  "reason" -> "Account does not contain an URL"
-                ))
-            }
+            case _ =>
+              Ok(Json.obj(
+                "success" -> false,
+                "reason" -> "Account does not contain an URL"
+              ))
           }
-        } yield result
-      }
-    } catch {
-      case _: Exception =>
-        Action {
-          Ok(Json.obj(
-            "success" -> false,
-            "reason" -> "Could not retrieve file"
-          ))
+        }
+      } yield result)
+        .recoverWith {
+          case _: Exception =>
+            Future.successful {
+              Ok(Json.obj(
+                "success" -> false,
+                "reason" -> "Could not retrieve file"
+              ))
+            }
         }
     }
   }

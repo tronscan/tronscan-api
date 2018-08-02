@@ -4,18 +4,18 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, Zip}
 import akka.stream._
-import akka.{NotUsed, util}
+import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, Zip}
+import akka.util
 import com.google.protobuf.ByteString
-import io.circe.Json
+import io.circe.syntax._
 import io.grpc.{Status, StatusRuntimeException}
 import javax.inject.{Inject, Named}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
 import org.tron.api.api.{EmptyMessage, NumberMessage}
-import org.tron.common.utils.{Base58, ByteArray, ByteUtil, Sha256Hash}
+import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Account
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountUpdateContract, AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tronscan.Extensions._
@@ -34,6 +34,7 @@ import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
 import io.circe.syntax._
 import io.circe.generic.auto._
+import org.tronscan.utils.ContractUtils
 import shapeless.PolyDefns.~>
 
 import scala.async.Async.{await, _}
@@ -110,7 +111,6 @@ class SolidityNodeReader @Inject()(
 
   }
 
-
   def syncChain(): Future[Unit] = async {
 
     println("START SOLIDITY SYNC")
@@ -148,8 +148,8 @@ class SolidityNodeReader @Inject()(
 
     if ((syncToBlock - latestUnconfirmedBlock) > 0) {
       val syncTask = Source(latestUnconfirmedBlock to syncToBlock)
-        .take(2000)
-        .mapAsync(12) { i =>
+        .take(20000)
+        .mapAsync(100) { i =>
           for {
             solidityBlock <- walletSolidity.withDeadlineAfter(10, TimeUnit.SECONDS).getBlockByNum(NumberMessage(i))
             databaseBlock <- blockModelRepository.findByNumber(i)
@@ -206,9 +206,11 @@ class SolidityNodeReader @Inject()(
                 block = header.number,
                 timestamp = transactionTime,
                 ownerAddress = TransactionUtils.getOwner(transaction.getRawData.contract.head),
+                toAddress = ContractUtils.getTo(transaction.getRawData.contract.head).getOrElse(""),
                 contractData = TransactionSerializer.serializeContract(transaction.getRawData.contract.head),
                 contractType = transaction.getRawData.contract.head.`type`.value,
                 confirmed = true,
+                data = ByteArray.toHexString(transaction.getRawData.data.toByteArray),
               )
 
               transactionModelRepository.buildInsertOrUpdate(transactionModel)
@@ -477,7 +479,6 @@ class SolidityNodeReader @Inject()(
           } else {
             List.empty
           }
-
         }
       }
       .flatMapConcat(queries => Source(queries))

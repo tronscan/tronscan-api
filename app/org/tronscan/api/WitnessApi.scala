@@ -49,8 +49,30 @@ class WitnessApi @Inject()(
           "latestSlotNumber"    -> witness.latestSlotNum,
           "missedTotal"         -> witness.totalMissed,
           "producedTotal"       -> witness.totalProduced,
-          "producedTrx"         -> witnessTrx.getOrElse(witness.address.encodeAddress, 0L).toLong,
+          "producedTrx"         -> 0, //witnessTrx.getOrElse(witness.address.encodeAddress, 0L).toLong,
           "votes"               -> witness.voteCount,
+        )
+      }))
+    }
+  }
+
+  def maintenanceStatistic = Action.async { implicit request =>
+    for {
+      (witnesses, blocks, total) <- redisCache.getOrFuture("witness.statistic", 1.second) {
+        representativeListReader.maintenanceStatistic
+      }
+    } yield {
+      Ok(Json.toJson(blocks.filter{block =>
+        val list = witnesses.filter(_.address.encodeAddress == block._1)
+        list.size > 0 && list.head.isJobs
+      }.map { block =>
+        Json.obj(
+          "address"          -> block._1,
+          "name"             -> block._2,
+          "url"              -> block._3,
+          "blockProduced"    -> block._4,
+          "total"            -> total.head,
+          "percentage"       -> block._4 * 1.0 / total.head,
         )
       }))
     }

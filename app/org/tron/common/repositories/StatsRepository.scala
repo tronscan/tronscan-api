@@ -28,7 +28,7 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
        )
      FROM
        generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
-    """.as[(String, Int)]
+    """.as[(String, Long)]
   }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
   def blocksCreated = run {
@@ -44,7 +44,7 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
        )
      FROM
        generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
-    """.as[(String, Int)]
+    """.as[(String, Long)]
   }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
   def totalTransactions = run {
@@ -60,7 +60,7 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
        )
      FROM
        generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
-    """.as[(String, Int)]
+    """.as[(String, Long)]
   }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
   def averageBlockSize = run {
@@ -76,7 +76,7 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
        )
      FROM
        generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
-    """.as[(String, Int)]
+    """.as[(String, Long)]
   }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
   def totalBlockSize = run {
@@ -92,7 +92,7 @@ class StatsRepository @Inject() (val dbConfig: DatabaseConfigProvider) extends R
        )
      FROM
        generate_series('#$chainStartedAt', CURRENT_DATE - 1, '1 day'::interval) as d
-    """.as[(String, Int)]
+    """.as[(String, Long)]
   }.map(_.map(x => (DateTime.parse(x._1).getMillis, x._2)))
 
 
