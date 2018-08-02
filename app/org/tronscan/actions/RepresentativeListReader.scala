@@ -76,7 +76,6 @@ class RepresentativeListReader @Inject() (
     maintenanceTime
   }
 
-
   def maintenanceStatistic(implicit executionContext: ExecutionContext) = {
     val maintenanceTime = getMaintenanceTimeStamp()
     for {
@@ -85,5 +84,4 @@ class RepresentativeListReader @Inject() (
       total <- blockModelRepository.maintenanceTotalBlocks(maintenanceTime)
     } yield (witnesses, blocks, total)
   }
-
 }
