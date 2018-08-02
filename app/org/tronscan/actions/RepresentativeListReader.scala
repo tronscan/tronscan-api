@@ -60,17 +60,17 @@ class RepresentativeListReader @Inject() (
     //val ranges = for (i <- 0 to 18 by 6) yield (i, i + 6)
     //val currentTime = ranges.find(time => currentHour < time._2 && currentHour > time._1)
 
-    if (currentHour>2 && currentHour<=8) {
-      maintenanceTime = maintenanceTime + "T" + "02:00:00"
+    if (currentHour>0 && currentHour<=6) {
+      maintenanceTime = maintenanceTime + "T" + "00:00:00"
     }
-    if (currentHour>8 && currentHour<=14) {
-      maintenanceTime = maintenanceTime + "T" + "08:00:00"
+    if (currentHour>6 && currentHour<=12) {
+      maintenanceTime = maintenanceTime + "T" + "06:00:00"
     }
-    if (currentHour>14 && currentHour<=20) {
-      maintenanceTime = maintenanceTime + "T" + "14:00:00"
+    if (currentHour>12 && currentHour<=18) {
+      maintenanceTime = maintenanceTime + "T" + "12:00:00"
     }
-    if (currentHour>20) {
-      maintenanceTime = maintenanceTime + "T" + "20:00:00"
+    if (currentHour>18) {
+      maintenanceTime = maintenanceTime + "T" + "18:00:00"
     }
     //ISODateTimeFormat.dateTimeParser().parseDateTime(maintenanceTime).getMillis/1000
     maintenanceTime
