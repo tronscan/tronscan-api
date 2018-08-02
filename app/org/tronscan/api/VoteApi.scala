@@ -11,7 +11,6 @@ import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tronscan.App._
-import org.tronscan.Constants
 import org.tronscan.actions.VoteList
 import org.tronscan.actions.VoteList
 import org.tronscan.db.PgProfile.api._
@@ -22,7 +21,6 @@ import play.api.cache.redis.CacheAsyncApi
 import play.api.cache.{Cached, NamedCache}
 import play.api.mvc.InjectedController
 import play.api.cache.{Cached, NamedCache}
-import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc.InjectedController
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -68,16 +66,15 @@ class VoteApi @Inject()(
       accounts <- readQuery(q andThen withWitness() andThen limitWithRequest())
     } yield {
       Ok(Json.obj(
-        "total" -> total,
-        "totalVotes" -> totalVotes,
+        "total" -> total.asJson,
+        "totalVotes" -> totalVotes.asJson,
         "data" -> accounts.map { case (vote, witness, candidateAccount, voterAccounts) => {
-          val voteJson: JsObject = vote.asJson
-          voteJson ++ Json.obj(
-            "candidateUrl" -> witness.url,
-            "candidateName" -> candidateAccount.name,
-            "voterAvailableVotes" -> (voterAccounts.power / Constants.ONE_TRX),
-          )
-        }},
+          vote.asJson.deepMerge(Json.obj(
+            "candidateUrl" -> witness.url.asJson,
+            "candidateName" -> candidateAccount.name.asJson,
+            "voterAvailableVotes" -> (voterAccounts.power / Constants.ONE_TRX).asJson,
+          ))
+        }}.asJson,
       ))
     }
   }

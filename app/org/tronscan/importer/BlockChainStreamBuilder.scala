@@ -2,6 +2,7 @@ package org.tronscan.importer
 
 import akka.NotUsed
 import akka.actor.ActorContext
+import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.{Flow, Source}
 import org.tron.api.api.WalletGrpc.WalletStub
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidityStub
@@ -70,6 +71,7 @@ class BlockChainStreamBuilder {
       }
     }
     .flatMapConcat(x => Source(x.toList))
+    .buffer(500, OverflowStrategy.backpressure)
   }
 
   def filterContracts(contractTypes: List[Transaction.Contract.ContractType]) = {

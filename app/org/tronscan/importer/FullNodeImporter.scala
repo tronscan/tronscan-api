@@ -1,8 +1,9 @@
 package org.tronscan.importer
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.Actor
 import akka.stream._
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
+import akka.{Done, NotUsed}
 import javax.inject.Inject
 import monix.execution.Scheduler.Implicits.global
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, WitnessCreateContract}
@@ -20,8 +21,9 @@ import play.api.cache.redis.CacheAsyncApi
 import play.api.inject.ConfigurationProvider
 import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
-import scala.async.Async._
+
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
@@ -39,7 +41,17 @@ case class ImportAction(
  /**
    * If redis should be resetted
    */
- cleanRedisCache: Boolean = false,
+  cleanRedisCache: Boolean = false,
+
+ /**
+   * If address importing should be done asynchronously
+   */
+  asyncAddressImport: Boolean = false,
+
+ /**
+   * If events should be published to the websockets
+   */
+ publishEvents: Boolean = false,
 )
 
 
@@ -58,8 +70,15 @@ class FullNodeImporter @Inject()(
   val config = configurationProvider.get
   val syncFull = configurationProvider.get.get[Boolean]("sync.full")
   val syncSolidity = configurationProvider.get.get[Boolean]("sync.solidity")
-  var addressSync = ActorRef.noSender
 
+  val decider: Supervision.Decider = { exc =>
+    Logger.error("FULL NODE ERROR", exc)
+    Supervision.Resume
+  }
+
+  implicit val materializer = ActorMaterializer(
+    ActorMaterializerSettings(context.system)
+      .withSupervisionStrategy(decider))(context)
 
   /**
     * Build import action from import status
@@ -68,10 +87,21 @@ class FullNodeImporter @Inject()(
     var autoConfirmBlocks = false
     var updateAccounts = false
     var redisCleaner = true
+    var asyncAddressImport = false
+    var publishEvents = true
 
     if (!syncSolidity) {
       autoConfirmBlocks = true
       updateAccounts = true
+    }
+
+    if (importStatus.dbLatestBlock < importStatus.solidityBlock) {
+      autoConfirmBlocks = true
+      updateAccounts = true
+    }
+
+    if (importStatus.dbLatestBlock < (importStatus.fullNodeBlock - 1000)) {
+      publishEvents = false
     }
 
     if (importStatus.dbLatestBlock == 0) {
@@ -79,17 +109,47 @@ class FullNodeImporter @Inject()(
     }
 
     ImportAction(
-      confirmBlocks   = autoConfirmBlocks,
-      updateAccounts  = updateAccounts,
-      redisCleaner    = redisCleaner,
+      confirmBlocks       = autoConfirmBlocks,
+      updateAccounts      = updateAccounts,
+      cleanRedisCache     = redisCleaner,
+      asyncAddressImport  = asyncAddressImport,
+      publishEvents       = publishEvents,
     )
   }
 
-  def buildSource(importStatus: ImportStatus) = {
+  def buildSource(importState: ImportStatus) = {
 
-    val importAction = buildImportActionFromImportStatus(importStatus)
+    Logger.info("buildSource: " + importState.toString)
 
-    def redisCleaner = if (importAction.cleanRedisCache) redisCacheCleaner else Flow[Address]
+    val importAction = buildImportActionFromImportStatus(importState)
+
+    def redisCleaner = if (importAction.cleanRedisCache) Flow[Address].alsoTo(redisCacheCleaner) else Flow[Address]
+
+    def accountUpdaterFlow: Flow[Address, Any, NotUsed] = {
+      if (importAction.updateAccounts) {
+        if (importAction.asyncAddressImport) {
+//          Flow[Address].alsoTo(Sink.actorRef(addressSync, PoisonPill))
+//          Flow[Address].alsoTo(Sink.)
+          syncService.buildAddressSynchronizer()
+        } else {
+          syncService.buildAddressSynchronizer()
+        }
+      } else {
+        Flow[Address]
+      }
+    }
+
+    def eventsPublisher = {
+      if (importAction.publishEvents) {
+        blockChainBuilder.publishContractEvents(List(
+          TransferContract,
+          TransferAssetContract,
+          WitnessCreateContract
+        ))
+      } else {
+        Flow[Transaction.Contract]
+      }
+    }
 
     RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit b => sink =>
         import GraphDSL.Implicits._
@@ -100,7 +160,8 @@ class FullNodeImporter @Inject()(
         val out = b.add(Merge[Any](3))
 
         // Periodically start sync
-        val importStatus = Source.single(importStatus)
+        val importStatus = Source
+          .single(importState)
           .via(syncStarter)
 
         /***** Channels *****/
@@ -129,11 +190,7 @@ class FullNodeImporter @Inject()(
         addresses ~> redisCleaner ~> accountUpdaterFlow ~> out
 
         // Broadcast contract events
-        contracts.map(_._3) ~> blockChainBuilder.publishContractEvents(List(
-          TransferContract,
-          TransferAssetContract,
-          WitnessCreateContract
-        )) ~> out
+        contracts.map(_._3) ~> eventsPublisher ~> out
 
         /** Close Stream **/
 
@@ -145,26 +202,12 @@ class FullNodeImporter @Inject()(
   }
 
   /**
-    * Reads addresses and imports the account
-    * @return
-    */
-  def accountUpdaterFlow = {
-    if (!syncSolidity) {
-      Flow[String].map(address => addressSync ! address)
-    } else {
-      Flow[Address]
-    }
-  }
-
-  /**
     * Invalidate addresses in the redis cache
     */
-  def redisCacheCleaner = Flow[Address]
-    .map { address =>
+  def redisCacheCleaner: Sink[Any, Future[Done]] = Sink
+    .foreach { address =>
       redisCache.removeMatching(s"address/$address/*")
-      address
     }
-    .async
 
   /**
     * Build a stream of blocks from the given import status
@@ -223,7 +266,7 @@ class FullNodeImporter @Inject()(
         val header = block.getBlockHeader.getRawData
         val queries: ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]] = ListBuffer()
 
-        Logger.info("FULL NODE BLOCK: " + header.number + ", TX: " + block.transactions.size)
+        Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}, CONFIRM: $confirmBlocks")
 
         // Import Block
         queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
@@ -254,23 +297,12 @@ class FullNodeImporter @Inject()(
       .mapAsync(1)(blockModelRepository.executeQueries)
   }
 
-
   def startSync() = {
 
     Logger.info("START FULL NODE SYNC")
 
-    val decider: Supervision.Decider = { exc =>
-      Logger.error("FULL NODE ERROR", exc)
-      Supervision.Resume
-    }
-
-    implicit val materializer = ActorMaterializer(
-      ActorMaterializerSettings(context.system)
-        .withSupervisionStrategy(decider))(context)
-
     Source.tick(0.seconds, 2.seconds, "")
-      .mapAsync(1)(_ => syncService.importStatus)
-      .mapAsync(1)(status => buildSource(status).run())
+      .mapAsync(1)(_ => syncService.importStatus.flatMap(buildSource(_).run()))
       .runWith(Sink.ignore)
       .andThen {
         case Success(_) =>

@@ -5,15 +5,6 @@ organization := "org.tronscan"
 
 version := "latest"
 
-lazy val root = (project in file("."))
-  .enablePlugins(PlayScala)
-    .settings(
-      PB.protoSources in Compile := Seq(file("protobuf"), file("target/protobuf_external/google/api")),
-      PB.includePaths in Compile := Seq(file("protobuf"), file("target/protobuf_external")),
-      PB.targets in Compile := Seq(
-        scalapb.gen() -> (sourceManaged in Compile).value
-      ),
-    )
 
 scalaVersion := "2.12.4"
 
@@ -98,4 +89,14 @@ libraryDependencies ++= Seq(
 sources in (Compile, doc) := Seq.empty
 publishArtifact in (Compile, packageDoc) := false
 
-//
+
+
+lazy val root = (project in file("."))
+  .enablePlugins(PlayScala)
+  .settings(
+    PB.protoSources in Compile := Seq(file("app/protobuf"), file("target/protobuf_external/google/api")),
+    PB.includePaths in Compile := Seq(file("app/protobuf"), file("target/protobuf_external")),
+    PB.targets in Compile := Seq(
+      scalapb.gen() -> (sourceManaged in Compile).value
+    ),
+  )

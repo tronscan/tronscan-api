@@ -18,6 +18,12 @@ import org.joda.time.DateTime
 import org.tron.common.crypto.ECKey
 import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Account
+import org.tronscan.Extensions._
+import org.tronscan.db.PgProfile.api._
+import org.tronscan.domain.Constants
+import org.tronscan.grpc.WalletClient
+import org.tronscan.models._
+import org.tronscan.service.SRService
 import pdi.jwt.{JwtAlgorithm, JwtJson}
 import play.api.cache.Cached
 import play.api.inject.ConfigurationProvider
@@ -415,47 +421,44 @@ class AccountApi @Inject()(
     hidden = true
   )
   def getInfo(address: String) = cached.status(x => "address.info." + address, 200, 1.hour) {
+    Action.async {
 
-    try {
-      Action.async {
+      (for {
+        witness <- witnessRepository.findByAddress(address)
+        result <- async {
 
-        (for {
-          witness <- witnessRepository.findByAddress(address)
-          result <- async {
+          witness.map(_.url) match {
+            case Some(witnessUrl) =>
 
-            witness.map(_.url) match {
-              case Some(witnessUrl) =>
+              val url = Url.parse(witnessUrl)
 
-                val url = Url.parse(witnessUrl)
+              url.hostOption.map(_.value) match {
+                case Some("twitter.com") =>
 
-                url.hostOption.map(_.value) match {
-                  case Some("twitter.com") =>
+                  val modifiedUrl = url.withScheme("https")
 
-                    val modifiedUrl = url.withScheme("https")
+                  println("GOT TWITTER, scraping", modifiedUrl.toAbsoluteUrl.toStringRaw)
+                  val scraper = new Scraper(Http, Seq(modifiedUrl.schemeOption.get))
 
-                    println("GOT TWITTER, scraping", modifiedUrl.toAbsoluteUrl.toStringRaw)
-                    val scraper = new Scraper(Http, Seq(modifiedUrl.schemeOption.get))
+                  val image = await(scraper
+                    .fetch(ScrapeUrl(modifiedUrl.toAbsoluteUrl.toStringRaw))
+                    .map(scrapedData => scrapedData.mainImageUrl))
 
-                    val image = await(scraper
-                      .fetch(ScrapeUrl(modifiedUrl.toAbsoluteUrl.toStringRaw))
-                      .map(scrapedData => scrapedData.mainImageUrl))
+                  Ok(Json.obj(
+                    "success" -> true,
+                    "image" -> image
+                  ))
+                case _ =>
+                  val scraper = new Scraper(Http, Seq(url.schemeOption.get))
+                  val image = await(scraper
+                    .fetch(ScrapeUrl(url.toAbsoluteUrl.toStringRaw))
+                    .map(scrapedData => scrapedData.mainImageUrl))
 
-                    Ok(Json.obj(
-                      "success" -> true,
-                      "image" -> image
-                    ))
-                  case _ =>
-                    val scraper = new Scraper(Http, Seq(url.schemeOption.get))
-                    val image = await(scraper
-                      .fetch(ScrapeUrl(url.toAbsoluteUrl.toStringRaw))
-                      .map(scrapedData => scrapedData.mainImageUrl))
-
-                    Ok(Json.obj(
-                      "success" -> true,
-                      "image" -> image,
-                    ))
-                }
-
+                  Ok(Json.obj(
+                    "success" -> true,
+                    "image" -> image,
+                  ))
+              }
             case _ =>
               Ok(Json.obj(
                 "success" -> false,
