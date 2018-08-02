@@ -79,7 +79,11 @@ class TransactionApi @Inject()(
         case (query, ("block", value)) =>
           query.filter(_.block === value.toLong)
         case (query, ("address", value)) =>
+          query.filter(x => x.ownerAddress === value || x.toAddress === value)
+        case (query, ("address_from", value)) =>
           query.filter(_.ownerAddress === value)
+        case (query, ("address_to", value)) =>
+          query.filter(_.toAddress === value)
         case (query, ("hash", value)) =>
           query.filter(_.hash === value)
         case (query, ("date_start", value)) =>

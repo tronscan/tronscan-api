@@ -32,6 +32,10 @@ import play.api.cache.redis.CacheAsyncApi
 import play.api.inject.ConfigurationProvider
 import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
+import io.circe.syntax._
+import io.circe.generic.auto._
+import org.tronscan.utils.ContractUtils
+import shapeless.PolyDefns.~>
 
 import scala.async.Async.{await, _}
 import scala.collection.mutable.ListBuffer
@@ -107,7 +111,6 @@ class SolidityNodeReader @Inject()(
 
   }
 
-
   def syncChain(): Future[Unit] = async {
 
     println("START SOLIDITY SYNC")
@@ -145,8 +148,8 @@ class SolidityNodeReader @Inject()(
 
     if ((syncToBlock - latestUnconfirmedBlock) > 0) {
       val syncTask = Source(latestUnconfirmedBlock to syncToBlock)
-        .take(2000)
-        .mapAsync(12) { i =>
+        .take(20000)
+        .mapAsync(100) { i =>
           for {
             solidityBlock <- walletSolidity.withDeadlineAfter(10, TimeUnit.SECONDS).getBlockByNum(NumberMessage(i))
             databaseBlock <- blockModelRepository.findByNumber(i)
@@ -203,9 +206,11 @@ class SolidityNodeReader @Inject()(
                 block = header.number,
                 timestamp = transactionTime,
                 ownerAddress = TransactionUtils.getOwner(transaction.getRawData.contract.head),
+                toAddress = ContractUtils.getTo(transaction.getRawData.contract.head).getOrElse(""),
                 contractData = TransactionSerializer.serializeContract(transaction.getRawData.contract.head),
                 contractType = transaction.getRawData.contract.head.`type`.value,
                 confirmed = true,
+                data = ByteArray.toHexString(transaction.getRawData.data.toByteArray),
               )
 
               transactionModelRepository.buildInsertOrUpdate(transactionModel)

@@ -10,7 +10,7 @@ class StatsOverview @Inject()(
 
   def execute(implicit executionContext: ExecutionContext) = {
 
-    def toMap(list: Seq[(Long, Int)]) = list.map(x => (x._1, x._2)).toMap
+    def toMap(list: Seq[(Long, Long)]) = list.map(x => (x._1, x._2)).toMap
 
     for {
       totalTransaction <- statsRepository.totalTransactions
