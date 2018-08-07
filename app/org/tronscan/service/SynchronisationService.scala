@@ -150,8 +150,8 @@ class SynchronisationService @Inject() (
     } yield ImportStatus(
       fullNodeBlock = lastFulNodeNumber,
       solidityBlock = lastSolidityNumber,
-      dbUnconfirmedBlock = lastUnconfirmedDatabaseBlock.map(_.number).getOrElse(0),
-      dbLatestBlock = lastDatabaseBlock.map(_.number).getOrElse(0),
+      dbUnconfirmedBlock = lastUnconfirmedDatabaseBlock.map(_.number).getOrElse(-1),
+      dbLatestBlock = lastDatabaseBlock.map(_.number).getOrElse(-1),
       fullNodeBlockHash = lastFullNodeBlockHash,
       solidityBlockHash = lastSolidityNodeBlockHash,
       dbBlockHash = lastDbBlockHash
