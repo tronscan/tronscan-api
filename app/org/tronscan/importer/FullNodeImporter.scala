@@ -98,7 +98,7 @@ class FullNodeImporter @Inject()(
     var publishEvents = true
 
     val fullNodeBlockHash = Await.result(syncService.getFullNodeHashByNum(importStatus.solidityBlock), 2.second)
-    var resetDB = Await.result(syncService.isSameChain(), 2.second)
+    val resetDB = !Await.result(syncService.isSameChain(), 2.second)
 
     if (!syncSolidity) {
       autoConfirmBlocks = true
