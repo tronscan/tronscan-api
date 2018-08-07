@@ -4,24 +4,28 @@ import akka.stream.scaladsl.{Flow, Source}
 import io.circe.syntax._
 import javax.inject.Inject
 import org.joda.time.DateTime
-import org.tron.api.api.EmptyMessage
+import org.tron.api.api.{EmptyMessage, NumberMessage}
 import org.tron.protos.Tron.Account
 import org.tronscan.Extensions._
-import org.tronscan.domain.BlockChain
-import org.tronscan.domain.Types.Address
+import org.tronscan.domain.Types.{Address, BlockHash}
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models.{AccountModel, AccountModelRepository, AddressBalanceModelRepository, BlockModelRepository}
 import org.tronscan.utils.StreamUtils
 import play.api.Logger
 
 import scala.async.Async.{async, await}
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+
 
 case class ImportStatus(
   fullNodeBlock: Long,
   solidityBlock: Long,
   dbUnconfirmedBlock: Long,
-  dbLatestBlock: Long) {
+  dbLatestBlock: Long,
+  fullNodeBlockHash: String,
+  solidityBlockHash: String,
+  dbBlockHash: String) {
 
   /**
     * Full Node Synchronisation Progress
@@ -72,10 +76,11 @@ class SynchronisationService @Inject() (
   /**
     * Checks if the given chain is the same as the database chain
     */
-  def isSameChain(blockChain: BlockChain) = {
+  def isSameChain() = {
     for {
       dbBlock <- blockModelRepository.findByNumber(0)
-      genesisBlock <- blockChain.genesisBlock
+      wallet <- walletClient.full
+      genesisBlock <- wallet.getBlockByNum(NumberMessage(0))
     } yield dbBlock.exists(_.hash == genesisBlock.hash)
   }
 
@@ -100,6 +105,30 @@ class SynchronisationService @Inject() (
     blockModelRepository.findLatestUnconfirmed
   }
 
+  def getFullNodeHashByNum(number: Long) = {
+    for {
+      wallet <- walletClient.full
+    } yield {
+      Await.result(wallet.getBlockByNum(NumberMessage(number)).map(_.hash), 2.second)
+    }
+  }
+
+  def getSolidityHashByNum(number: Long) = {
+    for {
+      wallet <- walletClient.solidity
+    } yield {
+      Await.result(wallet.getBlockByNum(NumberMessage(number)).map(_.hash), 2.second)
+    }
+  }
+
+  def getDBHashByNum(number: Long) = {
+    for {
+      block <- blockModelRepository.findByNumber(number)
+    } yield {
+      if (block.isDefined) block.get.hash else ""
+    }
+  }
+
   def importStatus = {
     for {
       wallet <- walletClient.full
@@ -114,11 +143,18 @@ class SynchronisationService @Inject() (
       lastSolidityNumber <- lastSolidityNumberF.map(_.getBlockHeader.getRawData.number).recover { case _ => -1L }
       lastDatabaseBlock <- lastDatabaseBlockF
       lastUnconfirmedDatabaseBlock <- lastUnconfirmedDatabaseBlockF
+
+      lastFullNodeBlockHash <- lastFulNodeNumberF.map(_.hash).recover { case _ => "" }
+      lastSolidityNodeBlockHash <- lastSolidityNumberF.map(_.hash).recover { case _ => "" }
+      lastDbBlockHash <- lastDatabaseBlockF.map(_.get.hash).recover { case _ => "" }
     } yield ImportStatus(
       fullNodeBlock = lastFulNodeNumber,
       solidityBlock = lastSolidityNumber,
       dbUnconfirmedBlock = lastUnconfirmedDatabaseBlock.map(_.number).getOrElse(0),
       dbLatestBlock = lastDatabaseBlock.map(_.number).getOrElse(0),
+      fullNodeBlockHash = lastFullNodeBlockHash,
+      solidityBlockHash = lastSolidityNodeBlockHash,
+      dbBlockHash = lastDbBlockHash
     )
   }
 
@@ -127,15 +163,12 @@ class SynchronisationService @Inject() (
     .mapAsyncUnordered(parallel) { address =>
       Logger.info("Syncing Address: " + address)
       async {
-
         val walletSolidity = await(walletClient.solidity)
-
         val account = await(walletSolidity.getAccount(Account(
           address = address.decodeAddress
         )))
 
         if (account != null) {
-
           val accountModel = AccountModel(
             address = address,
             name = new String(account.accountName.toByteArray),

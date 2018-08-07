@@ -21,7 +21,7 @@ class BlockChainStreamBuilder {
   /**
     * Reads the blocks with getBlockByNum
     */
-  def readSolidityBlocks(from: Long, to: Long, parallel: Int = 12)(client: WalletSolidityStub): Source[Block, NotUsed] = {
+  def readSolidityBlocks(from: Long, to: Long, parallel: Int = 36)(client: WalletSolidityStub): Source[Block, NotUsed] = {
     Source(from to to)
       .mapAsync(parallel) { i => client.getBlockByNum(NumberMessage(i)) }
       .filter(_.blockHeader.isDefined)
@@ -30,7 +30,7 @@ class BlockChainStreamBuilder {
   /**
     * Reads the blocks with getBlockByNum
     */
-  def readFullNodeBlocks(from: Long, to: Long, parallel: Int = 12)(client: WalletStub): Source[Block, NotUsed] = {
+  def readFullNodeBlocks(from: Long, to: Long, parallel: Int = 36)(client: WalletStub): Source[Block, NotUsed] = {
     Source(from to to)
       .mapAsync(parallel) { i => client.getBlockByNum(NumberMessage(i)) }
       .filter(_.blockHeader.isDefined)

@@ -22,10 +22,12 @@ import play.api.inject.ConfigurationProvider
 import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
 
+import scala.async.Async.{async, await}
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+
 
 case class ImportAction(
  /**
@@ -52,7 +54,12 @@ case class ImportAction(
    * If events should be published to the websockets
    */
  publishEvents: Boolean = false,
-)
+
+ /**
+   * If db should be reset
+   */
+ resetDB: Boolean = false,
+                       )
 
 
 class FullNodeImporter @Inject()(
@@ -90,12 +97,15 @@ class FullNodeImporter @Inject()(
     var asyncAddressImport = false
     var publishEvents = true
 
+    val fullNodeBlockHash = Await.result(syncService.getFullNodeHashByNum(importStatus.solidityBlock), 2.second)
+    var resetDB = Await.result(syncService.isSameChain(), 2.second)
+
     if (!syncSolidity) {
       autoConfirmBlocks = true
       updateAccounts = true
     }
 
-    if (importStatus.dbLatestBlock < importStatus.solidityBlock) {
+    if (fullNodeBlockHash == importStatus.solidityBlockHash) {
       autoConfirmBlocks = true
       updateAccounts = true
     }
@@ -114,6 +124,7 @@ class FullNodeImporter @Inject()(
       cleanRedisCache     = redisCleaner,
       asyncAddressImport  = asyncAddressImport,
       publishEvents       = publishEvents,
+      resetDB             = resetDB
     )
   }
 
@@ -122,6 +133,10 @@ class FullNodeImporter @Inject()(
     Logger.info("buildSource: " + importState.toString)
 
     val importAction = buildImportActionFromImportStatus(importState)
+
+    if (importAction.resetDB) {
+      Await.result(syncService.resetDatabase(), 2.second)
+    }
 
     def redisCleaner = if (importAction.cleanRedisCache) Flow[Address].alsoTo(redisCacheCleaner) else Flow[Address]
 
@@ -241,15 +256,7 @@ class FullNodeImporter @Inject()(
 
   def buildContractSqlBuilder = {
     import databaseImporter._
-
-    var q = importWitnessCreate orElse
-      importTransfers
-
-    if (!syncSolidity) {
-      q = q orElse buildConfirmedEvents
-    }
-
-    q orElse elseEmpty
+    importWitnessCreate orElse importTransfers orElse buildConfirmedEvents orElse elseEmpty
   }
 
   /**
