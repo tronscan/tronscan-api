@@ -1,10 +1,12 @@
 package org
 package tronscan.api.models
 
+import com.google.protobuf.ByteString
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor, Json => Js}
 import org.joda.time.DateTime
-import org.tron.common.utils.{Base58, ByteArray, Crypto}
+import org.tron.common.crypto.ECKey
+import org.tron.common.utils.{Base58, ByteArray, Crypto, Sha256Hash}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountCreateContract, AccountUpdateContract, AssetIssueContract, DeployContract, FreezeBalanceContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, UpdateAssetContract, VoteAssetContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tron.protos.Tron.{AccountType, Transaction}
 import org.tronscan.Extensions._
@@ -18,7 +20,13 @@ object TransactionSerializer {
     def apply(assetIssueContract: org.tron.protos.Contract.AssetIssueContract): Js = Js.obj(
       "ownerAddress" -> Base58.encode58Check(assetIssueContract.ownerAddress.toByteArray).asJson,
       "name" -> new String(assetIssueContract.name.toByteArray).trim.asJson,
+      "abbr" -> new String(assetIssueContract.abbr.toByteArray).trim.asJson,
       "totalSupply" -> assetIssueContract.totalSupply.asJson,
+      "frozenSupply" -> assetIssueContract.frozenSupply.map(frozen => Js.obj(
+          "amount" -> frozen.frozenAmount.asJson,
+          "days" -> frozen.frozenDays.asJson,
+        ).asJson
+      ).asJson,
       "trxNum" -> assetIssueContract.trxNum.asJson,
       "num" -> assetIssueContract.num.asJson,
       "startTime" -> new DateTime(assetIssueContract.startTime).asJson,
@@ -294,7 +302,7 @@ object TransactionSerializer {
     "signatures" -> transaction.signature.map { signature =>
       Js.obj(
         "bytes" -> Crypto.getBase64FromByteString(signature).asJson,
-//        "address" -> ByteString.copyFrom(ECKey.signatureToAddress(Sha256Hash.of(transaction.getRawData.toByteArray).getBytes, Crypto.getBase64FromByteString(transaction.signature(0)))).toAddress.asJson,
+        "address" -> ByteString.copyFrom(ECKey.signatureToAddress(Sha256Hash.of(transaction.getRawData.toByteArray).getBytes, Crypto.getBase64FromByteString(transaction.signature(0)))).encodeAddress.asJson,
       )
     }.asJson,
   )

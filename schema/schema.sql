@@ -228,3 +228,9 @@ create table if not exists trx_request
 )
 ;
 
+create table if not exists funds
+(
+  id int,
+  address text
+)
+;
