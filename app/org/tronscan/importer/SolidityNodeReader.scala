@@ -423,17 +423,10 @@ class SolidityNodeReader @Inject()(
               dateUpdated = DateTime.now,
             )
 
-            List(accountModelRepository.buildInsertOrUpdate(accountModel)) ++
-              addressBalanceModelRepository.buildUpdateBalance(accountModel)
-          } else {
-            List.empty
+            await(accountModelRepository.insertOrUpdate(accountModel))
+            await(addressBalanceModelRepository.updateBalance(accountModel))
           }
         }
-      }
-      .flatMapConcat(queries => Source(queries))
-      .groupedWithin(150, 10.seconds)
-      .mapAsync(1) { queries =>
-        blockModelRepository.executeQueries(queries)
       }
       .toMat(Sink.ignore)(Keep.none)
       .run
