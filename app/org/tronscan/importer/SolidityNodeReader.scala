@@ -58,58 +58,7 @@ class SolidityNodeReader @Inject()(
   @NamedCache("redis") redisCache: CacheAsyncApi,
   @Named("node-watchdog") nodeWatchDog: ActorRef) extends Actor {
 
-  var resumeFromBlock = -1L
   var addressSyncer = ActorRef.noSender
-
-  def latestDbBlockSource = Source.unfoldAsync(0L) { x =>
-    println("PREVIOUS BLOCK SOURCE", x)
-    for {
-      latest <- blockModelRepository.findLatest
-    } yield latest.map(_.number -> x)
-  }
-
-  def latestUnconfirmedBlockSource = Source.unfoldAsync(0L) { x =>
-    println("PREVIOUS DB BLOCK", x)
-    for {
-      latest <- blockModelRepository.findLatestUnconfirmed
-    } yield latest.map(_.number -> x)
-  }
-
-  def latestFullNodeBlock = Source.unfoldAsync(0L) { x =>
-    println("latestFullNodeBlock", x)
-    for {
-      walletFull <- walletClient.full
-      fullNodeBlockId <- walletFull
-        .withDeadlineAfter(1, TimeUnit.SECONDS)
-        .getNowBlock(EmptyMessage())
-        .map(_.getBlockHeader.getRawData.number)
-    } yield Some(fullNodeBlockId -> x)
-  }
-
-
-  def buildSource = {
-    RunnableGraph.fromGraph(GraphDSL.create() { implicit b =>
-      import GraphDSL.Implicits._
-
-      val ticker = Source.tick(10.seconds, 3.seconds, "run")
-
-      val zip = b.add(Zip[Long, Long]())
-
-      latestFullNodeBlock ~> zip.in0
-      latestDbBlockSource ~> zip.in1
-
-      val t = zip.out ~> Flow[(Long, Long)]
-        .takeWhile {
-          case (fullNodeBlockNumber, latestDbBlockNumber) =>
-            100 > (fullNodeBlockNumber - latestDbBlockNumber)
-        }
-        .map { case (_, latestDbBlockNumber) => latestDbBlockNumber }
-
-
-      ClosedShape
-    })
-
-  }
 
   def syncChain(): Future[Unit] = async {
 
