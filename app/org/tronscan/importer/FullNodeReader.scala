@@ -2,24 +2,26 @@ package org.tronscan.importer
 
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
+import akka.stream._
 import akka.stream.scaladsl.{Keep, Sink, Source}
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, KillSwitches, Supervision}
 import akka.util
-import cats.kernel.instances.hash
+import com.google.protobuf.ByteString
+import io.circe.syntax._
+import io.grpc.{Status, StatusRuntimeException}
 import javax.inject.{Inject, Named}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
 import org.tron.api.api.{EmptyMessage, NumberMessage}
-import org.tron.common.utils.{Base58, ByteArray, ByteUtil, Sha256Hash}
-import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
+import org.tron.common.utils.{Base58, ByteArray}
+import org.tron.protos.Tron.Account
+import org.tron.protos.Tron.Transaction.Contract.ContractType.{ParticipateAssetIssueContract, TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
 import org.tronscan.Extensions._
 import org.tronscan.api.models.TransactionSerializer
 import org.tronscan.events._
 import org.tronscan.grpc.{GrpcClients, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
-import org.tronscan.protocol.TransactionUtils
 import org.tronscan.utils.ContractUtils
 import org.tronscan.watchdog.NodeWatchDog
 import org.tronscan.watchdog.NodeWatchDog.GetBestNodes
@@ -42,6 +44,8 @@ class FullNodeReader @Inject()(
   voteWitnessContractModelRepository: VoteWitnessContractModelRepository,
   witnessModelRepository: WitnessModelRepository,
   walletClient: WalletClient,
+  accountModelRepository: AccountModelRepository,
+  addressBalanceModelRepository: AddressBalanceModelRepository,
   @Named("node-watchdog") nodeWatchDog: ActorRef,
   @NamedCache("redis") redisCache: CacheAsyncApi,
   configurationProvider: ConfigurationProvider) extends Actor {
@@ -49,6 +53,8 @@ class FullNodeReader @Inject()(
   val config = configurationProvider.get
   val syncFull = configurationProvider.get.get[Boolean]("sync.full")
   val syncSolidity = configurationProvider.get.get[Boolean]("sync.solidity")
+  var addressSyncer = ActorRef.noSender
+
 
   def syncChain() = async {
 
@@ -109,7 +115,7 @@ class FullNodeReader @Inject()(
 
     println(s"BLOCKCHAIN SYNC FROM $latestBlockNum to $blockNum")
 
-    val (killSwitch, syncTask) = Source(latestBlockNum to blockNum)
+    val (_, syncTask) = Source(latestBlockNum to blockNum)
       .take(1000)
       .mapAsync(12) { i => randomWithBlockNumber(i).getBlockByNum(NumberMessage(i)) }
       .filter(block => {
@@ -118,7 +124,9 @@ class FullNodeReader @Inject()(
         } else true
       })
       .viaMat(KillSwitches.single)(Keep.right)
-      .map { block =>
+      .mapAsync(1) { block =>
+
+        val addresses = ListBuffer[String]()
 
         val header = block.getBlockHeader.getRawData
 
@@ -192,6 +200,9 @@ class FullNodeReader @Inject()(
 
               queries.append(transferRepository.buildInsert(trxModel))
 
+              addresses.append(transferContract.ownerAddress.encodeAddress)
+              addresses.append(transferContract.toAddress.encodeAddress)
+
             case TransferAssetContract =>
               val transferContract = org.tron.protos.Contract.TransferAssetContract.parseFrom(any.value.toByteArray)
 
@@ -212,6 +223,9 @@ class FullNodeReader @Inject()(
               context.system.eventStream.publish(AssetTransferCreated(trxModel))
 
               queries.append(transferRepository.buildInsert(trxModel))
+
+              addresses.append(transferContract.ownerAddress.encodeAddress)
+              addresses.append(transferContract.toAddress.encodeAddress)
 
             case VoteWitnessContract if !syncSolidity =>
               val voteWitnessContract = org.tron.protos.Contract.VoteWitnessContract.parseFrom(any.value.toByteArray)
@@ -234,8 +248,8 @@ class FullNodeReader @Inject()(
 
               queries.appendAll(voteWitnessContractModelRepository.buildUpdateVotes(voterAddress, inserts))
 
-//            case ParticipateAssetIssueContract =>
-//              val participateAssetIssueContract = org.tron.protos.Contract.ParticipateAssetIssueContract.parseFrom(any.value.toByteArray)
+            case ParticipateAssetIssueContract =>
+              val participateAssetIssueContract = org.tron.protos.Contract.ParticipateAssetIssueContract.parseFrom(any.value.toByteArray)
 //
 //              val participateAsset = ParticipateAssetIssueModel(
 //                ownerAddress = Base58.encode58Check(participateAssetIssueContract.ownerAddress.toByteArray),
@@ -245,9 +259,11 @@ class FullNodeReader @Inject()(
 //                token = new String(participateAssetIssueContract.assetName.toByteArray),
 //                dateCreated = transactionTime
 //              )
-//
+
+              addresses.append(participateAssetIssueContract.toAddress.encodeAddress)
+
 //              context.system.eventStream.publish(ParticipateAssetIssueModelCreated(participateAsset))
-//
+
 //              queries.append(participateAssetIssueRepository.buildInsert(participateAsset))
             //
             //              case AssetIssueContract =>
@@ -301,12 +317,9 @@ class FullNodeReader @Inject()(
           }
         }
 
-        queries.toList
-      }
-      .flatMapConcat(queries => Source(queries))
-      .groupedWithin(500, 3.seconds)
-      .mapAsync(1) { queries =>
-        blockModelRepository.executeQueries(queries)
+        addresses.foreach(address => addressSyncer ! address)
+
+        blockModelRepository.executeQueries(queries.toList)
       }
       .toMat(Sink.ignore)(Keep.both)
       .run
@@ -319,9 +332,66 @@ class FullNodeReader @Inject()(
       println("BLOCKCHAIN SYNC FAILURE", ExceptionUtils.getMessage(exc), ExceptionUtils.getStackTrace(exc))
   }
 
+  def startAddressSync() = {
+
+    val decider: Supervision.Decider = {
+      case exc: StatusRuntimeException if exc.getStatus == Status.DEADLINE_EXCEEDED =>
+        println("DEADLINE REACHED, RESTARTING", exc, ExceptionUtils.getStackTrace(exc))
+        Supervision.Restart
+      case exc =>
+        println("ADDRESS SYNC ERROR", exc, ExceptionUtils.getStackTrace(exc))
+        Supervision.Resume
+    }
+
+    implicit val materializer = ActorMaterializer(
+      ActorMaterializerSettings(context.system)
+        .withSupervisionStrategy(decider))(context)
+
+    Source.actorRef[String](500, OverflowStrategy.dropHead)
+      .mapMaterializedValue { actorRef =>
+        addressSyncer = actorRef
+      }
+      .groupedWithin(500, 6.seconds)
+      .map { addresses => addresses.distinct }
+      .flatMapConcat(x => Source(x))
+      .mapAsyncUnordered(8) { address =>
+        async {
+
+          val walletSolidity = await(walletClient.solidity)
+
+          val account = await(walletSolidity.getAccount(Account(
+            address = address.decodeAddress
+          )))
+
+          if (account != null) {
+
+            val accountModel = AccountModel(
+              address = address,
+              name = new String(account.accountName.toByteArray),
+              balance = account.balance,
+              power = account.frozen.map(_.frozenBalance).sum,
+              tokenBalances = account.asset.asJson,
+              dateUpdated = DateTime.now,
+            )
+
+            await(accountModelRepository.insertOrUpdate(accountModel))
+            await(addressBalanceModelRepository.updateBalance(accountModel))
+          }
+
+          redisCache.removeMatching(s"address/$address/*")
+        }
+      }
+      .toMat(Sink.ignore)(Keep.none)
+      .run
+  }
+
   def getClients = {
     implicit val timeout = util.Timeout(10.seconds)
     (nodeWatchDog ? GetBestNodes(10, n => n.nodeType == NodeWatchDog.full && n.permanent)).mapTo[GrpcClients]
+  }
+
+  override def preStart(): Unit = {
+    startAddressSync()
   }
 
   def waiting: Receive = {

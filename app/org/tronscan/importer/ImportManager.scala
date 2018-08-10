@@ -14,7 +14,6 @@ object ImportManager {
 
 class ImportManager @Inject() (
   configurationProvider: ConfigurationProvider,
-  blockModelRepository: BlockModelRepository,
   @Named("fullnode-reader") fullNodeReader: ActorRef,
   @Named("solidity-reader") solidityNodeReader: ActorRef)  extends Actor {
 

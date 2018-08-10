@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.stream._
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, Zip}
+import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util
 import com.google.protobuf.ByteString
 import io.circe.syntax._
@@ -25,6 +25,7 @@ import org.tronscan.grpc.{GrpcClients, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
 import org.tronscan.protocol.TransactionUtils
+import org.tronscan.utils.ContractUtils
 import org.tronscan.watchdog.NodeWatchDog
 import org.tronscan.watchdog.NodeWatchDog.GetBestNodes
 import play.api.cache.NamedCache
@@ -32,10 +33,6 @@ import play.api.cache.redis.CacheAsyncApi
 import play.api.inject.ConfigurationProvider
 import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
-import io.circe.syntax._
-import io.circe.generic.auto._
-import org.tronscan.utils.ContractUtils
-import shapeless.PolyDefns.~>
 
 import scala.async.Async.{await, _}
 import scala.collection.mutable.ListBuffer
@@ -196,8 +193,8 @@ class SolidityNodeReader @Inject()(
                     queries.append(transferRepository.buildInsert(trxModel))
                   }
 
-                  addresses.append(from)
-                  addresses.append(to)
+//                  addresses.append(from)
+//                  addresses.append(to)
 
                 case TransferAssetContract if replace =>
                   val transferContract = org.tron.protos.Contract.TransferAssetContract.parseFrom(any.value.toByteArray)
@@ -220,8 +217,8 @@ class SolidityNodeReader @Inject()(
                     queries.append(transferRepository.buildInsert(trxModel))
                   }
 
-                  addresses.append(from)
-                  addresses.append(to)
+//                  addresses.append(from)
+//                  addresses.append(to)
 
                 //                case ParticipateAssetIssueContract =>
                 //                  val participateAssetIssueContract = org.tron.protos.Contract.ParticipateAssetIssueContract.parseFrom(any.value.toByteArray)
@@ -253,10 +250,10 @@ class SolidityNodeReader @Inject()(
                       votes = vote.voteCount,
                     )
                   }
-
-                  inserts.foreach { vote =>
-                    context.system.eventStream.publish(VoteCreated(vote))
-                  }
+//
+//                  inserts.foreach { vote =>
+//                    context.system.eventStream.publish(VoteCreated(vote))
+//                  }
 
                   addresses.append(voterAddress)
 
@@ -406,7 +403,7 @@ class SolidityNodeReader @Inject()(
 
           redisCache.removeMatching(s"address/$address/*")
 
-          val walletSolidity = await(walletClient.solidity)
+          val walletSolidity = await(walletClient.full)
 
           val account = await(walletSolidity.getAccount(Account(
             address = ByteString.copyFrom(Base58.decode58Check(address))
