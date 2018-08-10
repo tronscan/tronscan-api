@@ -22,6 +22,11 @@ object TransactionSerializer {
       "name" -> new String(assetIssueContract.name.toByteArray).trim.asJson,
       "abbr" -> new String(assetIssueContract.abbr.toByteArray).trim.asJson,
       "totalSupply" -> assetIssueContract.totalSupply.asJson,
+      "frozenSupply" -> assetIssueContract.frozenSupply.map(frozen => Js.obj(
+          "amount" -> frozen.frozenAmount.asJson,
+          "days" -> frozen.frozenDays.asJson,
+        ).asJson
+      ).asJson,
       "trxNum" -> assetIssueContract.trxNum.asJson,
       "num" -> assetIssueContract.num.asJson,
       "startTime" -> new DateTime(assetIssueContract.startTime).asJson,
