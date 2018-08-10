@@ -35,6 +35,10 @@ GET     /api/account/:address/sr        org.tronscan.api.AccountApi.getSr(addres
 GET     /api/account/:address/sr-pages  org.tronscan.api.AccountApi.getSrPages(address: String)
 POST    /api/account/:address/sr        org.tronscan.api.AccountApi.updateSr(address: String)
 
+# Fund
+
+GET     /api/fund                       org.tronscan.api.FundsApi.findAll
+
 # Node
 
 GET     /api/node                               org.tronscan.api.NodeApi.status
