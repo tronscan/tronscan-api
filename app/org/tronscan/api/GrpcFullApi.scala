@@ -59,9 +59,14 @@ class GrpcFullApi @Inject() (
       client <- getClient
       block <- client.getBlockByNum(NumberMessage(number))
     } yield {
-      Ok(Json.obj(
-        "data" -> block.asJson
-      ))
+      block.blockHeader match {
+        case Some(_) =>
+          Ok(Json.obj(
+            "data" -> block.asJson
+          ))
+        case _ =>
+          NotFound
+      }
     }
   }
 

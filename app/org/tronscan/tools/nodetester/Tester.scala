@@ -1,8 +1,8 @@
-package org.tronscan.tester
+package org.tronscan.tools.nodetester
 
-import org.tron.api.api.{EmptyMessage, NumberMessage}
 import org.tron.api.api.WalletGrpc.WalletStub
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidityStub
+import org.tron.api.api.{EmptyMessage, NumberMessage}
 import org.tron.protos.Tron.Block
 
 import scala.concurrent.Future

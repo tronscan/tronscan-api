@@ -4,23 +4,13 @@ import java.util.UUID
 
 import com.google.inject.{Inject, Singleton}
 import io.circe.Json
+import io.circe.generic.auto._
+import io.circe.syntax._
 import org.joda.time.DateTime
 import org.tron.protos.Contract.AssetIssueContract
-import play.api.db.slick.DatabaseConfigProvider
-import org.tronscan.App._
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
-import io.circe.syntax._
-import io.circe.generic.auto._
-
-object AssetIssueContractModel {
-//  implicit val format = Json.format[AssetIssueContractModel]
-//  implicit val frozenTokenformat = Json.format[FrozenToken]
-}
-
-object FrozenToken {
-//  implicit val frozenTokenformat = Json.format[FrozenToken]
-}
+import play.api.db.slick.DatabaseConfigProvider
 
 case class FrozenToken(amount: Double, days: Int)
 
@@ -107,6 +97,12 @@ class AssetIssueContractModelRepository @Inject() (val dbConfig: DatabaseConfigP
     table.filter(_.name === name).result.headOption
   }
 
+  def buildUpdateAsset(model: AssetIssueContractModel) = {
+    table
+      .filter(_.name === model.name)
+      .map(a => (a.description, a.url))
+      .update((model.description, model.url))
+  }
 
   def withParticipation() = { query: QueryType =>
     for {

@@ -3,18 +3,16 @@ package org.tronscan.models
 import java.util.UUID
 
 import com.google.inject.{Inject, Singleton}
+import org.joda.time.DateTime
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
-import org.joda.time.DateTime
 import play.api.db.slick.DatabaseConfigProvider
-import play.api.libs.json.Json
-import play.api.libs.json.JodaWrites._
-import play.api.libs.json.JodaReads._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object VoteWitnessContractModel {
-  implicit val format = Json.format[VoteWitnessContractModel]
-}
+case class VoteWitnessList(
+  voterAddress: String,
+  votes: List[VoteWitnessContractModel] = List.empty)
 
 case class VoteWitnessContractModel(
   id: UUID = UUID.randomUUID(),
@@ -33,7 +31,7 @@ class VoteWitnessContractModelTable(tag: Tag) extends Table[VoteWitnessContractM
   def voterAddress = column[String]("voter_address")
   def candidateAddress = column[String]("candidate_address")
   def votes = column[Long]("votes")
-  def * = (id, block, transaction, timestamp, voterAddress, candidateAddress, votes) <> ((VoteWitnessContractModel.apply _).tupled, VoteWitnessContractModel.unapply)
+  def * = (id, block, transaction, timestamp, voterAddress, candidateAddress, votes) <> (VoteWitnessContractModel.tupled, VoteWitnessContractModel.unapply)
 }
 
 @Singleton()

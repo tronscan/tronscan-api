@@ -2,18 +2,11 @@ package org.tronscan.models
 
 import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
-import play.api.db.slick.DatabaseConfigProvider
-import play.api.libs.json.Json
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
-import org.tronscan.App._
+import play.api.db.slick.DatabaseConfigProvider
 
-import scala.concurrent.{ExecutionContext, Future}
-
-
-object VoteSnapshotModel {
-  implicit val format = Json.format[VoteSnapshotModel]
-}
+import scala.concurrent.ExecutionContext
 
 case class VoteSnapshotModel(
   id: Option[Long] = None,
@@ -26,7 +19,7 @@ class VoteSnapshotModelTable(tag: Tag) extends Table[VoteSnapshotModel](tag, Som
   def address = column[String]("address")
   def timestamp = column[DateTime]("timestamp")
   def votes = column[Long]("votes")
-  def * = (id.?, address, timestamp, votes) <> ((VoteSnapshotModel.apply _).tupled, VoteSnapshotModel.unapply)
+  def * = (id.?, address, timestamp, votes) <> (VoteSnapshotModel.tupled, VoteSnapshotModel.unapply)
 }
 
 @Singleton()

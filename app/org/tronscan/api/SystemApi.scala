@@ -9,14 +9,16 @@ import play.api.libs.json.Json
 import play.api.mvc.InjectedController
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models.BlockModelRepository
+import org.tronscan.service.SynchronisationService
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class SystemApi @Inject()(
   walletClient: WalletClient,
-  walletSolidity: WalletSolidity,
   cached: Cached,
   blockModelRepository: BlockModelRepository,
+  syncService: SynchronisationService,
   configurationProvider: ConfigurationProvider) extends InjectedController {
 
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -27,45 +29,25 @@ class SystemApi @Inject()(
       val networkType = configurationProvider.get.get[String]("net.type")
 
       for {
-        wallet <- walletClient.full
-
-        lastFulNodeNumberF = wallet.getNowBlock(EmptyMessage())
-        lastSolidityNumberF = walletSolidity.getNowBlock(EmptyMessage())
-        lastDatabaseBlockF = blockModelRepository.findLatest
-        lastUnconfirmedDatabaseBlockF = blockModelRepository.findLatestUnconfirmed
-
-        lastFulNodeNumber <- lastFulNodeNumberF
-        lastSolidityNumber <- lastSolidityNumberF
-        lastDatabaseBlock <- lastDatabaseBlockF
-        lastUnconfirmedDatabaseBlock <- lastUnconfirmedDatabaseBlockF
+        syncStatus <- syncService.importStatus
       } yield {
-
-        val dbBlock = lastDatabaseBlock.map(_.number).getOrElse(0L)
-        val dbUnconfirmedBlock = lastUnconfirmedDatabaseBlock.map(_.number).getOrElse(0L).toLong
-        val fullNodeBlock = lastFulNodeNumber.getBlockHeader.getRawData.number
-        val solidityBlock = lastSolidityNumber.getBlockHeader.getRawData.number
-
-        val blockProgress = (dbBlock.toDouble / fullNodeBlock.toDouble) * 100
-        val solidityBlockProgress = (dbUnconfirmedBlock.toDouble / solidityBlock.toDouble) * 100
-        val totalProgress = (blockProgress + solidityBlockProgress) / 2
-
         Ok(
           Json.obj(
             "network" -> Json.obj(
-              "type" -> networkType
+              "type" -> networkType,
             ),
             "sync" -> Json.obj(
-              "progress" -> totalProgress,
+              "progress" -> syncStatus.totalProgress,
             ),
             "database" -> Json.obj(
-              "block" -> dbBlock.toLong,
-              "unconfirmedBlock" -> dbUnconfirmedBlock,
+              "block" -> syncStatus.dbLatestBlock,
+              "unconfirmedBlock" -> syncStatus.dbUnconfirmedBlock,
             ),
             "full" -> Json.obj(
-              "block" -> lastFulNodeNumber.getBlockHeader.getRawData.number,
+              "block" -> syncStatus.fullNodeBlock,
             ),
             "solidity" -> Json.obj(
-              "block" -> solidityBlock,
+              "block" -> syncStatus.solidityBlock,
             ),
           )
         )

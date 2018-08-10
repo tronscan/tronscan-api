@@ -7,10 +7,6 @@ import play.api.db.slick.DatabaseConfigProvider
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
 
-object TransactionModel {
-//  implicit val format = play.api.libs.json.Json.format[TransactionModel]
-}
-
 case class TransactionModel(
   hash: String,
   block: Long,
@@ -32,7 +28,7 @@ class TransactionModelTable(tag: Tag) extends Table[TransactionModel](tag, "tran
   def contractData = column[io.circe.Json]("contract_data")
   def contractType = column[Int]("contract_type")
   def data = column[String]("data")
-  def * = (hash, block, timestamp, confirmed, ownerAddress, toAddress, contractData, contractType, data) <> ((TransactionModel.apply _).tupled, TransactionModel.unapply)
+  def * = (hash, block, timestamp, confirmed, ownerAddress, toAddress, contractData, contractType, data) <> (TransactionModel.tupled, TransactionModel.unapply)
 }
 
 @Singleton()

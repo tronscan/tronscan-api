@@ -10,10 +10,6 @@ import slick.sql.FixedSqlAction
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object AddressBalanceModel {
-  implicit val format = Json.format[AddressBalanceModel]
-}
-
 case class AddressBalanceModel(
   address: String,
   name: String,
@@ -23,7 +19,7 @@ class AddressBalanceModelTable(tag: Tag) extends Table[AddressBalanceModel](tag,
   def address = column[String]("address")
   def token = column[String]("token")
   def balance = column[Long]("balance")
-  def * = (address, token, balance) <> ((AddressBalanceModel.apply _).tupled, AddressBalanceModel.unapply)
+  def * = (address, token, balance) <> (AddressBalanceModel.tupled, AddressBalanceModel.unapply)
 }
 
 @Singleton()

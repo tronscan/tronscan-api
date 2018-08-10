@@ -6,10 +6,6 @@ import org.tronscan.db.TableRepository
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.libs.json.Json
 
-object IPGeoModel {
-  implicit val format = Json.format[IPGeoModel]
-}
-
 case class IPGeoModel(
   ip: String,
   country: String,
@@ -24,7 +20,7 @@ class IPGeoModelTable(tag: Tag) extends Table[IPGeoModel](tag, "ip_geo") {
   def city = column[String]("city")  
   def lat = column[Double]("lat")  
   def lng = column[Double]("lng")
-  def * = (ip, country, city, lat, lng) <> ((IPGeoModel.apply _).tupled, IPGeoModel.unapply)
+  def * = (ip, country, city, lat, lng) <> (IPGeoModel.tupled, IPGeoModel.unapply)
 }
 
 @Singleton()

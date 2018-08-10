@@ -1,15 +1,13 @@
 package org.tronscan.db
 
 import org.joda.time.DateTime
-import play.api.Logger
-import play.api.mvc.{AnyContent, Request}
-import slick.jdbc.{GetResult, JdbcBackend}
 import org.tronscan.db.PgProfile.api._
+import play.api.Logger
 import play.api.db.slick.DatabaseConfigProvider
+import play.api.mvc.{AnyContent, Request}
 import slick.dbio.{Effect, NoStream}
-import slick.sql.FixedSqlAction
+import slick.jdbc.{GetResult, JdbcBackend}
 
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Failure
@@ -116,7 +114,7 @@ trait TableRepository[T <: Table[E], E <: Any] extends Repository {
     runQuery(params.foldLeft(query)(e))
   }
 
-  def filterRequest(e: (QueryType, (String, String)) => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
+  def filterRequest(e: (QueryType, (String, String)) => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { query: QueryType =>
     val params = request.queryString.map(x => (x._1, x._2.mkString))
     params.foldLeft(query)(e)
   }
@@ -131,7 +129,7 @@ trait TableRepository[T <: Table[E], E <: Any] extends Repository {
 
 
   def sortWithRequest(sortParam: String = "sort")(sorter: PartialFunction[(T, String), Rep[_ <: Any]])
-                     (implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
+                     (implicit request: Request[AnyContent]): QueryType => QueryType = { query: QueryType =>
     (for {
       json <- request.getQueryString(sortParam)
     } yield {

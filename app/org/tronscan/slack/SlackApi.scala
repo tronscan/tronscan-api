@@ -11,7 +11,6 @@ import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tron.common.crypto.ECKey
 import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Account
-import org.tronscan.Constants
 import play.api.inject.ConfigurationProvider
 import play.api.libs.json.{JsValue, Json}
 import play.api.libs.ws.WSClient
@@ -25,6 +24,7 @@ import scala.concurrent.duration._
 import akka.util.Timeout
 import dispatch.url
 import org.ocpsoft.prettytime.PrettyTime
+import org.tronscan.domain.Constants
 
 import scala.async.Async.async
 

@@ -8,10 +8,6 @@ import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.ExecutionContext
 
-object WitnessModel {
-  implicit val format = Json.format[WitnessModel]
-}
-
 case class WitnessModel(
   address: String,
   url: String)
@@ -19,7 +15,7 @@ case class WitnessModel(
 class WitnessModelTable(tag: Tag) extends Table[WitnessModel](tag, "witness_create_contract") {
   def address = column[String]("address", O.PrimaryKey)
   def url = column[String]("url")
-  def * = (address, url) <> ((WitnessModel.apply _).tupled, WitnessModel.unapply)
+  def * = (address, url) <> (WitnessModel.tupled, WitnessModel.unapply)
 }
 
 @Singleton()

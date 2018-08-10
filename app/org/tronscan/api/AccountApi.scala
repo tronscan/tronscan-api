@@ -18,18 +18,28 @@ import org.joda.time.DateTime
 import org.tron.common.crypto.ECKey
 import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Account
+import org.tronscan.Extensions._
+import org.tronscan.db.PgProfile.api._
+import org.tronscan.domain.Constants
+import org.tronscan.grpc.WalletClient
+import org.tronscan.models._
+import org.tronscan.service.SRService
 import pdi.jwt.{JwtAlgorithm, JwtJson}
 import play.api.cache.Cached
 import play.api.inject.ConfigurationProvider
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.InjectedController
-import org.tronscan.Constants
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
 import org.tronscan.Extensions._
 import org.tronscan.service.SRService
-
+import io.circe.syntax._
+import io.circe.generic.auto._
+import org.spongycastle.util.encoders.Hex
+import org.tron.common.crypto.ECKey
+import org.tronscan.domain.Constants
+import org.tronscan.Extensions._
 import scala.async.Async.{async, await}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -246,7 +256,7 @@ class AccountApi @Inject()(
     for {
       sr <- srRepository.findByAddress(address)
     } yield {
-      Ok(Json.toJson(sr))
+      Ok(sr.get.asJson)
     }
   }
 
@@ -274,9 +284,10 @@ class AccountApi @Inject()(
     hidden = true)
   def updateSr(address: String) = Action.async { req =>
 
+    val json: io.circe.Json = req.body.asJson.get
+
     (for {
-      json <- req.body.asJson
-      model <- json.asOpt[SuperRepresentativeModel]
+      model <- json.as[SuperRepresentativeModel].toOption
       keyHeader <- req.headers.get("X-Key")
       key <- JwtJson.decodeJson(keyHeader, key, Seq(JwtAlgorithm.HS256)).toOption.map(x => (x \ "address").as[String])
       if address == key
@@ -410,7 +421,6 @@ class AccountApi @Inject()(
     hidden = true
   )
   def getInfo(address: String) = cached.status(x => "address.info." + address, 200, 1.hour) {
-
     Action.async {
 
       (for {
@@ -449,7 +459,6 @@ class AccountApi @Inject()(
                     "image" -> image,
                   ))
               }
-
             case _ =>
               Ok(Json.obj(
                 "success" -> false,

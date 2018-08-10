@@ -26,6 +26,7 @@ trait PgProfile extends ExPostgresProfile
 
   object MyAPI extends API with ArrayImplicits
     with DateTimeImplicits
+    with JodaDateTimeImplicits
     with JsonImplicits
     with CirceImplicits
     with NetImplicits

@@ -1,4 +1,4 @@
-package org.tronscan.events
+package org.tronscan.tools.signing
 
 sealed trait SignEvent {
   def channel: String

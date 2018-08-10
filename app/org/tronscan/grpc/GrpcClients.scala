@@ -16,3 +16,5 @@ case class GrpcClients(clients: List[ManagedChannel]) {
   def solidityClients = clients.map(WalletSolidityGrpc.stub)
   def client = clients(random)
 }
+
+
