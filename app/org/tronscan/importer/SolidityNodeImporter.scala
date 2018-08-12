@@ -12,7 +12,7 @@ import org.tronscan.domain.Types.Address
 import org.tronscan.grpc.{SolidityBlockChain, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
-import org.tronscan.service.{ImportStatus, SynchronisationService}
+import org.tronscan.service.SynchronisationService
 import org.tronscan.utils.{ModelUtils, ProtoUtils}
 import play.api.Logger
 import play.api.cache.NamedCache

@@ -101,7 +101,7 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
     )
   }
 
-  def clearAll = run {
+  def clearAll: Future[Unit] = run {
     sql"""
     TRUNCATE TABLE accounts;
     TRUNCATE TABLE address_balance;

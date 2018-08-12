@@ -64,11 +64,11 @@ package object org {
   /**
     * Await.result help function
     */
-  def runSync[T](awaitable: Awaitable[T]): T = Await.result(awaitable, Duration.Inf)
+  def awaitSync[T](awaitable: Awaitable[T]): T = Await.result(awaitable, Duration.Inf)
 
-  def runSync[T](awaitable: Task[T]): T = Await.result(awaitable.runAsync(Scheduler.Implicits.global), Duration.Inf)
+  def awaitSync[T](awaitable: Task[T]): T = Await.result(awaitable.runAsync(Scheduler.Implicits.global), Duration.Inf)
 
-  def runSync[T](awaitable: Awaitable[T], seconds: Int): T = Await.result(awaitable, seconds.seconds)
+  def awaitSync[T](awaitable: Awaitable[T], seconds: Int): T = Await.result(awaitable, seconds.seconds)
 
 
   /**

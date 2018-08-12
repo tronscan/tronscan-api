@@ -1,10 +1,12 @@
 package org.tronscan
 
+import akka.NotUsed
+import akka.stream.scaladsl.Flow
 import com.google.protobuf.ByteString
 import org.tron.common.BlockId
 import org.tron.common.utils.{Base58, ByteArray, Sha256Hash}
 import org.tron.protos.Tron.{Block, Transaction}
-import org.tronscan.domain.Types.{BlockHash, TxHash}
+import org.tronscan.domain.Types.{Address, BlockHash, TxHash}
 import org.tronscan.utils.ContractUtils
 
 object Extensions {
@@ -48,6 +50,14 @@ object Extensions {
     def encodeString = {
       ByteString.copyFromUtf8(str)
     }
+  }
+
+  implicit class StreamUtils[A](streams: List[Flow[A, A, NotUsed]]) {
+    def pipe = streams.foldLeft(Flow[A]) {
+      case (current, res) =>
+        current.via(res)
+    }
+
   }
 
 }
