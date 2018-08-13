@@ -6,7 +6,7 @@ import org.tronscan.grpc.WalletClient
 import org.tronscan.models.{BlockModel, FundsModel, FundsModelRepository}
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -24,15 +24,17 @@ class FundsApi @Inject() (
     responseContainer = "List")
   def findAll = Action.async { implicit request =>
      for {
-      funds <- repo.findAll()
+       funds <- repo.findAll()
+       balanceSum <- repo.getFundsBalanceSum()
      } yield {
-       Ok(Json.toJson(
-         funds.map(row => Json.obj(
-           "address" -> row._1,
-           "balance" -> row._2,
-           "power"   -> row._3
-         ))
+       val data: Vector[JsObject] = funds.map(row => Json.obj(
+         "address" -> row._1,
+         "balance" -> row._2,
+         "power"   -> row._3
        ))
+       var response = Json.obj("totalBalance" -> balanceSum)
+       response ++= Json.obj("data" -> data)
+       Ok(Json.toJson(response))
      }
   }
 }
