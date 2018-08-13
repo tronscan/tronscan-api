@@ -28,9 +28,10 @@ class FundsApi @Inject() (
        balanceSum <- repo.getFundsBalanceSum()
      } yield {
        val data: Vector[JsObject] = funds.map(row => Json.obj(
-         "address" -> row._1,
-         "balance" -> row._2,
-         "power"   -> row._3
+         "id"      -> row._1,
+         "address" -> row._2,
+         "balance" -> row._3,
+         "power"   -> row._4
        ))
        var response = Json.obj("totalBalance" -> balanceSum)
        response ++= Json.obj("data" -> data)
