@@ -116,6 +116,10 @@ trait TableRepository[T <: Table[E], E <: Any] extends Repository {
     runQuery(params.foldLeft(query)(e))
   }
 
+  def filterSomeToken(fun: QueryType => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
+    fun(query)
+  }
+
   def filterRequest(e: (QueryType, (String, String)) => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
     val params = request.queryString.map(x => (x._1, x._2.mkString))
     params.foldLeft(query)(e)
