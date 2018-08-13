@@ -28,4 +28,12 @@ class FundsModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
        ON f.address = a.address
     """.as[(String, Long, Long)]
   }.map(r => r)
+
+  def getFundsBalanceSum()(implicit executionContext: ExecutionContext) = run {
+    sql"""
+       SELECT SUM(a.balance) balance
+       FROM funds f LEFT JOIN accounts a
+       ON f.address = a.address
+    """.as[Long]
+  }.map(r => r)
 }
