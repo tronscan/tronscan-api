@@ -299,6 +299,7 @@ object TransactionSerializer {
     "hash" -> transaction.hash.asJson,
     "timestamp" -> transaction.getRawData.timestamp.asJson,
     "contracts" -> transaction.getRawData.contract.map(contract => serializeContract(contract, includeType = true)).asJson,
+    "data" -> transaction.getRawData.data.decodeString.asJson,
     "signatures" -> transaction.signature.map { signature =>
       Js.obj(
         "bytes" -> Crypto.getBase64FromByteString(signature).asJson,
