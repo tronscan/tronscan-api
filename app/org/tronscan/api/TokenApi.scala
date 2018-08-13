@@ -32,6 +32,10 @@ class TokenApi @Inject()(
       case (t, "supply") => t.totalSupply
     }
 
+    q = q andThen filterSomeToken {
+      case query => query.filter(x => x.name =!= "Fortnite" && x.name =!= "ZZZ")
+    }
+
     q = q andThen filterRequest {
       case (query, ("name", value)) =>
         if (value.endsWith("%") || value.startsWith("%")) {
@@ -97,8 +101,10 @@ class TokenApi @Inject()(
   }
 
   def findByName(name: String) = Action.async {
+    var token = name
+    if (name == "Fortnite") {token = ""}
     for {
-      asset <- repo.findByName(name).map(_.get)
+      asset <- repo.findByName(token).map(_.get)
       account <- accountRepository.findByAddress(asset.ownerAddress).map(_.get)
       totalTransactions <- transferRepository.countTokenTransfers(asset.name)
       tokenHolders <- addressBalanceModelRepository.countTokenHolders(asset.name)
