@@ -32,6 +32,10 @@ class TokenApi @Inject()(
       case (t, "supply") => t.totalSupply
     }
 
+    q = q andThen filterSomeToken {
+      case query => query.filter(_.name =!= "Fortnite")
+    }
+
     q = q andThen filterRequest {
       case (query, ("name", value)) =>
         if (value.endsWith("%") || value.startsWith("%")) {
