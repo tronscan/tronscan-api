@@ -33,7 +33,7 @@ class TokenApi @Inject()(
     }
 
     q = q andThen filterSomeToken {
-      case query => query.filter(x => x.name =!= "Fortnite" && x.name =!= "ZZZ")
+      case query => query.filter(x => x.name =!= "Fortnite" && x.name =!= "ZZZ" && x.name =!= "VBucks")
     }
 
     q = q andThen filterRequest {
@@ -102,7 +102,7 @@ class TokenApi @Inject()(
 
   def findByName(name: String) = Action.async {
     var token = name
-    if (name == "Fortnite") {token = ""}
+    if (name == "Fortnite" || name == "VBucks") {token = ""}
     for {
       asset <- repo.findByName(token).map(_.get)
       account <- accountRepository.findByAddress(asset.ownerAddress).map(_.get)
