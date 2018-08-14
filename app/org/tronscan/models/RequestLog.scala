@@ -23,7 +23,7 @@ class RequestLogModelTable(tag: Tag) extends Table[RequestLogModel](tag, Some("a
   def host = column[String]("host")
   def uri = column[String]("uri")
   def ip = column[String]("ip")
-  def * = (id, timestamp, referer, host, uri, ip) <> ((RequestLogModel.apply _).tupled, RequestLogModel.unapply)
+  def * = (id, timestamp, referer, host, uri, ip) <> (RequestLogModel.tupled, RequestLogModel.unapply)
 }
 
 @Singleton()

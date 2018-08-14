@@ -4,17 +4,22 @@ package tronscan.api
 import io.circe.Json
 import io.circe.generic.auto._
 import io.circe.syntax._
+import io.circe.generic.auto._
+import io.circe.syntax._
 import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tronscan.App._
-import org.tronscan.Constants
+import org.tronscan.actions.VoteList
 import org.tronscan.actions.VoteList
 import org.tronscan.db.PgProfile.api._
+import org.tronscan.domain.Constants
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
 import play.api.cache.redis.CacheAsyncApi
+import play.api.cache.{Cached, NamedCache}
+import play.api.mvc.InjectedController
 import play.api.cache.{Cached, NamedCache}
 import play.api.mvc.InjectedController
 
@@ -63,19 +68,19 @@ class VoteApi @Inject()(
       Ok(Json.obj(
         "total" -> total.asJson,
         "totalVotes" -> totalVotes.asJson,
-        "data" -> accounts.map { case (vote, witness, candidateAccount, voterAccounts) =>
+        "data" -> accounts.map { case (vote, witness, candidateAccount, voterAccounts) => {
           vote.asJson.deepMerge(Json.obj(
             "candidateUrl" -> witness.url.asJson,
             "candidateName" -> candidateAccount.name.asJson,
             "voterAvailableVotes" -> (voterAccounts.power / Constants.ONE_TRX).asJson,
           ))
-        }.asJson
+        }}.asJson,
       ))
     }
   }
 
   def currentCycle = cached.status(x => "current_votes_cycle", 200, 10.seconds) {
-    Action.async { request =>
+    Action.async {
       repo.votesByAddress.map { votes =>
         Ok(io.circe.Json.obj(
           "data" -> votes.asJson

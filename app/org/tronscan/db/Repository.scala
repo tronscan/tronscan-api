@@ -1,15 +1,13 @@
 package org.tronscan.db
 
 import org.joda.time.DateTime
-import play.api.Logger
-import play.api.mvc.{AnyContent, Request}
-import slick.jdbc.{GetResult, JdbcBackend}
 import org.tronscan.db.PgProfile.api._
+import play.api.Logger
 import play.api.db.slick.DatabaseConfigProvider
+import play.api.mvc.{AnyContent, Request}
 import slick.dbio.{Effect, NoStream}
-import slick.sql.FixedSqlAction
+import slick.jdbc.{GetResult, JdbcBackend}
 
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Failure

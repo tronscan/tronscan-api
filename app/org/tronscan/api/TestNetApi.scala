@@ -40,6 +40,10 @@ class TestNetApi @Inject()(
     } yield (result.json \ "success").as[Boolean]
   }
 
+  /**
+    * Request TRX
+    * @return
+    */
   def requestTrx = Action.async { req =>
 
     async {

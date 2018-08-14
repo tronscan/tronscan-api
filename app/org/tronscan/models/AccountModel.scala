@@ -8,10 +8,6 @@ import org.joda.time.DateTime
 import play.api.db.slick.DatabaseConfigProvider
 import org.tronscan.App._
 
-object AccountModel {
-//  implicit val format = Json.format[AccountModel]
-}
-
 case class AccountModel(
   address: String,
   name: String,
@@ -29,7 +25,7 @@ class AccountModelTable(tag: Tag) extends Table[AccountModel](tag, "accounts") {
   def tokenBalances = column[Json]("token_balances")
   def dateCreated = column[DateTime]("date_created")
   def dateUpdated = column[DateTime]("date_updated")
-  def * = (address, name, balance, power, tokenBalances, dateCreated, dateUpdated) <> ((AccountModel.apply _).tupled, AccountModel.unapply)
+  def * = (address, name, balance, power, tokenBalances, dateCreated, dateUpdated) <> (AccountModel.tupled, AccountModel.unapply)
 }
 
 @Singleton()

@@ -15,11 +15,14 @@ import org.tronscan.models.{AccountModelRepository, BlockModelRepository, Witnes
 
 import scala.concurrent.{ExecutionContext, Future}
 
+/**
+  * Represenative List Reader Cache Warmer
+  */
 class RepresentativeListReader @Inject() (
   witnessModelRepository: WitnessModelRepository,
   accountModelRepository: AccountModelRepository,
   blockModelRepository: BlockModelRepository,
-  wallet: Wallet) {
+  wallet: Wallet) extends AsyncAction {
 
   def execute(implicit executionContext: ExecutionContext): Future[(Seq[Witness], Map[String, String], Map[String, Long])] = {
     for {

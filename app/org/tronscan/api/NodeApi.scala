@@ -12,7 +12,7 @@ import play.api.inject.ConfigurationProvider
 import play.api.libs.json.Json
 import play.api.mvc.InjectedController
 import org.tronscan.models.BlockModelRepository
-import org.tronscan.watchdog.NodeWatchDog.{NodeStatus, RequestStatus}
+import org.tronscan.network.NetworkScanner.{NodeStatus, RequestStatus}
 
 import scala.concurrent.duration._
 
