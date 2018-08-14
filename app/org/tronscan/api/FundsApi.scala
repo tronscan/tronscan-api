@@ -19,8 +19,8 @@ class FundsApi @Inject() (
   @NamedCache("redis") redisCache: CacheAsyncApi) extends BaseApi {
 
   @ApiOperation(
-    value = "List blocks",
-    response = classOf[BlockModel],
+    value = "List funds",
+    response = classOf[FundsModel],
     responseContainer = "List")
   def findAll = Action.async { implicit request =>
      for {
