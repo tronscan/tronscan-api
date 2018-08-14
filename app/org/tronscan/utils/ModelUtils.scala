@@ -95,6 +95,7 @@ object ModelUtils {
 
       case c: ParticipateAssetIssueContract =>
         Some(ParticipateAssetIssueModel(
+          transaction_hash = transactionHash,
           ownerAddress = c.ownerAddress.encodeAddress,
           toAddress = c.toAddress.encodeAddress,
           amount = c.amount,
