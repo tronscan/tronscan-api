@@ -91,7 +91,6 @@ create table if not exists asset_issue_contract
   id uuid
     constraint asset_issue_contract_id_pk
     unique,
-  transaction text,
   owner_address text,
   name text,
   total_supply bigint,
