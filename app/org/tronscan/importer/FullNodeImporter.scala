@@ -105,7 +105,7 @@ class FullNodeImporter @Inject()(
       updateAccounts = true
     }
 
-    if ((importStatus.dbLatestBlock <= importStatus.solidityBlock) && (fullNodeBlockHash == importStatus.solidityBlockHash)) {
+    if ((importStatus.dbLatestBlock <= importStatus.solidityBlock - 1000) && (fullNodeBlockHash == importStatus.solidityBlockHash)) {
       autoConfirmBlocks = true
       updateAccounts = true
     }
@@ -133,6 +133,8 @@ class FullNodeImporter @Inject()(
     Logger.info("buildSource: " + importState.toString)
 
     val importAction = buildImportActionFromImportStatus(importState)
+
+    println("importAction-confirmBlocks = " + importAction.confirmBlocks)
 
     if (importAction.resetDB) {
       Await.result(syncService.resetDatabase(), 2.second)
