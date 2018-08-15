@@ -32,7 +32,7 @@ class TokenApi @Inject()(
       case (t, "supply") => t.totalSupply
     }
 
-    q = q andThen filterSomeToken {
+    q = q andThen specialProcess {
       case query => query.filter(x => x.name =!= "Fortnite" && x.name =!= "ZZZ" && x.name =!= "VBucks")
     }
 
