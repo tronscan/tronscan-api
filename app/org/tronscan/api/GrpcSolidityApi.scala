@@ -51,14 +51,18 @@ class GrpcSolidityApi @Inject()(
 
 
   def getBlockByNum(number: Long) = Action.async { implicit req =>
-
     for {
       client <- getClient
       block <- client.getBlockByNum(NumberMessage(number))
     } yield {
-      Ok(Json.obj(
-        "data" -> block.asJson
-      ))
+      block.blockHeader match {
+        case Some(_) =>
+          Ok(Json.obj(
+            "data" -> block.asJson
+          ))
+        case _ =>
+          NotFound
+      }
     }
   }
 

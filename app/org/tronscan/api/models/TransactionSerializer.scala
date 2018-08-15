@@ -202,6 +202,18 @@ object TransactionSerializer {
     )
   }
 
+  implicit val decodeWithdrawBalanceContract = new Decoder[org.tron.protos.Contract.WithdrawBalanceContract] {
+    def apply(c: HCursor) = {
+      for {
+        ownerAddress <- c.downField("ownerAddress").as[String]
+      } yield {
+        org.tron.protos.Contract.WithdrawBalanceContract(
+          ownerAddress = ownerAddress.decodeAddress
+        )
+      }
+    }
+  }
+
   implicit val encodeUnfreezeAssetContract = new Encoder[org.tron.protos.Contract.UnfreezeAssetContract] {
     def apply(contract: org.tron.protos.Contract.UnfreezeAssetContract): Js = Js.obj(
       "ownerAddress" -> Base58.encode58Check(contract.ownerAddress.toByteArray).asJson,
@@ -287,6 +299,7 @@ object TransactionSerializer {
     "hash" -> transaction.hash.asJson,
     "timestamp" -> transaction.getRawData.timestamp.asJson,
     "contracts" -> transaction.getRawData.contract.map(contract => serializeContract(contract, includeType = true)).asJson,
+    "data" -> transaction.getRawData.data.decodeString.asJson,
     "signatures" -> transaction.signature.map { signature =>
       Js.obj(
         "bytes" -> Crypto.getBase64FromByteString(signature).asJson,

@@ -2,27 +2,32 @@ package org
 package tronscan.api
 
 import com.google.protobuf.any.Any
+import io.circe.syntax._
 import io.circe.{Decoder, Json}
 import io.swagger.annotations._
 import javax.inject.Inject
 import org.tron.common.utils.ByteArray
+import org.tron.protos.Contract.{AccountCreateContract, AccountUpdateContract, TransferAssetContract, TransferContract}
 import org.tron.protos.Tron.Transaction
+import org.tron.protos.Tron.Transaction.Contract.ContractType
+import org.tronscan.Extensions._
 import org.tronscan.api.models.TransactionSerializer
 import org.tronscan.grpc.WalletClient
-import org.tronscan.models.TransactionModel
 import org.tronscan.service.TransactionBuilder
 import play.api.mvc.{AnyContent, Request, Result}
 
 import scala.concurrent.Future
 import io.circe.syntax._
-import org.tron.protos.Contract.{AccountCreateContract, AccountUpdateContract, TransferAssetContract, TransferContract}
+import org.tron.protos.Contract._
 import org.tron.protos.Tron.Transaction.Contract.ContractType
 import scalapb.Message
+
 
 case class TransactionAction(
   contract: Transaction.Contract,
   broadcast: Boolean,
-  key: Option[String] = None
+  key: Option[String] = None,
+  data: Option[String] = None,
 )
 
 case class Signature(pk: String)
@@ -34,8 +39,9 @@ class TransactionBuilderApi @Inject()(
   transactionBuilder: TransactionBuilder,
   walletClient: WalletClient) extends BaseApi {
 
-  import scala.concurrent.ExecutionContext.Implicits.global
   import TransactionSerializer._
+
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   def handleTransaction[T]()(implicit request: Request[AnyContent], contractDecoder: Decoder[T]): Future[Result] = async {
     val json: io.circe.Json = request.body.asJson.get
@@ -50,6 +56,7 @@ class TransactionBuilderApi @Inject()(
           Transaction.Contract(
             `type` = ContractType.TransferContract,
             parameter = Some(Any.pack(c.asInstanceOf[TransferContract])))
+
         case c: TransferAssetContract =>
           Transaction.Contract(
             `type` = ContractType.TransferAssetContract,
@@ -64,15 +71,24 @@ class TransactionBuilderApi @Inject()(
           Transaction.Contract(
             `type` = ContractType.AccountUpdateContract,
             parameter = Some(Any.pack(c.asInstanceOf[AccountUpdateContract])))
+
+        case c: WithdrawBalanceContract =>
+          Transaction.Contract(
+            `type` = ContractType.WithdrawBalanceContract,
+            parameter = Some(Any.pack(c.asInstanceOf[WithdrawBalanceContract])))
       }
 
-      TransactionAction(transactionContract, broadcast.getOrElse(false), key)
+      TransactionAction(transactionContract, broadcast.getOrElse(false), key, json.hcursor.downField("data").as[String].toOption)
     }
 
     transactionRequest match {
-      case Right(TransactionAction(contract: Transaction.Contract, broadcast, key)) =>
+      case Right(TransactionAction(contract: Transaction.Contract, broadcast, key, transactionData)) =>
         var transaction = transactionBuilder.buildTransactionWithContract(contract)
         transaction = await(transactionBuilder.setReference(transaction))
+
+        transactionData.foreach { data =>
+          transaction = transaction.withRawData(transaction.getRawData.withData(data.encodeString))
+        }
 
         key.foreach { k =>
           transaction = transactionBuilder.sign(transaction, ByteArray.fromHexString(k))
@@ -130,5 +146,11 @@ class TransactionBuilderApi @Inject()(
     value = "Build AccountUpdateContract" )
   def accountUpdate = Action.async { implicit req =>
     handleTransaction[org.tron.protos.Contract.AccountUpdateContract]()
+  }
+
+  @ApiOperation(
+    value = "Build WithdrawBalancecontract" )
+  def withdrawBalance = Action.async { implicit req =>
+    handleTransaction[org.tron.protos.Contract.WithdrawBalanceContract]()
   }
 }

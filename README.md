@@ -183,3 +183,16 @@ All contract endpoints return the same result
   ...
 }
 ```
+
+#### POST /api/transaction-builder/contract/withdrawbalance
+
+`ownerAddress` Owner Account for with to claim rewards
+
+```json
+{
+  "contract": {
+    "ownerAddress": "TPwJS5eC5BPGyMGtYTHNhPTB89sUWjDSSu"
+  },
+  ...
+}
+```

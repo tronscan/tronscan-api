@@ -23,9 +23,17 @@ class FundsModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
 
   def findAll()(implicit executionContext: ExecutionContext) = run {
     sql"""
-       SELECT f.address, a.balance, a.power
+       SELECT f.id, f.address, a.balance, a.power
        FROM funds f LEFT JOIN accounts a
        ON f.address = a.address
-    """.as[(String, Long, Long)]
+    """.as[(String, String, Long, Long)]
+  }.map(r => r)
+
+  def getFundsBalanceSum()(implicit executionContext: ExecutionContext) = run {
+    sql"""
+       SELECT SUM(a.balance) balance
+       FROM funds f LEFT JOIN accounts a
+       ON f.address = a.address
+    """.as[Long]
   }.map(r => r)
 }

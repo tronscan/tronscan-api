@@ -29,7 +29,9 @@ create table if not exists transactions
   confirmed boolean default false not null,
   contract_data jsonb default '{}'::jsonb not null,
   contract_type integer default '-1'::integer not null,
-  owner_address text default ''::text not null
+  owner_address text default ''::text not null,
+  to_address text default ''::text not null,
+  data text default ''::text not null
 )
 ;
 
@@ -60,6 +62,7 @@ create table if not exists participate_asset_issue
   id uuid not null
     constraint participate_asset_issue_id_pk
     primary key,
+  transaction_hash text,
   block bigint,
   date_created timestamp with time zone,
   owner_address text,

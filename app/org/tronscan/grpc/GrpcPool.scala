@@ -6,12 +6,12 @@ import java.util.concurrent.TimeUnit
 import akka.actor.Actor
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 import org.tronscan.grpc.GrpcPool.{Channels, RequestChannel, RequestChannels}
-import org.tronscan.watchdog.NodeWatchDog.Node
+import org.tronscan.network.NetworkNode
 
 object GrpcPool {
 
   case class RequestChannel(ip: String, port: Int)
-  case class RequestChannels(nodes: List[Node])
+  case class RequestChannels(nodes: List[NetworkNode])
   case class Channel(channel: ManagedChannel)
 
   case class Channels(channel: List[ManagedChannel])
@@ -22,12 +22,13 @@ class GrpcPool extends Actor {
   var channels = Map[String, ManagedChannel]()
 
   def requestChannel(ip: String, port: Int) = {
-    channels.getOrElse(ip, {
+    val childName = s"$ip:$port"
+    channels.getOrElse(childName, {
       val channel = ManagedChannelBuilder
         .forAddress(ip, port)
         .usePlaintext(true)
         .build
-      channels = channels + (s"$ip:$port" -> channel)
+      channels = channels + (childName -> channel)
       channel
     })
   }

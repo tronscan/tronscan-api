@@ -1,19 +1,15 @@
-package org.tronscan.realtime
+package org.tronscan.websockets
 
 import akka.actor.{ActorRef, ActorSystem}
-import akka.pattern.ask
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{Materializer, OverflowStrategy}
 import akka.util.Timeout
 import javax.inject.{Inject, Named, Provider}
-import org.apache.commons.lang3.exception.ExceptionUtils
-import org.tron.api.api.{EmptyMessage, WalletGrpc, WalletSolidityGrpc}
-import org.tronscan.events._
-import org.tronscan.grpc.GrpcPool
-import org.tronscan.grpc.GrpcPool.Channel
-import org.tronscan.realtime.SocketCodecs._
-import org.tronscan.tester.{FullNodeTest, NodeTest, SolidityTest}
-import org.tronscan.tools.nodetester.NodeStatus
+import org.tronscan.domain.Events.{AddressEvent, BlockChainEvent}
+import org.tronscan.tools.nodetester._
+import org.tronscan.tools.signing.{AppLogin, RequestTransactionSign, SignEvent, SignRequestCallback}
+import org.tronscan.websockets.SocketCodecs._
+import play.api.Logger
 import play.api.libs.json.JsString
 import play.engineio.EngineIOController
 import play.socketio.SocketIOSession
@@ -49,62 +45,9 @@ class SocketIOEngine @Inject() (
   }
 
   def buildNodeTester(address: String) = {
-
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val source = Source.single(address)
-      .map {
-        case hostname if hostname.contains(":") =>
-          val Array(ip, port) = hostname.split(":")
-          (ip, port.toInt)
-        case hostname =>
-          (hostname, 50051)
-      }
-      .mapAsync(1) { case (ip, port) =>
-
-        (for {
-          channel <- (grpcPool ? GrpcPool.RequestChannel(ip, port)).mapTo[Channel]
-          client = WalletGrpc.stub(channel.channel)
-          _ <- client.getNowBlock(EmptyMessage())
-        } yield {
-          Some(FullNodeTest(client))
-        }).recoverWith {
-          case exc =>
-            (for {
-              channel <- (grpcPool ? GrpcPool.RequestChannel(ip, port)).mapTo[Channel]
-              client = WalletSolidityGrpc.stub(channel.channel)
-              _ <- client.getNowBlock(EmptyMessage())
-            } yield {
-              Some(SolidityTest(client))
-            }).recover {
-              case x =>
-                None
-            }
-        }
-      }
-      .flatMapConcat { node => Source.tick(1.second, 5.seconds, node.get) }
-      .mapAsync(1) { case node: NodeTest =>
-        val startTime = System.currentTimeMillis()
-        (for {
-          request <- node.latestBlock
-//          latestBlock <- node.blockByNum(371121)
-          endTime = System.currentTimeMillis()
-          responseTime: Long = endTime - startTime
-        } yield {
-          NodeStatus(
-            msg = s"${node.name}->getNowBlock: " + request.getBlockHeader.getRawData.number, // + ", Num->" + latestBlock,
-            responseTime = responseTime
-          )
-        }).recover {
-          case exc =>
-            val endTime = System.currentTimeMillis()
-            val responseTime: Long = endTime - startTime
-            NodeStatus(
-              msg = s"Error: ${ExceptionUtils.getMessage(exc)}",
-              responseTime = responseTime
-            )
-        }
-      }
+    val source = NodeTesterStreams.buildForAddress(address, grpcPool)
 
     Flow.fromSinkAndSourceCoupled(Sink.ignore, source)
   }
@@ -120,7 +63,7 @@ class SocketIOEngine @Inject() (
         actorSystem.eventStream.publish(appLogin)
 
       case x =>
-        println("IGNORED", x)
+        Logger.debug("IGNORED " + x.toString)
     }
 
     val source = Source.actorRef[Any](500, OverflowStrategy.dropHead)
@@ -155,7 +98,6 @@ class SocketIOEngine @Inject() (
     socket.builder
       .withErrorHandler {
         case x: Exception =>
-          println("Exception!", x)
           JsString("Exception: " + x.getMessage)
       }
       .onConnect { (request, _) =>
@@ -168,12 +110,11 @@ class SocketIOEngine @Inject() (
               buildAddressListener(address)
             case Array("/blockchain") =>
               buildBlockChainListener()
-            case Array("/sign", code) =>
-              buildSignListener(code)
+//            case Array("/sign", code) =>
+//              buildSignListener(code)
             case Array("/nodetest", address) =>
               buildNodeTester(address)
             case _ =>
-              println("INVALID CHANNEL", namespace)
               throw new Exception("Invalid channel")
           }
 

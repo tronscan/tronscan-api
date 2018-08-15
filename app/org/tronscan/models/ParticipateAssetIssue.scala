@@ -10,12 +10,10 @@ import play.api.db.slick.DatabaseConfigProvider
 import play.api.libs.json.Json
 import org.tronscan.App._
 
-object ParticipateAssetIssueModel {
-  implicit val format = Json.format[ParticipateAssetIssueModel]
-}
 
 case class ParticipateAssetIssueModel(
   id: UUID = UUID.randomUUID(),
+  transaction_hash: String,
   block: Long,
   amount: Long,
   token: String,
@@ -25,13 +23,14 @@ case class ParticipateAssetIssueModel(
 
 class ParticipateAssetIssueModelTable(tag: Tag) extends Table[ParticipateAssetIssueModel](tag, "participate_asset_issue") {
   def id = column[UUID]("id")
+  def transaction_hash = column[String]("transaction_hash")
   def block = column[Long]("block")
   def amount = column[Long]("amount")
   def token = column[String]("token_name")
   def ownerAddress = column[String]("owner_address")
   def toAddress = column[String]("to_address")
   def dateCreated = column[DateTime]("date_created")
-  def * = (id, block, amount, token, ownerAddress, toAddress, dateCreated) <> ((ParticipateAssetIssueModel.apply _).tupled, ParticipateAssetIssueModel.unapply)
+  def * = (id, transaction_hash, block, amount, token, ownerAddress, toAddress, dateCreated) <> (ParticipateAssetIssueModel.tupled, ParticipateAssetIssueModel.unapply)
 }
 
 @Singleton()

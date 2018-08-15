@@ -1,4 +1,4 @@
-package org.tronscan.watchdog
+package org.tronscan.network
 
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
@@ -10,11 +10,9 @@ import play.api.libs.concurrent.Futures
 import play.api.libs.concurrent.Futures._
 
 import scala.concurrent.duration._
-import org.tronscan.watchdog.NodeWatchDog.{Node, NodeChannel}
-
 import scala.concurrent.{ExecutionContext, Future}
 
-object Streams {
+object NetworkStreams {
 
   /**
     * Scans the given IP address
@@ -31,8 +29,7 @@ object Streams {
             new String(n.address.get.host.toByteArray)
           }
         }).recover {
-          case x =>
-            //            println(s"ERROR READING $ip", x)
+          case _ =>
             List.empty
         }
       }
@@ -45,7 +42,7 @@ object Streams {
     * @param nodeFromIp factory which creates a node from a string
     * @param parallel parallel number of processes
     */
-  def networkPinger(nodeFromIp: String => Future[NodeChannel], parallel: Int = 4)(implicit executionContext: ExecutionContext, futures: Futures): Flow[String, Node, NotUsed] = {
+  def networkPinger(nodeFromIp: String => Future[NodeChannel], parallel: Int = 4)(implicit executionContext: ExecutionContext, futures: Futures): Flow[String, NetworkNode, NotUsed] = {
     Flow[String]
       .mapAsyncUnordered(parallel) { ip =>
 
@@ -60,7 +57,7 @@ object Streams {
           hostname <- Future(ia.getCanonicalHostName).withTimeout(6.seconds).recover { case _ => ip }
         } yield {
 
-          Node(
+          NetworkNode(
             ip = ip,
             port = 500051,
             lastBlock = r.getBlockHeader.getRawData.number,
@@ -69,7 +66,7 @@ object Streams {
             grpcResponseTime = response)
         }).recover {
           case _ =>
-            Node(
+            NetworkNode(
               ip = ip,
               hostname = ia.getCanonicalHostName,
               port = 500051,
@@ -78,20 +75,4 @@ object Streams {
         }
       }
   }
-
-  /**
-    * Only pass distinct values
-    */
-  def distinct[T] = Flow[T]
-    .statefulMapConcat { () =>
-      var ids = Set.empty[T]
-      ip => {
-        if (ids.contains(ip)) {
-          List.empty
-        } else {
-          ids = ids + ip
-          List(ip)
-        }
-      }
-    }
 }

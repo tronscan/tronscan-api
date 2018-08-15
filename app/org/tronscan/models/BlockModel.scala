@@ -1,9 +1,12 @@
 package org.tronscan.models
 
 import com.google.inject.{Inject, Singleton}
+import org.joda.time.DateTime
+import org.tron.common.utils.{Base58, ByteArray}
+import org.tron.protos.Tron.Block
+import org.tronscan.Extensions._
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
-import org.joda.time.DateTime
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.libs.json.Json
 import org.tronscan.App._
@@ -11,7 +14,19 @@ import org.tronscan.App._
 import scala.concurrent.{ExecutionContext, Future}
 
 object BlockModel {
-  implicit val format = Json.format[BlockModel]
+  def fromProto(block: Block) = {
+    BlockModel(
+      number = block.getBlockHeader.getRawData.number,
+      size = block.toByteArray.length,
+      hash = block.hash,
+      timestamp = new DateTime(block.getBlockHeader.getRawData.timestamp),
+      txTrieRoot = Base58.encode58Check(block.getBlockHeader.getRawData.txTrieRoot.toByteArray),
+      parentHash = ByteArray.toHexString(block.parentHash),
+      witnessId = block.getBlockHeader.getRawData.witnessId,
+      witnessAddress = block.getBlockHeader.getRawData.witnessAddress.encodeAddress,
+      nrOfTrx = block.transactions.size,
+    )
+  }
 }
 
 case class BlockModel(
@@ -70,11 +85,19 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
       transferTable.filter(_.block === id).map(_.confirmed).update(true),
     )
   }
+
   def buildConfirmBlock(id: Long) = {
     Seq(
       table.filter(_.number === id).map(_.confirmed).update(true),
       transactionTable.filter(_.block === id).map(_.confirmed).update(true),
       transferTable.filter(_.block === id).map(_.confirmed).update(true),
+    )
+  }
+
+  def buildReplaceBlock(block: BlockModel) = {
+    Seq(
+      buildDeleteByNumber(block.number),
+      buildInsert(block.copy(confirmed = true))
     )
   }
 
@@ -88,6 +111,7 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
     TRUNCATE TABLE ip_geo;
     TRUNCATE TABLE participate_asset_issue;
     TRUNCATE TABLE transactions;
+    TRUNCATE TABLE transfers;
     TRUNCATE TABLE vote_witness_contract;
     TRUNCATE TABLE witness_create_contract;
     """.asUpdate
