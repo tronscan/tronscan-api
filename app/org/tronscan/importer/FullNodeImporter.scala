@@ -105,7 +105,7 @@ class FullNodeImporter @Inject()(
       updateAccounts = true
     }
 
-    if (fullNodeBlockHash == importStatus.solidityBlockHash) {
+    if ((importStatus.dbLatestBlock <= importStatus.solidityBlock) && (fullNodeBlockHash == importStatus.solidityBlockHash)) {
       autoConfirmBlocks = true
       updateAccounts = true
     }
