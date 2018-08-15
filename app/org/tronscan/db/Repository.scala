@@ -116,7 +116,7 @@ trait TableRepository[T <: Table[E], E <: Any] extends Repository {
     runQuery(params.foldLeft(query)(e))
   }
 
-  def filterSomeToken(fun: QueryType => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
+  def specialProcess(fun: QueryType => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
     fun(query)
   }
 
