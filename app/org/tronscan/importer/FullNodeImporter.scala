@@ -231,10 +231,11 @@ class FullNodeImporter @Inject()(
     .mapAsync(1) { status =>
       walletClient.full.map { walletFull =>
         val fullNodeBlockChain = new FullNodeBlockChain(walletFull)
-
         // Switch between batch or single depending how far the sync is behind
-        if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(status.dbLatestBlock + 1, status.fullNodeBlock)(fullNodeBlockChain.client)
-        else                                    blockChainBuilder.readFullNodeBlocksBatched(status.dbLatestBlock + 1, status.fullNodeBlock, 100)(fullNodeBlockChain.client)
+        val action = buildImportActionFromImportStatus(status)
+        val blockEnd = if (action.confirmBlocks) status.solidityBlock else status.fullNodeBlock
+        if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(status.dbLatestBlock + 1, blockEnd)(fullNodeBlockChain.client)
+        else                                    blockChainBuilder.readFullNodeBlocksBatched(status.dbLatestBlock + 1, blockEnd, 100)(fullNodeBlockChain.client)
       }
     }
     .flatMapConcat { blockStream => blockStream }
