@@ -109,4 +109,8 @@ class AssetIssueContractModelRepository @Inject() (val dbConfig: DatabaseConfigP
       (token, participation) <- query join accountTable on (_.ownerAddress === _.address)
     } yield (token, participation)
   }
+
+  def deleteByNum(num: Long) = {
+    table.filter(_.block === num).delete
+  }
 }
