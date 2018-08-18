@@ -33,8 +33,9 @@ class TokenApi @Inject()(
     }
 
     q = q andThen specialProcess {
-      case query => query.filter(x => x.name =!= "OnePiece" && x.name =!= "ZTX" && x.name =!= "Fortnite" && x.name =!= "ZZZ" && x.name =!= "VBucks" && x.name =!= "CheapAirGoCoin")
+      case query => query.filter(x => x.name =!= "XP" && x.name =!= "WWGoneWGA" && x.name =!= "ZTX" && x.name =!= "Fortnite" && x.name =!= "ZZZ" && x.name =!= "VBucks" && x.name =!= "CheapAirGoCoin")
     }
+
 
     q = q andThen filterRequest {
       case (query, ("name", value)) =>
