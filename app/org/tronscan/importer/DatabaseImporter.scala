@@ -41,8 +41,8 @@ class DatabaseImporter @Inject() (
   }
 
   def importAssetUpdateIssue: ContractQueryBuilder = {
-    case (UpdateAssetContract, _, assetIssue: AssetIssueContractModel) =>
-      Seq(assetIssueContractModelRepository.buildUpdateAsset(assetIssue))
+    case (UpdateAssetContract, _, updateAssetModel: UpdateAssetModel) =>
+      Seq(assetIssueContractModelRepository.buildUpdateAsset(updateAssetModel))
   }
 
   def importParticipateAssetIssue: ContractQueryBuilder = {
