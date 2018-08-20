@@ -126,7 +126,7 @@ class FullNodeReader @Inject()(
 
         println("FULL NODE BLOCK", header.number)
 
-        queries.append(blockModelRepository.buildInsert(BlockModel(
+        queries.append(blockModelRepository.buildInsertOrUpdate(BlockModel(
           number = header.number,
           size = block.toByteArray.length,
           hash = block.hash,
@@ -157,7 +157,7 @@ class FullNodeReader @Inject()(
             data = ByteArray.toHexString(transaction.getRawData.data.toByteArray)
           )
 
-          transactionModelRepository.buildInsert(transactionModel)
+          transactionModelRepository.buildInsertOrUpdate(transactionModel)
         })
 
         for {
@@ -190,7 +190,7 @@ class FullNodeReader @Inject()(
 
               context.system.eventStream.publish(TransferCreated(trxModel))
 
-              queries.append(transferRepository.buildInsert(trxModel))
+              queries.append(transferRepository.buildInsertOrUpdate(trxModel))
 
             case TransferAssetContract =>
               val transferContract = org.tron.protos.Contract.TransferAssetContract.parseFrom(any.value.toByteArray)
@@ -211,7 +211,7 @@ class FullNodeReader @Inject()(
 
               context.system.eventStream.publish(AssetTransferCreated(trxModel))
 
-              queries.append(transferRepository.buildInsert(trxModel))
+              queries.append(transferRepository.buildInsertOrUpdate(trxModel))
 
             case VoteWitnessContract if !syncSolidity =>
               val voteWitnessContract = org.tron.protos.Contract.VoteWitnessContract.parseFrom(any.value.toByteArray)

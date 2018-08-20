@@ -1,25 +1,26 @@
-package org.tronscan.importer
+package org
+package tronscan.importer
+
+import java.util.UUID
 
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
-import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream._
+import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util
-import com.google.protobuf.ByteString
+import io.circe.syntax._
 import io.grpc.{Status, StatusRuntimeException}
 import javax.inject.{Inject, Named}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
-import org.tron.api.api.{EmptyMessage, NumberMessage}
+import org.tron.api.api.NumberMessage
 import org.tron.common.utils.{Base58, ByteArray}
 import org.tron.protos.Tron.Account
-import org.tron.protos.Tron.Transaction.Contract.ContractType.{AssetIssueContract, TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
+import org.tron.protos.Tron.Transaction.Contract.ContractType.{AssetIssueContract, TransferAssetContract, TransferContract, WitnessCreateContract}
 import org.tronscan.Extensions._
 import org.tronscan.api.models.TransactionSerializer
-import org.tronscan.events._
 import org.tronscan.grpc.{GrpcClients, WalletClient}
-import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
 import org.tronscan.utils.ContractUtils
 import org.tronscan.watchdog.NodeWatchDog
@@ -29,11 +30,9 @@ import play.api.cache.redis.CacheAsyncApi
 import play.api.inject.ConfigurationProvider
 import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
-import io.circe.syntax._
-import io.circe.generic.auto._
+
 import scala.async.Async._
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
@@ -57,11 +56,11 @@ class PartialReader @Inject()(
 
   def syncChain(from: Long, to: Long) = async {
 
-    println("START BLOCKCHAIN SYNC")
+    println("START PARTIAL SYNC")
 
     val decider: Supervision.Decider = {
       case exc =>
-        println("FULL NODE ERROR", exc, ExceptionUtils.getStackTrace(exc))
+        println("PARTIAL NODE ERROR", exc, ExceptionUtils.getStackTrace(exc))
         Supervision.Resume
     }
 
@@ -69,16 +68,12 @@ class PartialReader @Inject()(
       ActorMaterializerSettings(context.system)
         .withSupervisionStrategy(decider))(context)
 
-    val clients = await(getClients)
-
-    println("got clients", clients.clients.size)
-
     val wallet = await(walletClient.full)
 
 
     println(s"BLOCKCHAIN SYNC FROM $from to $to")
 
-    val (killSwitch, syncTask) = Source(from to to)
+    val syncTask = Source(from to to)
       .take(1000)
       .mapAsync(12) { i => wallet.getBlockByNum(NumberMessage(i)) }
       .filter(block => {
@@ -86,8 +81,8 @@ class PartialReader @Inject()(
           block.getBlockHeader.getRawData.number > 0
         } else true
       })
-      .viaMat(KillSwitches.single)(Keep.right)
       .mapAsync(1) { block =>
+
 
         val header = block.getBlockHeader.getRawData
 
@@ -105,7 +100,7 @@ class PartialReader @Inject()(
           witnessId = header.witnessId,
           witnessAddress = Base58.encode58Check(header.witnessAddress.toByteArray),
           nrOfTrx = block.transactions.size,
-          confirmed = header.number == 0,
+          confirmed = true,
         )))
 
         queries.appendAll(for {
@@ -123,7 +118,8 @@ class PartialReader @Inject()(
             timestamp = transactionTime,
             contractData = TransactionSerializer.serializeContract(transaction.getRawData.contract.head),
             contractType = transaction.getRawData.contract.head.`type`.value,
-            data = ByteArray.toHexString(transaction.getRawData.data.toByteArray)
+            data = ByteArray.toHexString(transaction.getRawData.data.toByteArray),
+            confirmed = true
           )
 
           transactionModelRepository.buildInsertOrUpdate(transactionModel)
@@ -151,7 +147,7 @@ class PartialReader @Inject()(
                 transferFromAddress = transferContract.ownerAddress.encodeAddress,
                 transferToAddress = transferContract.toAddress.encodeAddress,
                 amount = transferContract.amount,
-                confirmed = header.number == 0,
+                confirmed = true,
               )
 
               addressSyncer ! transferContract.toAddress.encodeAddress
@@ -170,77 +166,79 @@ class PartialReader @Inject()(
                 transferToAddress = transferContract.toAddress.encodeAddress,
                 amount = transferContract.amount,
                 tokenName = new String(transferContract.assetName.toByteArray),
-                confirmed = header.number == 0,
+                confirmed = true
               )
 
               addressSyncer ! transferContract.toAddress.encodeAddress
               addressSyncer ! transferContract.ownerAddress.encodeAddress
 
-
               //              context.system.eventStream.publish(AssetTransferCreated(trxModel))
 
               queries.append(transferRepository.buildInsertOrUpdate(trxModel))
-//
-//            case AssetIssueContract =>
-//              val assetIssueContract = org.tron.protos.Contract.AssetIssueContract.parseFrom(any.value.toByteArray)
-//              val owner = Base58.encode58Check(assetIssueContract.ownerAddress.toByteArray)
-//
-//              val assetIssue = AssetIssueContractModel(
-//                block = header.number,
-//                transaction = transactionHash,
-//                ownerAddress = owner,
-//                name = new String(assetIssueContract.name.toByteArray).trim,
-//                abbr = new String(assetIssueContract.abbr.toByteArray).trim,
-//                totalSupply = assetIssueContract.totalSupply,
-//                trxNum = assetIssueContract.trxNum,
-//                num = assetIssueContract.num,
-//                startTime = new DateTime(assetIssueContract.startTime),
-//                endTime = new DateTime(assetIssueContract.endTime),
-//                voteScore = assetIssueContract.voteScore,
-//                description = new String(assetIssueContract.description.toByteArray),
-//                url = new String(assetIssueContract.url.toByteArray),
-//                dateCreated = transactionTime,
-//              ).withFrozen(assetIssueContract.frozenSupply)
 
-//              context.system.eventStream.publish(AssetIssueCreated(assetIssue))
+            case AssetIssueContract =>
+              val assetIssueContract = org.tron.protos.Contract.AssetIssueContract.parseFrom(any.value.toByteArray)
+              val owner = Base58.encode58Check(assetIssueContract.ownerAddress.toByteArray)
 
-//              queries.append(assetIssueContractModelRepository.buildInsertOrUpdate(assetIssue))
-//            case VoteWitnessContract if !syncSolidity =>
-//              val voteWitnessContract = org.tron.protos.Contract.VoteWitnessContract.parseFrom(any.value.toByteArray)
-//              val voterAddress = voteWitnessContract.ownerAddress.encodeAddress
-//
-//              val inserts = for (vote <- voteWitnessContract.votes) yield {
-//                VoteWitnessContractModel(
-//                  transaction = transactionHash,
-//                  block = header.number,
-//                  timestamp = transactionTime,
-//                  voterAddress = voterAddress,
-//                  candidateAddress = vote.voteAddress.encodeAddress,
-//                  votes = vote.voteCount,
-//                )
-//              }
-//
-//              inserts.foreach { vote =>
-//                context.system.eventStream.publish(VoteCreated(vote))
-//              }
-//
-//              queries.appendAll(voteWitnessContractModelRepository.buildUpdateVotes(voterAddress, inserts))
+              val newId = runSync(assetIssueContractModelRepository.findByName(assetIssueContract.name.decodeString.trim)).map(_.id).getOrElse(UUID.randomUUID())
+              val assetIssue = AssetIssueContractModel(
+                id = newId,
+                block = header.number,
+                transaction = transactionHash,
+                ownerAddress = owner,
+                name = new String(assetIssueContract.name.toByteArray).trim,
+                abbr = new String(assetIssueContract.abbr.toByteArray).trim,
+                totalSupply = assetIssueContract.totalSupply,
+                trxNum = assetIssueContract.trxNum,
+                num = assetIssueContract.num,
+                startTime = new DateTime(assetIssueContract.startTime),
+                endTime = new DateTime(assetIssueContract.endTime),
+                voteScore = assetIssueContract.voteScore,
+                description = new String(assetIssueContract.description.toByteArray),
+                url = new String(assetIssueContract.url.toByteArray),
+                dateCreated = transactionTime,
+              ).withFrozen(assetIssueContract.frozenSupply)
 
-//            case ParticipateAssetIssueContract =>
-//              val participateAssetIssueContract = org.tron.protos.Contract.ParticipateAssetIssueContract.parseFrom(any.value.toByteArray)
-//
-//              val participateAsset = ParticipateAssetIssueModel(
-//                ownerAddress = Base58.encode58Check(participateAssetIssueContract.ownerAddress.toByteArray),
-//                toAddress = Base58.encode58Check(participateAssetIssueContract.toAddress.toByteArray),
-//                amount = participateAssetIssueContract.amount,
-//                block = header.number,
-//                token = new String(participateAssetIssueContract.assetName.toByteArray),
-//                dateCreated = transactionTime
-//              )
-//
-//              context.system.eventStream.publish(ParticipateAssetIssueModelCreated(participateAsset))
-//
-//              queries.append(participateAssetIssueRepository.buildInsert(participateAsset))
+              //              context.system.eventStream.publish(AssetIssueCreated(assetIssue))
+
+              queries.append(assetIssueContractModelRepository.buildInsertOrUpdate(assetIssue))
+
+            //            case VoteWitnessContract if !syncSolidity =>
+            //              val voteWitnessContract = org.tron.protos.Contract.VoteWitnessContract.parseFrom(any.value.toByteArray)
+            //              val voterAddress = voteWitnessContract.ownerAddress.encodeAddress
+            //
+            //              val inserts = for (vote <- voteWitnessContract.votes) yield {
+            //                VoteWitnessContractModel(
+            //                  transaction = transactionHash,
+            //                  block = header.number,
+            //                  timestamp = transactionTime,
+            //                  voterAddress = voterAddress,
+            //                  candidateAddress = vote.voteAddress.encodeAddress,
+            //                  votes = vote.voteCount,
+            //                )
+            //              }
+            //
+            //              inserts.foreach { vote =>
+            //                context.system.eventStream.publish(VoteCreated(vote))
+            //              }
+            //
+            //              queries.appendAll(voteWitnessContractModelRepository.buildUpdateVotes(voterAddress, inserts))
+
+            //            case ParticipateAssetIssueContract =>
+            //              val participateAssetIssueContract = org.tron.protos.Contract.ParticipateAssetIssueContract.parseFrom(any.value.toByteArray)
+            //
+            //              val participateAsset = ParticipateAssetIssueModel(
+            //                ownerAddress = Base58.encode58Check(participateAssetIssueContract.ownerAddress.toByteArray),
+            //                toAddress = Base58.encode58Check(participateAssetIssueContract.toAddress.toByteArray),
+            //                amount = participateAssetIssueContract.amount,
+            //                block = header.number,
+            //                token = new String(participateAssetIssueContract.assetName.toByteArray),
+            //                dateCreated = transactionTime
+            //              )
+            //
+            //              context.system.eventStream.publish(ParticipateAssetIssueModelCreated(participateAsset))
+            //
+            //              queries.append(participateAssetIssueRepository.buildInsert(participateAsset))
             //
             //              case AssetIssueContract =>
             //                val assetIssueContract = org.tron.protos.Contract.AssetIssueContract.parseFrom(any.value.toByteArray)
@@ -276,33 +274,34 @@ class PartialReader @Inject()(
                 url = new String(witnessCreateContract.url.toByteArray),
               )
 
-//              context.system.eventStream.publish(WitnessCreated(witnessModel))
+              //              context.system.eventStream.publish(WitnessCreated(witnessModel))
 
               queries.append(witnessModelRepository.buildInsertOrUpdate(witnessModel))
 
-              //              case WitnessUpdateContract =>
-              //                val witnessUpdateContract = org.tron.protos.Contract.WitnessUpdateContract.parseFrom(any.value.toByteArray)
-              //
-              //                val witnessModel = WitnessModel(
-              //                  address = Base58.encode58Check(witnessUpdateContract.ownerAddress.toByteArray),
-              //                  url = new String(witnessUpdateContract.updateUrl.toByteArray),
-              //                )
-              //
-              //                witnessModelRepository.update(witnessModel)
+            //              case WitnessUpdateContract =>
+            //                val witnessUpdateContract = org.tron.protos.Contract.WitnessUpdateContract.parseFrom(any.value.toByteArray)
+            //
+            //                val witnessModel = WitnessModel(
+            //                  address = Base58.encode58Check(witnessUpdateContract.ownerAddress.toByteArray),
+            //                  url = new String(witnessUpdateContract.updateUrl.toByteArray),
+            //                )
+            //
+            //                witnessModelRepository.update(witnessModel)
 
             case _ =>
-              //                println("other contract")
+            //                println("other contract")
           }
         }
 
         blockModelRepository.executeQueries(queries)
       }
-      .toMat(Sink.ignore)(Keep.both)
+      .toMat(Sink.ignore)(Keep.right)
       .run
 
     await(syncTask)
+
   }.andThen {
-    case Success(x) =>
+    case Success(_) =>
 
     case Failure(exc) =>
       println("BLOCKCHAIN PARTIAL SYNC FAILURE", ExceptionUtils.getMessage(exc), ExceptionUtils.getStackTrace(exc))
@@ -359,6 +358,8 @@ class PartialReader @Inject()(
           redisCache.removeMatching(s"address/$address/*")
         }
       }
+      .toMat(Sink.ignore)(Keep.none)
+      .run
   }
 
 

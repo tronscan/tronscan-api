@@ -61,7 +61,7 @@ case class AssetIssueContractModel(
 }
 
 class AssetIssueContractModelTable(tag: Tag) extends Table[AssetIssueContractModel](tag, "asset_issue_contract") {
-  def id = column[UUID ]("id")
+  def id = column[UUID ]("id", O.PrimaryKey)
   def block = column[Long]("block")
   def transaction = column[String]("transaction")
   def ownerAddress = column[String]("owner_address")
@@ -107,6 +107,9 @@ class AssetIssueContractModelRepository @Inject() (val dbConfig: DatabaseConfigP
     table.filter(_.name === name).result.headOption
   }
 
+  def insertOrUpdateAssetIssue(entity: AssetIssueContractModel) = run {
+    table.filter(_.name === entity.name).insertOrUpdate(entity)
+  }
 
   def withParticipation() = { query: QueryType =>
     for {
