@@ -1,19 +1,21 @@
 package org.tronscan.api
 
+import akka.actor.ActorRef
 import io.swagger.annotations._
-import javax.inject.Inject
+import javax.inject.{Inject, Named}
 import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.common.utils.{Base58, ByteUtil}
+import org.tronscan.App._
+import org.tronscan.Extensions._
+import org.tronscan.db.PgProfile.api._
+import org.tronscan.grpc.WalletClient
+import org.tronscan.importer.ImportRange
+import org.tronscan.models.{BlockModel, BlockModelRepository}
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
 import play.api.libs.json.Json
-import play.api.mvc.InjectedController
-import org.tronscan.App._
-import org.tronscan.db.PgProfile.api._
-import org.tronscan.grpc.WalletClient
-import org.tronscan.models.{BlockModel, BlockModelRepository}
-import org.tronscan.Extensions._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -24,6 +26,7 @@ import scala.concurrent.duration._
 class BlockApi @Inject() (
   repo: BlockModelRepository,
   walletClient: WalletClient,
+  @Named("partial-reader") partialReader: ActorRef,
   @NamedCache("redis") redisCache: CacheAsyncApi) extends BaseApi {
 
   @ApiResponses(Array(
@@ -184,5 +187,17 @@ class BlockApi @Inject() (
     } else {
       Future.successful(NotFound)
     }
+  }
+
+  def syncBlocks = Action { req =>
+
+    for {
+      from <- req.getQueryString("from")
+      to <- req.getQueryString("to")
+    } {
+      partialReader ! ImportRange(from.toLong, to.toLong)
+    }
+
+    Ok
   }
 }
