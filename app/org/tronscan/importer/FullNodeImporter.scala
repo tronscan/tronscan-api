@@ -312,7 +312,7 @@ class FullNodeImporter @Inject()(
 
     Logger.info("START FULL NODE SYNC")
 
-    Source.tick(0.seconds, 2.second, "")
+    Source.tick(0.seconds, 2.seconds, "")
       .mapAsync(1)(_ => syncService.importStatus.flatMap(buildSource(_).run()))
       .runWith(Sink.ignore)
       .andThen {
