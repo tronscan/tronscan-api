@@ -197,7 +197,7 @@ class SolidityNodeImporter @Inject()(
       ActorMaterializerSettings(context.system)
         .withSupervisionStrategy(decider))(context)
 
-    Source.tick(0.seconds, 2.seconds, "")
+    Source.tick(0.seconds, 2.second, "")
       .mapAsync(1) { _ =>
         Logger.info("START SOLIDITY")
         buildSource.run()
