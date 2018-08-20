@@ -95,6 +95,7 @@ object ModelUtils {
 
       case c: ParticipateAssetIssueContract =>
         Some(ParticipateAssetIssueModel(
+          transaction_hash = transactionHash,
           ownerAddress = c.ownerAddress.encodeAddress,
           toAddress = c.toAddress.encodeAddress,
           amount = c.amount,
@@ -111,6 +112,12 @@ object ModelUtils {
         Some(WitnessModel(
           address = c.ownerAddress.encodeAddress,
           url = c.updateUrl.decodeString))
+
+      case c: UpdateAssetContract =>
+        Some(UpdateAssetModel(
+          ownerAddress = c.ownerAddress.encodeAddress,
+          description = c.description.decodeString,
+          url = c.url.decodeString))
 
 //      case c: AccountCreateContract =>
 //        c.ownerAddress.encodeAddress

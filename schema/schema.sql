@@ -62,6 +62,7 @@ create table if not exists participate_asset_issue
   id uuid not null
     constraint participate_asset_issue_id_pk
     primary key,
+  transaction_hash text,
   block bigint,
   date_created timestamp with time zone,
   owner_address text,

@@ -141,9 +141,14 @@ class SolidityNodeImporter @Inject()(
           val replaceBlock = solidityBlock.hash != databaseBlock.hash
 
           if (replaceBlock) {
-            Logger.info("REPLACE BLOCK: " + solidityBlock.getBlockHeader.getRawData.number)
+            val number = solidityBlock.getBlockHeader.getRawData.number
+            Logger.info("REPLACE BLOCK: " + number)
             // replace block
             queries.appendAll(blockModelRepository.buildReplaceBlock(BlockModel.fromProto(solidityBlock)))
+            queries.append(transactionModelRepository.deleteByNum(number))
+            queries.append(transferRepository.deleteByNum(number))
+            queries.append(assetIssueContractModelRepository.deleteByNum(number))
+            queries.append(participateAssetIssueRepository.deleteByNum(number))
           } else {
             Logger.info("CONFIRM BLOCK: " + solidityBlock.getBlockHeader.getRawData.number)
             // Update Block
@@ -167,8 +172,8 @@ class SolidityNodeImporter @Inject()(
                 case transfer: TransferModel =>
                   // Import transfer as confirmed
                   importer((contract.`type`, contract, transfer.copy(confirmed = true)))
-                case x =>
-                  importer((contract.`type`, contract, x))
+                case x if replaceBlock => importer((contract.`type`, contract, x))
+                case x => Seq.empty
               }.getOrElse(Seq.empty)
           })
 
