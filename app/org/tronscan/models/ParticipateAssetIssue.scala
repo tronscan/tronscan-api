@@ -48,4 +48,8 @@ class ParticipateAssetIssueModelRepository @Inject() (val dbConfig: DatabaseConf
       .map { case ((owner, tokenName), row) => (owner, tokenName, row.map(_.amount).sum.getOrElse(0L)) }
       .result
   }
+
+  def deleteByNum(num: Long) = {
+    table.filter(_.block === num).delete
+  }
 }

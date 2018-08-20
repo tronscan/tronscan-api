@@ -175,7 +175,8 @@ class SynchronisationService @Inject() (
             balance = account.balance,
             power = account.frozen.map(_.frozenBalance).sum,
             tokenBalances = account.asset.asJson,
-            dateUpdated = DateTime.now,
+            dateCreated = new DateTime(account.createTime),
+            dateUpdated = DateTime.now
           )
 
           await(accountModelRepository.insertOrUpdate(accountModel))

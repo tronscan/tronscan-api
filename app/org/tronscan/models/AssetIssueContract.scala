@@ -14,6 +14,8 @@ import play.api.db.slick.DatabaseConfigProvider
 
 case class FrozenToken(amount: Double, days: Int)
 
+case class UpdateAssetModel(ownerAddress: String, description: String, url: String)
+
 case class AssetIssueContractModel(
   id: UUID = UUID.randomUUID(),
   block: Long,
@@ -97,9 +99,9 @@ class AssetIssueContractModelRepository @Inject() (val dbConfig: DatabaseConfigP
     table.filter(_.name === name).result.headOption
   }
 
-  def buildUpdateAsset(model: AssetIssueContractModel) = {
+  def buildUpdateAsset(model: UpdateAssetModel) = {
     table
-      .filter(_.name === model.name)
+      .filter(_.ownerAddress === model.ownerAddress)
       .map(a => (a.description, a.url))
       .update((model.description, model.url))
   }
@@ -108,5 +110,9 @@ class AssetIssueContractModelRepository @Inject() (val dbConfig: DatabaseConfigP
     for {
       (token, participation) <- query join accountTable on (_.ownerAddress === _.address)
     } yield (token, participation)
+  }
+
+  def deleteByNum(num: Long) = {
+    table.filter(_.block === num).delete
   }
 }

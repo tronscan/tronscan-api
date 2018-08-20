@@ -20,7 +20,7 @@ class StatsApi @Inject() (
 
   def overview = Action.async {
     for {
-      (totalTransaction, avgBlockSize, totalBlockCount, newAddressesSeen, blockchainSize) <- redisCache.getOrFuture(s"stats.overview", 1.hour)(statsOverview.execute)
+      (totalTransaction, avgBlockSize, totalBlockCount, newAddressesSeen, blockchainSize) <- redisCache.getOrFuture(s"stats.overview", 5.minute)(statsOverview.execute)
     } yield {
       val days = totalTransaction.keys.toList.sortBy(x => x)
       Ok(Json.obj(

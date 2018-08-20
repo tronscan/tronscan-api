@@ -67,4 +67,7 @@ class TransferModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) e
     table.filter(_.transactionHash === entity.transactionHash).update(entity)
   }
 
+  def deleteByNum(num: Long) = {
+    table.filter(_.block === num).delete
+  }
 }
