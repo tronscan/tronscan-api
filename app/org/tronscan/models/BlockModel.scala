@@ -27,7 +27,7 @@ case class BlockModel(
     confirmed: Boolean = false)
 
 class BlockModelTable(tag: Tag) extends Table[BlockModel](tag, "blocks") {
-  def number = column[Long]("id")
+  def number = column[Long]("id", O.PrimaryKey)
   def hash = column[String]("hash")
   def size = column[Int]("size")
   def timestamp = column[DateTime]("date_created")
