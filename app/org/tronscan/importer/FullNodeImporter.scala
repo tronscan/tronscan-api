@@ -14,7 +14,7 @@ import org.tronscan.grpc.{FullNodeBlockChain, WalletClient}
 import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.models._
 import org.tronscan.service.{ImportStatus, SynchronisationService}
-import org.tronscan.utils.ModelUtils
+import org.tronscan.utils.{ModelUtils, StreamUtils}
 import play.api.Logger
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
@@ -204,7 +204,7 @@ class FullNodeImporter @Inject()(
         blocks ~> fullNodeBlockImporter(importAction.confirmBlocks) ~> out
 
         // Sync addresses
-        addresses ~> redisCleaner ~> accountUpdaterFlow ~> out
+        addresses ~> StreamUtils.distinct[Address] ~> redisCleaner ~> accountUpdaterFlow ~> out
 
         // Broadcast contract events
         contracts.map(_._3) ~> eventsPublisher ~> out
@@ -236,6 +236,7 @@ class FullNodeImporter @Inject()(
         // Switch between batch or single depending how far the sync is behind
         val action = buildImportActionFromImportStatus(status)
         val blockEnd = if (action.confirmBlocks) status.solidityBlock else status.fullNodeBlock
+        Logger.info("status.fullNodeBlocksToSync = " + status.fullNodeBlocksToSync)
         if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(status.dbLatestBlock + 1, blockEnd)(fullNodeBlockChain.client)
         else                                    blockChainBuilder.readFullNodeBlocksBatched(status.dbLatestBlock + 1, blockEnd, 100)(fullNodeBlockChain.client)
       }
