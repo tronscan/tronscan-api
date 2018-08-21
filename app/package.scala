@@ -122,6 +122,10 @@ package object org {
     }
   }
 
+  def runSync[T](awaitable: Awaitable[T]): T = Await.result(awaitable, Duration.Inf)
+
+  def runSync[T](awaitable: Task[T]): T = Await.result(awaitable.runAsync(Scheduler.Implicits.global), Duration.Inf)
+
   /**
     * Try to parse a datetime as string through a pattern.
     *

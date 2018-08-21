@@ -5,7 +5,7 @@ object Dependencies {
   val circeVersion = "0.9.3"
   val slickPgVersion = "0.16.1"
   val monixVersion = "2.3.0"
-  val akkaVersion = "2.5.9"
+  val akkaVersion = "2.5.14"
   val catsVersion = "0.9.0"
   val grpcVersion = "1.9.0"
   val scaleCubeVersion = "1.0.7"
@@ -26,7 +26,9 @@ object Dependencies {
     "com.typesafe.akka" %% "akka-actor",
     "com.typesafe.akka" %% "akka-stream",
     "com.typesafe.akka" %% "akka-cluster",
-    "com.typesafe.akka" %% "akka-cluster-tools"
+    "com.typesafe.akka" %% "akka-cluster-tools",
+    "com.typesafe.akka" %% "akka-testkit",
+    "com.typesafe.akka" %% "akka-stream-testkit"
   ).map(_ % akkaVersion)
 
   val catsDeps = Seq(

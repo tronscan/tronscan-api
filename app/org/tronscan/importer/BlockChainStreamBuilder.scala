@@ -2,6 +2,7 @@ package org.tronscan.importer
 
 import akka.NotUsed
 import akka.actor.ActorContext
+import akka.event.EventStream
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.{Flow, Source}
 import org.tron.api.api.WalletGrpc.WalletStub
@@ -11,8 +12,9 @@ import org.tron.protos.Tron.Transaction.Contract.ContractType.{AssetIssueContrac
 import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.domain.Events._
 import org.tronscan.models._
-import org.tronscan.utils.ProtoUtils
+import org.tronscan.utils.{ModelUtils, ProtoUtils}
 import play.api.Logger
+import scalaz.Alpha.X
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -82,33 +84,30 @@ class BlockChainStreamBuilder {
   /**
     * Publishes contracts to the given eventstream
     */
-  def publishContractEvents(contractTypes: List[Transaction.Contract.ContractType])(implicit context: ActorContext) = {
-    val eventStream = context.system.eventStream
-    Flow[Transaction.Contract]
-      .filter(contract  => contractTypes.contains(contract.`type`))
+  def publishContractEvents(eventStream: EventStream, contractTypes: List[Transaction.Contract.ContractType]): Flow[(Block, Transaction, Transaction.Contract), (Block, Transaction, Transaction.Contract), NotUsed] = {
+    Flow[(Block, Transaction, Transaction.Contract)]
+      .filter(contract  => contractTypes.contains(contract._3.`type`))
       .map { contract =>
-        (contract.`type`, ProtoUtils.fromContract(contract)) match {
-          case (TransferContract, transfer: TransferModel) =>
+        (contract._3.`type`, ModelUtils.contractToModel(contract._3, contract._2, contract._1)) match {
+          case (TransferContract, Some(transfer: TransferModel)) =>
             eventStream.publish(TransferCreated(transfer))
 
-          case (TransferAssetContract, transfer: TransferModel) =>
+          case (TransferAssetContract, Some(transfer: TransferModel)) =>
             eventStream.publish(AssetTransferCreated(transfer))
 
-          case (WitnessCreateContract, witness: WitnessModel) =>
+          case (WitnessCreateContract, Some(witness: WitnessModel)) =>
             eventStream.publish(WitnessCreated(witness))
 
-          case (VoteWitnessContract, votes: VoteWitnessList) =>
+          case (VoteWitnessContract, Some(votes: VoteWitnessList)) =>
             votes.votes.foreach { vote =>
               eventStream.publish(VoteCreated(vote))
             }
 
-          case (AssetIssueContract, assetIssue: AssetIssueContractModel) =>
+          case (AssetIssueContract, Some(assetIssue: AssetIssueContractModel)) =>
             eventStream.publish(AssetIssueCreated(assetIssue))
 
-          case (ParticipateAssetIssueContract, participate: ParticipateAssetIssueModel) =>
+          case (ParticipateAssetIssueContract, Some(participate: ParticipateAssetIssueModel)) =>
             eventStream.publish(ParticipateAssetIssueModelCreated(participate))
-
-          case _ =>
         }
 
         contract

@@ -10,7 +10,7 @@ import org.tron.protos.Tron.Account
 import org.tronscan.Extensions._
 import org.tronscan.domain.Types.Address
 import org.tronscan.grpc.WalletClient
-import org.tronscan.importer.ImportStatus
+import org.tronscan.importer.NodeState
 import org.tronscan.models.{AccountModel, AccountModelRepository, AddressBalanceModelRepository, BlockModelRepository}
 import org.tronscan.utils.StreamUtils
 import play.api.Logger
@@ -113,7 +113,7 @@ class SynchronisationService @Inject() (
       lastFullNodeBlockHash <- lastFulNodeNumberF.map(_.hash).recover { case _ => "" }
       lastSolidityNodeBlockHash <- lastSolidityNumberF.map(_.hash).recover { case _ => "" }
       lastDbBlockHash <- lastDatabaseBlockF.map(_.get.hash).recover { case _ => "" }
-    } yield ImportStatus(
+    } yield NodeState(
       solidityEnabled = syncSolidity,
       fullNodeBlock = lastFulNodeNumber,
       solidityBlock = lastSolidityNumber,

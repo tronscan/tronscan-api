@@ -1,6 +1,6 @@
 package org.tronscan.importer
 
-case class ImportStatus(
+case class NodeState(
   solidityEnabled: Boolean = true,
   fullNodeBlock: Long,
   solidityBlock: Long,

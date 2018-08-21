@@ -39,7 +39,7 @@ class SolidityNodeImporter @Inject()(
   walletClient: WalletClient,
   @NamedCache("redis") redisCache: CacheAsyncApi) extends Actor {
 
-  def readBlocksFromStatus = Flow[ImportStatus]
+  def readBlocksFromStatus = Flow[NodeState]
     .mapAsync(1) { status =>
       walletClient.solidity.map { walletSolidity =>
         val client = new SolidityBlockChain(walletSolidity).client
@@ -105,12 +105,12 @@ class SolidityNodeImporter @Inject()(
       addresses ~> synchronisationService.buildAddressSynchronizer() ~> Sink.ignore
 
       // Publish Contract Events
-      contracts.map(_._3) ~>
-        blockChainBuilder.publishContractEvents(List(
-          VoteWitnessContract,
-          AssetIssueContract,
-          ParticipateAssetIssueContract
-        )) ~> Sink.ignore
+//      contracts.map(_._3) ~>
+//        blockChainBuilder.publishContractEvents(List(
+//          VoteWitnessContract,
+//          AssetIssueContract,
+//          ParticipateAssetIssueContract
+//        )) ~> Sink.ignore
 
       ClosedShape
     })

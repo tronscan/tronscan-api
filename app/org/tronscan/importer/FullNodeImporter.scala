@@ -56,7 +56,7 @@ class FullNodeImporter @Inject()(
   /**
     * Build import action from import status
     */
-  def buildImportActionFromImportStatus(importStatus: ImportStatus) = {
+  def buildImportActionFromImportStatus(importStatus: NodeState) = {
     var autoConfirmBlocks = false
     var updateAccounts = false
     var redisCleaner = true
@@ -98,7 +98,7 @@ class FullNodeImporter @Inject()(
     )
   }
 
-  def buildSource(importState: ImportStatus) = {
+  def buildSource(importState: NodeState) = {
 
     Logger.info("buildSource: " + importState.toString)
 
@@ -126,7 +126,7 @@ class FullNodeImporter @Inject()(
 
     def eventsPublisher = {
       if (importAction.publishEvents) {
-        blockChainBuilder.publishContractEvents(List(
+        blockChainBuilder.publishContractEvents(context.system.eventStream, List(
           TransferContract,
           TransferAssetContract,
           WitnessCreateContract
@@ -168,7 +168,7 @@ class FullNodeImporter @Inject()(
         addresses ~> StreamUtils.distinct[Address] ~> redisCleaner ~> accountUpdaterFlow ~> out
 
         // Broadcast contract events
-        contracts.map(_._3) ~> eventsPublisher ~> out
+//        contracts ~> eventsPublisher ~> out
 
         /** Close Stream **/
 
@@ -197,7 +197,7 @@ class FullNodeImporter @Inject()(
   /**
     * Build a stream of blocks from the given import status
     */
-  def readBlocksFromStatus = Flow[ImportStatus]
+  def readBlocksFromStatus = Flow[NodeState]
     .mapAsync(1) { status =>
       walletClient.full.map { walletFull =>
         val fullNodeBlockChain = new FullNodeBlockChain(walletFull)
@@ -214,7 +214,7 @@ class FullNodeImporter @Inject()(
   /**
     * Retrieves the latest synchronisation status and checks if the sync should proceed
     */
-  def syncStarter = Flow[ImportStatus]
+  def syncStarter = Flow[NodeState]
     .filter {
       // Stop if there are more then 100 blocks to sync for full node
       case status if status.fullNodeBlocksToSync > 0 =>

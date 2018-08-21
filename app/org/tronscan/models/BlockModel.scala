@@ -42,7 +42,7 @@ case class BlockModel(
     confirmed: Boolean = false)
 
 class BlockModelTable(tag: Tag) extends Table[BlockModel](tag, "blocks") {
-  def number = column[Long]("id")
+  def number = column[Long]("id", O.PrimaryKey)
   def hash = column[String]("hash")
   def size = column[Int]("size")
   def timestamp = column[DateTime]("date_created")
@@ -101,7 +101,7 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
     )
   }
 
-  def clearAll: Future[Unit] = run {
+  def clearAll = run {
     sql"""
     TRUNCATE TABLE accounts;
     TRUNCATE TABLE address_balance;
@@ -119,7 +119,7 @@ class BlockModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) exte
 
 
   def findFirst = {
-    findByNumber(2)
+    findByNumber(0)
   }
 
   def findByLimit(start: Long, limit: Long) = run {
