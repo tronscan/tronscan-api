@@ -38,7 +38,7 @@ class TransactionBuilder @Inject() (wallet: Wallet) {
 
     val transferContract = TransferContract(
       ownerAddress = ByteString.copyFrom(from),
-      toAddress = ByteString.copyFrom(Base58.decode58Check(to)),
+      toAddress = to.decodeAddress,
       amount = amount)
 
     val contract = Transaction.Contract(

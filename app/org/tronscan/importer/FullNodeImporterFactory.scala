@@ -24,16 +24,20 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
+object StreamTypes {
+  type ContractFlow = (Block, Transaction, Transaction.Contract)
+}
 
-case class StreamImporters(
+import StreamTypes._
+
+case class BlockchainImporters(
   blocks: List[Flow[Block, Block, NotUsed]] = List.empty,
   addresses: List[Flow[Address, Address, NotUsed]] = List.empty,
-  contracts: List[Flow[(Block, Transaction, Transaction.Contract), (Block, Transaction, Transaction.Contract), NotUsed]] = List.empty,
+  contracts: List[Flow[ContractFlow, ContractFlow, NotUsed]] = List.empty,
 ) {
-
   def addBlock(block: Flow[Block, Block, NotUsed]) = copy(blocks = blocks :+ block)
   def addAddress(address: Flow[Address, Address, NotUsed]) = copy(addresses = addresses :+ address)
-  def addContract(contract: Flow[(Block, Transaction, Transaction.Contract), (Block, Transaction, Transaction.Contract), NotUsed]) = copy(contracts = contracts :+ contract)
+  def addContract(contract: Flow[ContractFlow, ContractFlow, NotUsed]) = copy(contracts = contracts :+ contract)
 }
 
 case class ImportAction(
@@ -148,11 +152,11 @@ class FullNodeImporterFactory @Inject() (
           WitnessCreateContract
         ))
       } else {
-        Flow[(Block, Transaction, Transaction.Contract)]
+        Flow[ContractFlow]
       }
     }
 
-    StreamImporters(
+    BlockchainImporters(
       addresses = List(
         accountUpdaterFlow,
         redisCleaner
@@ -163,23 +167,13 @@ class FullNodeImporterFactory @Inject() (
     )
   }
 
-  def buildSource(importers: StreamImporters): Sink[Block, Future[Done]] = {
-//
-//    Logger.info("buildSource: " + importState.toString)
-//
-//    val importAction = buildImportActionFromImportStatus(importState)
-//
-//    if (importAction.resetDB) {
-//      awaitSync(syncService.resetDatabase())
-//    }
-//
-//    val importers = buildImporters(importState)
+  def buildSource(importers: BlockchainImporters): Sink[Block, Future[Done]] = {
 
     val blockSink = Sink.fromGraph(GraphDSL.create(Sink.ignore) { implicit b => sink =>
       import GraphDSL.Implicits._
       val blocks = b.add(Broadcast[Block](3))
       val transactions = b.add(Broadcast[(Block, Transaction)](1))
-      val contracts = b.add(Broadcast[(Block, Transaction, Transaction.Contract)](2))
+      val contracts = b.add(Broadcast[ContractFlow](2))
       val addresses = b.add(Merge[Address](2))
       val out = b.add(Merge[Any](3))
 

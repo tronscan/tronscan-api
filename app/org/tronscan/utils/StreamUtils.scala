@@ -1,6 +1,10 @@
 package org.tronscan.utils
 
 import akka.stream.scaladsl.Flow
+import shapeless.T
+
+import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 
 object StreamUtils {
 

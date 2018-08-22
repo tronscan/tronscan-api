@@ -5,7 +5,7 @@ import akka.stream.scaladsl.Flow
 import com.google.protobuf.ByteString
 import org.tron.common.BlockId
 import org.tron.common.utils.{Base58, ByteArray, Sha256Hash}
-import org.tron.protos.Tron.{Block, Transaction}
+import org.tron.protos.Tron.{Account, Block, Transaction}
 import org.tronscan.domain.Types.{Address, BlockHash, TxHash}
 import org.tronscan.utils.ContractUtils
 
@@ -50,6 +50,8 @@ object Extensions {
     def encodeString = {
       ByteString.copyFromUtf8(str)
     }
+
+    def toAccount = Account(address = str.decodeAddress)
   }
 
   implicit class StreamUtils[A](streams: List[Flow[A, A, NotUsed]]) {

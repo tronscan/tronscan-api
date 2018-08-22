@@ -11,6 +11,7 @@ import org.tron.api.api.{BlockLimit, NumberMessage}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
 import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.domain.Events._
+import org.tronscan.importer.StreamTypes.ContractFlow
 import org.tronscan.models._
 import org.tronscan.utils.{ModelUtils, ProtoUtils}
 import play.api.Logger
@@ -84,8 +85,8 @@ class BlockChainStreamBuilder {
   /**
     * Publishes contracts to the given eventstream
     */
-  def publishContractEvents(eventStream: EventStream, contractTypes: List[Transaction.Contract.ContractType]): Flow[(Block, Transaction, Transaction.Contract), (Block, Transaction, Transaction.Contract), NotUsed] = {
-    Flow[(Block, Transaction, Transaction.Contract)]
+  def publishContractEvents(eventStream: EventStream, contractTypes: List[Transaction.Contract.ContractType]): Flow[ContractFlow, ContractFlow, NotUsed] = {
+    Flow[ContractFlow]
       .filter(contract  => contractTypes.contains(contract._3.`type`))
       .map { contract =>
         (contract._3.`type`, ModelUtils.contractToModel(contract._3, contract._2, contract._1)) match {

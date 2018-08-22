@@ -1,22 +1,23 @@
 package org.tronscan.service
 
 import akka.NotUsed
+import akka.actor.Scheduler
 import akka.stream.scaladsl.Flow
 import io.circe.syntax._
 import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.api.api.{EmptyMessage, NumberMessage}
-import org.tron.protos.Tron.Account
 import org.tronscan.Extensions._
 import org.tronscan.domain.Types.Address
 import org.tronscan.grpc.WalletClient
 import org.tronscan.importer.NodeState
 import org.tronscan.models.{AccountModel, AccountModelRepository, AddressBalanceModelRepository, BlockModelRepository}
-import org.tronscan.utils.StreamUtils
+import org.tronscan.utils.FutureUtils
 import play.api.Logger
 import play.api.inject.ConfigurationProvider
 
 import scala.async.Async._
+import scala.concurrent.duration._
 
 
 class SynchronisationService @Inject() (
@@ -128,37 +129,34 @@ class SynchronisationService @Inject() (
   /**
     * Builds a stream that accepts addresses and syncs them to the database
     */
-  def buildAddressSynchronizer(parallel: Int = 6): Flow[Address, Address, NotUsed] = Flow[Address]
+  def buildAddressSynchronizer(parallel: Int = 6)(implicit scheduler: Scheduler): Flow[Address, Address, NotUsed] = Flow[Address]
     .mapAsyncUnordered(parallel) { address =>
       Logger.info("Syncing Address: " + address)
-      async {
-        val t1 = DateTime.now()
-        val walletSolidity = await(walletClient.solidity)
-        val account = await(walletSolidity.getAccount(Account(
-          address = address.decodeAddress
-        )))
-        val t2 = DateTime.now()
-        val span1 = (t2.toDate.getTime - t1.toDate.getTime) / 1000
-        Logger.info("RPC call end: " + span1)
 
-        if (account != null) {
-          val accountModel = AccountModel(
-            address = address,
-            name = new String(account.accountName.toByteArray),
-            balance = account.balance,
-            power = account.frozen.map(_.frozenBalance).sum,
-            tokenBalances = account.asset.asJson,
-            dateCreated = new DateTime(account.createTime),
-            dateUpdated = DateTime.now
-          )
-          val t3 = DateTime.now()
-          await(accountModelRepository.insertOrUpdate(accountModel))
-          await(addressBalanceModelRepository.updateBalance(accountModel))
-          val t4 = DateTime.now()
-          val span = (t4.toDate.getTime - t3.toDate.getTime) / 1000
-          Logger.info("update account db time cost: " + span)
+      // Retry accounts
+      FutureUtils.retry(250.milliseconds, 30.seconds, 0.5) { () =>
+        async {
+
+          val wallet  = await(walletClient.full)
+          val account = await(wallet.getAccount(address.toAccount))
+
+          if (account != null) {
+            val accountModel = AccountModel(
+              address = address,
+              name = new String(account.accountName.toByteArray),
+              balance = account.balance,
+              power = account.frozen.map(_.frozenBalance).sum,
+              tokenBalances = account.asset.asJson,
+              dateCreated = new DateTime(account.createTime),
+              dateUpdated = DateTime.now
+            )
+
+            await(accountModelRepository.insertOrUpdate(accountModel))
+            await(addressBalanceModelRepository.updateBalance(accountModel))
+          }
+
+          address
         }
-        address
       }
     }
 }

@@ -11,7 +11,7 @@ object Dependencies {
   val scaleCubeVersion = "1.0.7"
 
   val akkaStreamsContribDeps = Seq(
-    "com.typesafe.akka" %% "akka-stream-contrib" % "0.8"
+    "com.typesafe.akka" %% "akka-stream-contrib" % "0.9"
   )
 
   val circeDependencies = Seq(

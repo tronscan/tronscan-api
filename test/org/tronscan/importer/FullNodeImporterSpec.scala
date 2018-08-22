@@ -4,34 +4,25 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.testkit.TestProbe
-import dispatch.url
 import org.specs2.matcher.{FutureMatchers, Matchers}
 import org.specs2.mutable._
 import org.specs2.specification.AfterAll
-import org.tron.protos.Contract.{TransferAssetContract, TransferContract, WitnessCreateContract}
+import org.tron.protos.Contract.{FreezeBalanceContract, TransferAssetContract, TransferContract, WitnessCreateContract}
 import org.tron.protos.Tron.Transaction.Contract.ContractType
 import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.Extensions._
 import org.tronscan.domain.Events.{AddressEvent, AssetTransferCreated, TransferCreated, WitnessCreated}
 import org.tronscan.domain.Types.Address
-import org.tronscan.models.WitnessModel
-import org.tronscan.test.{Awaiters, BlockBuilder, StreamSpecUtils}
+import org.tronscan.models.{TransferModel, WitnessModel}
+import org.tronscan.test.{Awaiters, BaseStreamSpec, BlockBuilder, StreamSpecUtils}
 
 import scala.concurrent.duration._
 
 
-class FullNodeImporterSpec extends Specification with Matchers with FutureMatchers with Awaiters with StreamSpecUtils with AfterAll {
+class FullNodeImporterSpec extends Specification with BaseStreamSpec with FutureMatchers with Awaiters with StreamSpecUtils {
 
   val factory = new FullNodeImporterFactory(null, null, null)
   val blockchainStreamFactory = new BlockChainStreamBuilder
-
-  implicit val system = ActorSystem()
-  implicit val materializer = ActorMaterializer()
-
-  override def afterAll = {
-    awaitSync(system.terminate())
-    materializer.shutdown()
-  }
 
   "Full Node Importer" should {
 
@@ -49,7 +40,7 @@ class FullNodeImporterSpec extends Specification with Matchers with FutureMatche
       val (blocks,    blockSink)    = buildListSink[Block]
       val (contracts, contractSink) = buildListSink[(Block, Transaction, Transaction.Contract)]
 
-      val importers = StreamImporters()
+      val importers = BlockchainImporters()
         .addAddress(addressSink)
         .addBlock(blockSink)
         .addContract(contractSink)
@@ -81,22 +72,23 @@ class FullNodeImporterSpec extends Specification with Matchers with FutureMatche
             assetName = "TRX".encodeString,
             amount = 1000))
         .addContract(
+          ContractType.FreezeBalanceContract,
+          FreezeBalanceContract(
+            ownerAddress = "TGzz8gjYiYRqpfmDwnLxfgPuLVNmpCswVp".decodeAddress,
+            frozenBalance = 100,
+            frozenDuration = 100))
+        .addContract(
           ContractType.WitnessCreateContract,
           WitnessCreateContract(
             ownerAddress = "TGzz8gjYiYRqpfmDwnLxfgPuLVNmpCswVp".decodeAddress,
             url = "https://tronscan.org".encodeString))
 
-      val (contracts, contractSink) = buildListSink[(Block, Transaction, Transaction.Contract)]
-
-      val eventStream = system.eventStream
-
       // Create listener to listen to address events
       val eventListener = TestProbe()
-      eventStream.subscribe(eventListener.ref, classOf[AddressEvent])
+      system.eventStream.subscribe(eventListener.ref, classOf[AddressEvent])
 
-      val importers = StreamImporters()
-        .addContract(contractSink)
-        .addContract(blockchainStreamFactory.publishContractEvents(eventStream, List(
+      val importers = BlockchainImporters()
+        .addContract(blockchainStreamFactory.publishContractEvents(system.eventStream, List(
           ContractType.TransferContract,
           ContractType.TransferAssetContract,
           ContractType.WitnessCreateContract
@@ -111,11 +103,11 @@ class FullNodeImporterSpec extends Specification with Matchers with FutureMatche
         "TGzz8gjYiYRqpfmDwnLxfgPuLVNmpCswVp",
         "https://tronscan.org"
       )))
+      eventListener.expectNoMessage(1.seconds)
 
       awaitSync(source)
 
-      contracts.size must equalTo(3)
+      ok
     }
   }
-
 }
