@@ -41,21 +41,6 @@ class BlockChainStreamBuilder {
     */
   def readFullNodeBlocksBatched(from: Long, to: Long, batchSize: Int = 50)(client: WalletStub)(implicit executionContext: ExecutionContext): Source[Block, NotUsed] = {
 
-//    def retry(batchLimit: Int): Future[Some[(Long, Seq[Block])]] = {
-//      val toBlock = if (from + batchLimit > to) to else from + batchLimit
-//
-//      client
-//        .getBlockByLimitNext(BlockLimit(from, toBlock))
-//        .map { blocks =>
-//          Some((to, blocks.block.filter(_.blockHeader.isDefined).sortBy(_.getBlockHeader.getRawData.number)))
-//        }
-////        .recoverWith {
-////          case exc if batchLimit > 5 =>
-////            Logger.error("Error While fetching!", exc)
-////            retry(batchLimit - 10)
-////        }
-//    }
-
     Source.unfoldAsync(from) { prev =>
       if (prev < to) {
 

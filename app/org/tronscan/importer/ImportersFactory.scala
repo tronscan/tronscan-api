@@ -1,11 +1,11 @@
 package org.tronscan.importer
 
-import akka.Done
+import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Sink}
 import javax.inject.Inject
 import org.tron.protos.Tron.Block
-import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, WitnessCreateContract}
+import org.tron.protos.Tron.Transaction.Contract.ContractType.{AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
 import org.tronscan.domain.Types.Address
 import org.tronscan.grpc.WalletClient
 import org.tronscan.importer.StreamTypes.ContractFlow
@@ -27,10 +27,10 @@ class ImportersFactory @Inject() (
 
     val redisCleaner = if (importAction.cleanRedisCache) Flow[Address].alsoTo(redisCacheCleaner) else Flow[Address]
 
-    val accountUpdaterFlow = {
+    val accountUpdaterFlow: Flow[Address, Address, NotUsed] = {
       if (importAction.updateAccounts) {
         if (importAction.asyncAddressImport) {
-          accountImporter.buildAddressMarkDirtyFlow
+          Flow[Address].alsoTo(accountImporter.buildAddressMarkDirtyFlow)
         } else {
           accountImporter.buildAddressSynchronizerFlow(walletClient)(actorSystem.scheduler, executionContext)
         }
@@ -65,6 +65,31 @@ class ImportersFactory @Inject() (
     )
   }
 
+  def buildSolidityImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
+
+    val eventsPublisher = if (importAction.publishEvents) {
+      blockChainBuilder.publishContractEvents(actorSystem.eventStream, List(
+        VoteWitnessContract,
+        AssetIssueContract,
+        ParticipateAssetIssueContract
+      ))
+    } else {
+      Flow[ContractFlow]
+    }
+
+    val blockFlow = Flow[Block].alsoTo(blockImporter.buildSolidityBlockQueryImporter)
+
+    BlockchainImporters(
+      addresses = List(
+      ),
+      contracts = List(
+        eventsPublisher
+      ),
+      blocks = List(
+        blockFlow
+      )
+    )
+  }
 
   /**
     * Invalidate addresses in the redis cache

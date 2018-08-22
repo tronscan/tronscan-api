@@ -7,7 +7,7 @@ import javax.inject.Inject
 import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.Extensions._
 import org.tronscan.domain.Types.Address
-import org.tronscan.grpc.{FullNodeBlockChain, WalletClient}
+import org.tronscan.grpc.{FullNodeBlockChain, SolidityBlockChain, WalletClient}
 import org.tronscan.importer.StreamTypes._
 import org.tronscan.models._
 import org.tronscan.service.SynchronisationService
@@ -202,71 +202,51 @@ class ImportStreamFactory @Inject()(
     .flatMapConcat(blockStream => blockStream)
 
   /**
+    * Build a stream of solidity blocks
+    */
+  def buildSolidityBlockSource(walletClient: WalletClient)(implicit context: ExecutionContext) = {
+    Flow[NodeState]
+      .mapAsync(1) { status =>
+        walletClient.solidity.map { walletSolidity =>
+          val client = new SolidityBlockChain(walletSolidity).client
+          blockChainBuilder.readSolidityBlocks(status.dbUnconfirmedBlock, status.soliditySyncToBlock)(client)
+        }
+      }
+      .flatMapConcat(blockStream => blockStream)
+  }
+
+
+  /**
     * Retrieves the latest synchronisation status and checks if the sync should proceed
     */
-  def preSynchronisationChecker = Flow[NodeState]
-    .filter {
-      // Stop if there are more then 100 blocks to sync for full node
-      case status if status.fullNodeBlocksToSync > 0 =>
-        Logger.info(s"START SYNC FROM ${status.dbLatestBlock} TO ${status.fullNodeBlock}. " + status.toString)
-        true
-      case status =>
-        Logger.info("IGNORE FULL NODE SYNC: " + status.toString)
-        false
-    }
-
-  def buildContractSqlBuilder(databaseImporter: DatabaseImporter) = {
-    import databaseImporter._
-    importWitnessCreate orElse importTransfers orElse buildConfirmedEvents orElse elseEmpty
+  def fullNodePreSynchronisationChecker = {
+    Flow[NodeState]
+      .filter {
+        // Stop if there are more then 100 blocks to sync for full node
+        case status if status.fullNodeBlocksToSync > 0 =>
+          Logger.info(s"START SYNC FROM ${status.dbLatestBlock} TO ${status.fullNodeBlock}. " + status.toString)
+          true
+        case status =>
+          Logger.info("IGNORE FULL NODE SYNC: " + status.toString)
+          false
+      }
   }
 
   /**
-    * Build block importer
-    *
-    * @param confirmBlocks if all blocks that are being imported should be automatically confirmed
+    * Retrieves the latest synchronisation status and checks if the sync should proceed
     */
-  def fullNodeBlockImporter(
-    blockModelRepository: BlockModelRepository,
-    transactionModelRepository: TransactionModelRepository,
-    databaseImporter: DatabaseImporter,
-    confirmBlocks: Boolean = false) = {
-    val importer = buildContractSqlBuilder(databaseImporter)
-
-    Flow[Block]
-      .map { block =>
-
-        val header = block.getBlockHeader.getRawData
-        val queries: ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]] = ListBuffer()
-
-        Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}, CONFIRM: $confirmBlocks")
-
-        // Import Block
-        queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
-
-        // Import Transactions
-        queries.appendAll(block.transactions.map { trx =>
-          transactionModelRepository.buildInsertOrUpdate(ModelUtils.transactionToModel(trx, block).copy(confirmed = confirmBlocks))
-        })
-
-        // Import Contracts
-        queries.appendAll(block.transactionContracts.flatMap {
-          case (trx, contract) =>
-            ModelUtils.contractToModel(contract, trx, block).map {
-              case transfer: TransferModel =>
-                importer((contract.`type`, contract, transfer.copy(confirmed = confirmBlocks || block.getBlockHeader.getRawData.number == 0)))
-              case x =>
-                importer((contract.`type`, contract, x))
-            }.getOrElse(Seq.empty)
-        })
-
-        queries.toList
+  def solidityNodePreSynchronisationChecker = {
+    Flow[NodeState]
+      .filter {
+        // Stop if there are more then 100 blocks to sync for full node
+        case status if status.fullNodeBlocksToSync > 100 =>
+          false
+        // Accept if there are blocks to sync
+        case status if status.solidityBlocksToSync > 0 =>
+          true
+        case _ =>
+          false
       }
-      // Flatmap the queries
-      .flatMapConcat(q => Source(q))
-      // Batch queries together
-      .groupedWithin(1000, 2.seconds)
-      // Insert batched queries in database
-      .mapAsync(1)(blockModelRepository.executeQueries)
   }
 
 }

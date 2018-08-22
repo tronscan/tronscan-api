@@ -2,14 +2,12 @@ package org.tronscan.models
 
 import com.google.inject.{Inject, Singleton}
 import io.circe.Json
+import org.joda.time.DateTime
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
-import org.joda.time.DateTime
 import play.api.db.slick.DatabaseConfigProvider
-import org.tronscan.App._
-import specs2.run
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 case class AccountModel(
   address: String,
@@ -70,6 +68,24 @@ class AccountModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) ex
   def markDirty(address: String)(implicit executionContext: ExecutionContext) = run {
     table.filter(_.address === address).map(_.dateUpdated).update(DateTime.now)
   }.map(_ >= 1)
+
+  /**
+    * Marks the address as dirty
+    *;
+    * @param address the address to mark dirty
+    * @return returns true if the address exists and has been marked dirty, returns false if there wasn't an existing record
+    */
+  def buildDirty(address: String)(implicit executionContext: ExecutionContext) = {
+    sql"""
+      INSERT INTO
+        accounts ( address, date_updated )
+      VALUES
+        ($address, now())
+      ON CONFLICT (address)
+      DO UPDATE
+        SET date_updated = now()
+    """.asUpdate
+  }
 
   /**
     * Retrieve all acounts which have a balance between the start and end balance
