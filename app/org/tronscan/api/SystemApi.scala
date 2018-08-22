@@ -29,7 +29,7 @@ class SystemApi @Inject()(
       val networkType = configurationProvider.get.get[String]("net.type")
 
       for {
-        syncStatus <- syncService.importStatus
+        syncStatus <- syncService.nodeState
       } yield {
         Ok(
           Json.obj(

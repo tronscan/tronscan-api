@@ -3,9 +3,7 @@ package org.tronscan.importer
 import akka.actor.{Actor, ActorRef}
 import javax.inject.{Inject, Named}
 import org.tronscan.importer.ImportManager.Sync
-import org.tronscan.models.BlockModelRepository
 import play.api.inject.ConfigurationProvider
-import scala.concurrent.duration._
 
 object ImportManager {
   case class Sync()
@@ -22,17 +20,15 @@ class ImportManager @Inject() (
 
   override def preStart(): Unit = {
 
-    import context.dispatcher
-
     val syncSolidity = configurationProvider.get.get[Boolean]("sync.solidity")
     val syncFull = configurationProvider.get.get[Boolean]("sync.full")
 
     if (syncFull) {
-      context.system.scheduler.scheduleOnce(2.seconds, fullNodeReader, Sync())
+      fullNodeReader ! Sync()
     }
 
     if (syncSolidity) {
-      context.system.scheduler.scheduleOnce(12.seconds, solidityNodeReader, Sync())
+      solidityNodeReader ! Sync()
     }
   }
 

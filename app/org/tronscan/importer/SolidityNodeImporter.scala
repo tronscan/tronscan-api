@@ -53,7 +53,7 @@ class SolidityNodeImporter @Inject()(
     */
   def syncStarter = {
     Flow[Any]
-      .mapAsync(1)(_ => synchronisationService.importStatus)
+      .mapAsync(1)(_ => synchronisationService.nodeState)
       .filter {
         // Stop if there are more then 100 blocks to sync for full node
         case status if status.fullNodeBlocksToSync > 100 =>

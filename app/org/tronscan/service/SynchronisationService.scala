@@ -96,7 +96,7 @@ class SynchronisationService @Inject() (
   /**
     * Retrieves the import status for full and solidity nodes
     */
-  def importStatus = {
+  def nodeState = {
     for {
       wallet <- walletClient.full
       walletSolidity <- walletClient.solidity
@@ -125,38 +125,4 @@ class SynchronisationService @Inject() (
       dbBlockHash = lastDbBlockHash
     )
   }
-
-  /**
-    * Builds a stream that accepts addresses and syncs them to the database
-    */
-  def buildAddressSynchronizer(parallel: Int = 6)(implicit scheduler: Scheduler): Flow[Address, Address, NotUsed] = Flow[Address]
-    .mapAsyncUnordered(parallel) { address =>
-      Logger.info("Syncing Address: " + address)
-
-      // Retry accounts
-      FutureUtils.retry(250.milliseconds, 30.seconds, 0.5) { () =>
-        async {
-
-          val wallet  = await(walletClient.full)
-          val account = await(wallet.getAccount(address.toAccount))
-
-          if (account != null) {
-            val accountModel = AccountModel(
-              address = address,
-              name = new String(account.accountName.toByteArray),
-              balance = account.balance,
-              power = account.frozen.map(_.frozenBalance).sum,
-              tokenBalances = account.asset.asJson,
-              dateCreated = new DateTime(account.createTime),
-              dateUpdated = DateTime.now
-            )
-
-            await(accountModelRepository.insertOrUpdate(accountModel))
-            await(addressBalanceModelRepository.updateBalance(accountModel))
-          }
-
-          address
-        }
-      }
-    }
 }

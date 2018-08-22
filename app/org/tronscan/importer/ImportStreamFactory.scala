@@ -1,35 +1,35 @@
 package org.tronscan.importer
 
-import akka.actor.ActorContext
 import akka.stream.SinkShape
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, Sink, Source}
 import akka.{Done, NotUsed}
 import javax.inject.Inject
-import org.awaitSync
-import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, WitnessCreateContract}
 import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.Extensions._
 import org.tronscan.domain.Types.Address
 import org.tronscan.grpc.{FullNodeBlockChain, WalletClient}
+import org.tronscan.importer.StreamTypes._
 import org.tronscan.models._
 import org.tronscan.service.SynchronisationService
-import org.tronscan.utils.ModelUtils
+import org.tronscan.utils.{ModelUtils, StreamUtils}
 import play.api.Logger
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
 import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
 
+import scala.async.Async._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
-object StreamTypes {
-  type ContractFlow = (Block, Transaction, Transaction.Contract)
-}
-
-import StreamTypes._
-
+/**
+  * Holds the flows that will handle the specicif objects extracted from blocks
+  *
+  * @param blocks flows whichs handle the blocks
+  * @param addresses flows which handle the addresses
+  * @param contracts flows which handle the contracts
+  */
 case class BlockchainImporters(
   blocks: List[Flow[Block, Block, NotUsed]] = List.empty,
   addresses: List[Flow[Address, Address, NotUsed]] = List.empty,
@@ -72,7 +72,7 @@ case class ImportAction(
   resetDB: Boolean = false,
 )
 
-class FullNodeImporterFactory @Inject() (
+class ImportStreamFactory @Inject()(
   syncService: SynchronisationService,
   blockChainBuilder: BlockChainStreamBuilder,
   @NamedCache("redis") redisCache: CacheAsyncApi) {
@@ -80,15 +80,15 @@ class FullNodeImporterFactory @Inject() (
   /**
     * Build import action from import status
     */
-  def buildImportActionFromImportStatus(importStatus: NodeState) = {
+  def buildImportActionFromImportStatus(importStatus: NodeState)(implicit executionContext: ExecutionContext) = async {
     var autoConfirmBlocks = false
     var updateAccounts = false
     var redisCleaner = true
     var asyncAddressImport = false
     var publishEvents = true
 
-    val fullNodeBlockHash = awaitSync(syncService.getFullNodeHashByNum(importStatus.solidityBlock))
-    val resetDB = !awaitSync(syncService.isSameChain())
+    val fullNodeBlockHash = await(syncService.getFullNodeHashByNum(importStatus.solidityBlock))
+    val resetDB = !await(syncService.isSameChain())
 
     // If solidity isn't being synced then take over Solidity node tasks
     if (!importStatus.solidityEnabled) {
@@ -123,53 +123,10 @@ class FullNodeImporterFactory @Inject() (
   }
 
   /**
-    * Builds importers based on the given nodestate
-    *
-    * @param importState state of the nodes
+    * A sync that extracts all the blocks, transactions, contracts, addresses from the blocks and passes them to streams
     */
-  def buildImporters(importState: NodeState)(implicit context: ActorContext, executionContext: ExecutionContext) = {
-    val importAction = buildImportActionFromImportStatus(importState)
-
-    val redisCleaner = if (importAction.cleanRedisCache) Flow[Address].alsoTo(redisCacheCleaner) else Flow[Address]
-
-    val accountUpdaterFlow = {
-      if (importAction.updateAccounts) {
-        if (importAction.asyncAddressImport) {
-          syncService.buildAddressSynchronizer()
-        } else {
-          syncService.buildAddressSynchronizer()
-        }
-      } else {
-        Flow[Address]
-      }
-    }
-
-    val eventsPublisher = {
-      if (importAction.publishEvents) {
-        blockChainBuilder.publishContractEvents(context.system.eventStream, List(
-          TransferContract,
-          TransferAssetContract,
-          WitnessCreateContract
-        ))
-      } else {
-        Flow[ContractFlow]
-      }
-    }
-
-    BlockchainImporters(
-      addresses = List(
-        accountUpdaterFlow,
-        redisCleaner
-      ),
-      contracts = List(
-        eventsPublisher
-      )
-    )
-  }
-
-  def buildSource(importers: BlockchainImporters): Sink[Block, Future[Done]] = {
-
-    val blockSink = Sink.fromGraph(GraphDSL.create(Sink.ignore) { implicit b => sink =>
+  def buildBlockSink(importers: BlockchainImporters): Sink[Block, Future[Done]] = {
+    Sink.fromGraph(GraphDSL.create(Sink.ignore) { implicit b => sink =>
       import GraphDSL.Implicits._
       val blocks = b.add(Broadcast[Block](3))
       val transactions = b.add(Broadcast[(Block, Transaction)](1))
@@ -193,13 +150,13 @@ class FullNodeImporterFactory @Inject() (
 
       /** Importers **/
 
-      // Synchronize Blocks
+      // Extract blocks
       blocks ~> importers.blocks.pipe.async ~> out
 
-      // Sync addresses
-      addresses ~> importers.addresses.pipe.async ~> out
+      // Extract addresses
+      addresses ~> StreamUtils.distinct[Address] ~> importers.addresses.pipe.async ~> out
 
-      // Broadcast contract events
+      // Extract contracts
       contracts ~> importers.contracts.pipe.async ~> out
 
       /** Close Stream **/
@@ -209,23 +166,12 @@ class FullNodeImporterFactory @Inject() (
 
       SinkShape(blocks.in)
     })
-
-    blockSink
   }
-
-
-  /**
-    * Invalidate addresses in the redis cache
-    */
-  def redisCacheCleaner: Sink[Any, Future[Done]] = Sink
-    .foreach { address =>
-      redisCache.removeMatching(s"address/$address/*")
-    }
 
   /**
     * Build a stream of blocks from the given import status
     */
-  def readBlocksFromStatus(walletClient: WalletClient)(implicit context: ExecutionContext) = Flow[NodeState]
+  def buildBlockSource(walletClient: WalletClient)(implicit context: ExecutionContext) = Flow[NodeState]
     .mapAsync(1) { status =>
       walletClient.full.map { walletFull =>
         val fullNodeBlockChain = new FullNodeBlockChain(walletFull)
@@ -240,7 +186,7 @@ class FullNodeImporterFactory @Inject() (
   /**
     * Retrieves the latest synchronisation status and checks if the sync should proceed
     */
-  def syncStarter = Flow[NodeState]
+  def preSynchronisationChecker = Flow[NodeState]
     .filter {
       // Stop if there are more then 100 blocks to sync for full node
       case status if status.fullNodeBlocksToSync > 0 =>
@@ -250,7 +196,6 @@ class FullNodeImporterFactory @Inject() (
         Logger.info("IGNORE FULL NODE SYNC: " + status.toString)
         false
     }
-
 
   def buildContractSqlBuilder(databaseImporter: DatabaseImporter) = {
     import databaseImporter._

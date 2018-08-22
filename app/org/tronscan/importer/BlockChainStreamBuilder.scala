@@ -1,7 +1,6 @@
 package org.tronscan.importer
 
 import akka.NotUsed
-import akka.actor.ActorContext
 import akka.event.EventStream
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.{Flow, Source}
@@ -13,9 +12,7 @@ import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.domain.Events._
 import org.tronscan.importer.StreamTypes.ContractFlow
 import org.tronscan.models._
-import org.tronscan.utils.{ModelUtils, ProtoUtils}
-import play.api.Logger
-import scalaz.Alpha.X
+import org.tronscan.utils.ModelUtils
 
 import scala.concurrent.{ExecutionContext, Future}
 
