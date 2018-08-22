@@ -163,15 +163,10 @@ class SynchronisationService @Inject() (
     .mapAsyncUnordered(parallel) { address =>
       Logger.info("Syncing Address: " + address)
       async {
-        val t1 = DateTime.now()
         val walletSolidity = await(walletClient.solidity)
         val account = await(walletSolidity.getAccount(Account(
           address = address.decodeAddress
         )))
-        val t2 = DateTime.now()
-        val span1 = (t2.toDate.getTime - t1.toDate.getTime) / 1000
-        Logger.info("RPC call end: " + span1)
-
         if (account != null) {
           val accountModel = AccountModel(
             address = address,
@@ -182,12 +177,8 @@ class SynchronisationService @Inject() (
             dateCreated = new DateTime(account.createTime),
             dateUpdated = DateTime.now
           )
-          val t3 = DateTime.now()
           await(accountModelRepository.insertOrUpdate(accountModel))
           await(addressBalanceModelRepository.updateBalance(accountModel))
-          val t4 = DateTime.now()
-          val span = (t4.toDate.getTime - t3.toDate.getTime) / 1000
-          Logger.info("update account db time cost: " + span)
         }
       }
     }
