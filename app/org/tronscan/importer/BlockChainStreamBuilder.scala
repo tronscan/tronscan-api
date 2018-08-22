@@ -94,6 +94,9 @@ class BlockChainStreamBuilder {
 
           case (ParticipateAssetIssueContract, Some(participate: ParticipateAssetIssueModel)) =>
             eventStream.publish(ParticipateAssetIssueModelCreated(participate))
+
+          case _ =>
+            // ignore
         }
       })(Keep.right)
   }

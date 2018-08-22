@@ -13,7 +13,7 @@ import org.tronscan.Extensions._
 
 import scala.collection.mutable.ListBuffer
 import concurrent.duration._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class BlockImporter @Inject() (
   blockModelRepository: BlockModelRepository,
@@ -74,7 +74,7 @@ class BlockImporter @Inject() (
   /**
     * Build a stream that imports the blocks into the database
     */
-  def buildSolidityBlockQueryImporter = {
+  def buildSolidityBlockQueryImporter(implicit executionContext: ExecutionContext) = {
 
     import databaseImporter._
 

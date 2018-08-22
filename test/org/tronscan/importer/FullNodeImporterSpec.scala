@@ -2,7 +2,7 @@ package org.tronscan.importer
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.testkit.TestProbe
 import org.specs2.matcher.{FutureMatchers, Matchers}
 import org.specs2.mutable._
@@ -13,6 +13,7 @@ import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.Extensions._
 import org.tronscan.domain.Events.{AddressEvent, AssetTransferCreated, TransferCreated, WitnessCreated}
 import org.tronscan.domain.Types.Address
+import org.tronscan.importer.StreamTypes.ContractFlow
 import org.tronscan.models.{TransferModel, WitnessModel}
 import org.tronscan.test.{Awaiters, BaseStreamSpec, BlockBuilder, StreamSpecUtils}
 
@@ -88,11 +89,11 @@ class FullNodeImporterSpec extends Specification with BaseStreamSpec with Future
       system.eventStream.subscribe(eventListener.ref, classOf[AddressEvent])
 
       val importers = BlockchainImporters()
-        .addContract(blockchainStreamFactory.publishContractEvents(system.eventStream, List(
+        .addContract(Flow[ContractFlow].alsoTo(blockchainStreamFactory.publishContractEvents(system.eventStream, List(
           ContractType.TransferContract,
           ContractType.TransferAssetContract,
           ContractType.WitnessCreateContract
-        )))
+        ))))
 
       val source = Source.single(block.block)
         .runWith(factory.buildBlockSink(importers))
