@@ -41,7 +41,7 @@ class FullNodeImporter @Inject()(
       Logger.info("BuildStream::nodeState -> " + nodeState)
       val importAction = await(importStreamFactory.buildImportActionFromImportStatus(nodeState))
       Logger.info("BuildStream::importAction -> " + importAction)
-      val importers = importersFactory.buildImporters(importAction)
+      val importers = importersFactory.buildFullNodeImporters(importAction)
       Logger.info("BuildStream::importers -> " + importers.debug)
       val synchronisationChecker = importStreamFactory.fullNodePreSynchronisationChecker
       val blockSource = importStreamFactory.buildBlockSource(walletClient)

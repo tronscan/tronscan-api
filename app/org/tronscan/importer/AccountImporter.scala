@@ -1,18 +1,18 @@
 package org.tronscan.importer
 
-import akka.{Done, NotUsed}
 import akka.actor.Scheduler
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
+import akka.{Done, NotUsed}
 import javax.inject.Inject
 import org.tronscan.domain.Types.Address
 import org.tronscan.grpc.WalletClient
-import org.tronscan.models.{AccountModel, AccountModelRepository}
+import org.tronscan.models.AccountModelRepository
 import org.tronscan.service.AccountService
 import org.tronscan.utils.FutureUtils
 import play.api.Logger
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Handles the importing of accounts
@@ -46,7 +46,7 @@ class AccountImporter @Inject() (
         Logger.info("Syncing Address: " + address)
 
         // Retry if it fails
-        FutureUtils.retry(250.milliseconds, 30.seconds, 0.5) { () =>
+        FutureUtils.retry(250.milliseconds, 34.seconds, 1) { () =>
           accountService.syncAddress(address, walletClient).map { _ =>
             address
           }
@@ -59,13 +59,8 @@ class AccountImporter @Inject() (
     */
   def buildAddressMarkDirtyFlow(implicit executionContext: ExecutionContext): Sink[Address, Future[Done]] = {
     Flow[Address]
-      .map { address =>
-//        Logger.info(s"$address marked dirty")
-//        accountService.markAddressDirty(address).map { _ =>
-        //          address
-        //        }
-        accountImporter.buildDirty(address)
-      }
+      // Build a query to mark the address query
+      .map { address => accountImporter.buildMarkAddressDirtyQuery(address) }
       // Batch queries together
       .groupedWithin(1000, 3.seconds)
       // Insert batched queries in database

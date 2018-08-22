@@ -92,8 +92,7 @@ case class ImportAction(
 
 class ImportStreamFactory @Inject()(
   syncService: SynchronisationService,
-  blockChainBuilder: BlockChainStreamBuilder,
-  @NamedCache("redis") redisCache: CacheAsyncApi) {
+  blockChainBuilder: BlockChainStreamBuilder) {
 
   /**
     * Build import action from import status
@@ -115,13 +114,13 @@ class ImportStreamFactory @Inject()(
     }
 
     // If the solidity and full node hash are the same then confirm everything
-    if ((importStatus.dbLatestBlock <= importStatus.solidityBlock - 1000) && (fullNodeBlockHash == importStatus.solidityBlockHash)) {
+    if ((importStatus.dbLatestBlock <= importStatus.solidityBlock - 250) && (fullNodeBlockHash == importStatus.solidityBlockHash)) {
       autoConfirmBlocks = true
       updateAccounts = true
     }
 
     // Don't publish events when there is lots to sync
-    if (importStatus.dbLatestBlock < (importStatus.fullNodeBlock - 1000)) {
+    if (importStatus.dbLatestBlock < (importStatus.fullNodeBlock - 250)) {
       publishEvents = false
     }
 
@@ -187,19 +186,21 @@ class ImportStreamFactory @Inject()(
   }
 
   /**
-    * Build a stream of blocks from the given import status
+    * Build a stream of blocks from a solidity node
     */
-  def buildBlockSource(walletClient: WalletClient)(implicit context: ExecutionContext) = Flow[NodeState]
-    .mapAsync(1) { status =>
-      walletClient.full.map { walletFull =>
-        val fullNodeBlockChain = new FullNodeBlockChain(walletFull)
+  def buildBlockSource(walletClient: WalletClient)(implicit context: ExecutionContext) = {
+    Flow[NodeState]
+      .mapAsync(1) { status =>
+        walletClient.full.map { walletFull =>
+          val fullNodeBlockChain = new FullNodeBlockChain(walletFull)
 
-        // Switch between batch or single depending how far the sync is behind
-        if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(status.dbLatestBlock + 1, status.fullNodeBlock)(fullNodeBlockChain.client)
-        else                                    blockChainBuilder.readFullNodeBlocksBatched(status.dbLatestBlock + 1, status.fullNodeBlock, 100)(fullNodeBlockChain.client)
+          // Switch between batch or single depending how far the sync is behind
+          if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(status.dbLatestBlock + 1, status.fullNodeBlock)(fullNodeBlockChain.client)
+          else                                    blockChainBuilder.readFullNodeBlocksBatched(status.dbLatestBlock + 1, status.fullNodeBlock, 100)(fullNodeBlockChain.client)
+        }
       }
-    }
-    .flatMapConcat(blockStream => blockStream)
+      .flatMapConcat(blockStream => blockStream)
+  }
 
   /**
     * Build a stream of solidity blocks

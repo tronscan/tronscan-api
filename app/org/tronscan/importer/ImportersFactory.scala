@@ -23,7 +23,14 @@ class ImportersFactory @Inject() (
   walletClient: WalletClient,
   blockImporter: BlockImporter) {
 
-  def buildImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
+  /**
+    * Build importers for Full Node
+    * @param importAction
+    * @param actorSystem
+    * @param executionContext
+    * @return
+    */
+  def buildFullNodeImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
 
     val redisCleaner = if (importAction.cleanRedisCache) Flow[Address].alsoTo(redisCacheCleaner) else Flow[Address]
 
@@ -54,18 +61,12 @@ class ImportersFactory @Inject() (
 
     val blockFlow = Flow[Block].alsoTo(blockImporter.fullNodeBlockImporter(importAction.confirmBlocks))
 
-    BlockchainImporters(
-      addresses = List(
-        accountUpdaterFlow,
-        redisCleaner
-      ),
-      contracts = List(
-        eventsPublisher
-      ),
-      blocks = List(
-        blockFlow
-      )
-    )
+
+    BlockchainImporters()
+      .addAddress(accountUpdaterFlow)
+      .addAddress(redisCleaner)
+      .addContract(eventsPublisher)
+      .addBlock(blockFlow)
   }
 
   def buildSolidityImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
@@ -86,16 +87,9 @@ class ImportersFactory @Inject() (
 
     val blockFlow = Flow[Block].alsoTo(blockImporter.buildSolidityBlockQueryImporter)
 
-    BlockchainImporters(
-      addresses = List(
-      ),
-      contracts = List(
-        eventsPublisher
-      ),
-      blocks = List(
-        blockFlow
-      )
-    )
+    BlockchainImporters()
+        .addContract(eventsPublisher)
+        .addBlock(blockFlow)
   }
 
   /**

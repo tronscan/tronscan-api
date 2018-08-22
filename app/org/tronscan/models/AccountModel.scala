@@ -75,7 +75,7 @@ class AccountModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) ex
     * @param address the address to mark dirty
     * @return returns true if the address exists and has been marked dirty, returns false if there wasn't an existing record
     */
-  def buildDirty(address: String)(implicit executionContext: ExecutionContext) = {
+  def buildMarkAddressDirtyQuery(address: String)(implicit executionContext: ExecutionContext) = {
     sql"""
       INSERT INTO
         accounts ( address, date_updated )

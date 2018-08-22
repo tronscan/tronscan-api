@@ -30,7 +30,8 @@ class AccountService @Inject() (
         power = account.frozen.map(_.frozenBalance).sum,
         tokenBalances = account.asset.asJson,
         dateCreated = new DateTime(account.createTime),
-        dateUpdated = DateTime.now
+        dateUpdated = DateTime.now.minusSeconds(5), // Set update a few seconds behind so it doesn't trigger another resync
+        dateSynced = DateTime.now,
       )
 
       await(accountModelRepository.insertOrUpdate(accountModel))
