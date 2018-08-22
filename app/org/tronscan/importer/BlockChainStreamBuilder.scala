@@ -3,7 +3,7 @@ package org.tronscan.importer
 import akka.NotUsed
 import akka.event.EventStream
 import akka.stream.OverflowStrategy
-import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import org.tron.api.api.WalletGrpc.WalletStub
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidityStub
 import org.tron.api.api.{BlockLimit, NumberMessage}
@@ -67,11 +67,14 @@ class BlockChainStreamBuilder {
   /**
     * Publishes contracts to the given eventstream
     */
-  def publishContractEvents(eventStream: EventStream, contractTypes: List[Transaction.Contract.ContractType]): Flow[ContractFlow, ContractFlow, NotUsed] = {
+  def publishContractEvents(eventStream: EventStream, contractTypes: List[Transaction.Contract.ContractType]) = {
     Flow[ContractFlow]
       .filter(contract  => contractTypes.contains(contract._3.`type`))
-      .map { contract =>
-        (contract._3.`type`, ModelUtils.contractToModel(contract._3, contract._2, contract._1)) match {
+      .toMat(Sink.foreach { contractBlock =>
+
+        val (block, transaction, contract) = contractBlock
+
+        (contract.`type`, ModelUtils.contractToModel(contract, transaction, block)) match {
           case (TransferContract, Some(transfer: TransferModel)) =>
             eventStream.publish(TransferCreated(transfer))
 
@@ -92,8 +95,6 @@ class BlockChainStreamBuilder {
           case (ParticipateAssetIssueContract, Some(participate: ParticipateAssetIssueModel)) =>
             eventStream.publish(ParticipateAssetIssueModelCreated(participate))
         }
-
-        contract
-      }
+      })(Keep.right)
   }
 }

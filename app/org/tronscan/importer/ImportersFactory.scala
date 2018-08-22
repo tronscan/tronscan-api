@@ -40,11 +40,14 @@ class ImportersFactory @Inject() (
     }
 
     val eventsPublisher = if (importAction.publishEvents) {
-      blockChainBuilder.publishContractEvents(actorSystem.eventStream, List(
-        TransferContract,
-        TransferAssetContract,
-        WitnessCreateContract
-      ))
+      Flow[ContractFlow].alsoTo(blockChainBuilder.publishContractEvents(
+        actorSystem.eventStream,
+        List(
+          TransferContract,
+          TransferAssetContract,
+          WitnessCreateContract
+        ))
+      )
     } else {
       Flow[ContractFlow]
     }
@@ -68,11 +71,15 @@ class ImportersFactory @Inject() (
   def buildSolidityImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
 
     val eventsPublisher = if (importAction.publishEvents) {
-      blockChainBuilder.publishContractEvents(actorSystem.eventStream, List(
-        VoteWitnessContract,
-        AssetIssueContract,
-        ParticipateAssetIssueContract
-      ))
+      Flow[ContractFlow].alsoTo(
+        blockChainBuilder.publishContractEvents(
+          actorSystem.eventStream,
+          List(
+            VoteWitnessContract,
+            AssetIssueContract,
+            ParticipateAssetIssueContract
+          ))
+      )
     } else {
       Flow[ContractFlow]
     }
