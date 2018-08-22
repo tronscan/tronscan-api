@@ -1,5 +1,6 @@
 package org.tronscan.utils
 
+import akka.NotUsed
 import akka.stream.scaladsl.Flow
 
 object StreamUtils {
@@ -19,4 +20,9 @@ object StreamUtils {
         }
       }
     }
+
+  def pipe[A](streams: List[Flow[A, A, NotUsed]]) = streams.foldLeft(Flow[A]) {
+    case (current, res) =>
+      current.via(res)
+  }
 }

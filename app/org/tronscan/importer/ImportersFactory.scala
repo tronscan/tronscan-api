@@ -4,6 +4,7 @@ import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Sink}
 import javax.inject.Inject
+import org.tron.protos.Tron.Block
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, WitnessCreateContract}
 import org.tronscan.domain.Types.Address
 import org.tronscan.grpc.WalletClient
@@ -19,7 +20,8 @@ class ImportersFactory @Inject() (
   blockChainBuilder: BlockChainStreamBuilder,
   @NamedCache("redis") redisCache: CacheAsyncApi,
   accountImporter: AccountImporter,
-  walletClient: WalletClient) {
+  walletClient: WalletClient,
+  blockImporter: BlockImporter) {
 
   def buildImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
 
@@ -47,6 +49,8 @@ class ImportersFactory @Inject() (
       Flow[ContractFlow]
     }
 
+    val blockFlow = Flow[Block].alsoTo(blockImporter.fullNodeBlockImporter(importAction.confirmBlocks))
+
     BlockchainImporters(
       addresses = List(
         accountUpdaterFlow,
@@ -54,6 +58,9 @@ class ImportersFactory @Inject() (
       ),
       contracts = List(
         eventsPublisher
+      ),
+      blocks = List(
+        blockFlow
       )
     )
   }

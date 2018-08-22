@@ -35,9 +35,27 @@ case class BlockchainImporters(
   addresses: List[Flow[Address, Address, NotUsed]] = List.empty,
   contracts: List[Flow[ContractFlow, ContractFlow, NotUsed]] = List.empty,
 ) {
-  def addBlock(block: Flow[Block, Block, NotUsed]) = copy(blocks = blocks :+ block)
-  def addAddress(address: Flow[Address, Address, NotUsed]) = copy(addresses = addresses :+ address)
-  def addContract(contract: Flow[ContractFlow, ContractFlow, NotUsed]) = copy(contracts = contracts :+ contract)
+
+  def addBlock(block: Flow[Block, Block, NotUsed]) = {
+    copy(blocks = blocks :+ block)
+  }
+
+  def addAddress(address: Flow[Address, Address, NotUsed]) = {
+    copy(addresses = addresses :+ address)
+  }
+
+  def addContract(contract: Flow[ContractFlow, ContractFlow, NotUsed]) = {
+    copy(contracts = contracts :+ contract)
+  }
+
+  def debug = {
+
+    List(
+      "Blocks: " + blocks.map(_.getClass.getSimpleName).mkString(", "),
+      "Addresses: " + blocks.map(_.getClass.getSimpleName).mkString(", "),
+      "Contracts: " + blocks.map(_.getClass.getSimpleName).mkString(", ")
+    ).mkString("\n")
+  }
 }
 
 case class ImportAction(
@@ -84,7 +102,7 @@ class ImportStreamFactory @Inject()(
     var autoConfirmBlocks = false
     var updateAccounts = false
     var redisCleaner = true
-    var asyncAddressImport = false
+    var asyncAddressImport = true
     var publishEvents = true
 
     val fullNodeBlockHash = await(syncService.getFullNodeHashByNum(importStatus.solidityBlock))
@@ -151,13 +169,13 @@ class ImportStreamFactory @Inject()(
       /** Importers **/
 
       // Extract blocks
-      blocks ~> importers.blocks.pipe.async ~> out
+      blocks ~> StreamUtils.pipe(importers.blocks).async ~> out
 
       // Extract addresses
-      addresses ~> StreamUtils.distinct[Address] ~> importers.addresses.pipe.async ~> out
+      addresses ~> StreamUtils.distinct[Address] ~> StreamUtils.pipe(importers.addresses).async ~> out
 
       // Extract contracts
-      contracts ~> importers.contracts.pipe.async ~> out
+      contracts ~> StreamUtils.pipe(importers.contracts).async ~> out
 
       /** Close Stream **/
 

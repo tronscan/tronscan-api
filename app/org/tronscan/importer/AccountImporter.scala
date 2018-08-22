@@ -59,7 +59,8 @@ class AccountImporter @Inject() (
     */
   def buildAddressMarkDirtyFlow(implicit executionContext: ExecutionContext): Flow[Address, Address, NotUsed] = {
     Flow[Address]
-      .mapAsync(8) { address =>
+      .mapAsync(2) { address =>
+        Logger.info(s"$address marked dirty")
         accountService.markAddressDirty(address).map { _ =>
           address
         }

@@ -59,7 +59,6 @@ object Extensions {
       case (current, res) =>
         current.via(res)
     }
-
   }
 
 }
