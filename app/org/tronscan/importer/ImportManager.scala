@@ -10,6 +10,9 @@ import play.api.inject.ConfigurationProvider
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import akka.pattern.after
+
+import scala.concurrent.Future
 
 object ImportManager {
   case class Sync()
@@ -45,7 +48,6 @@ class ImportManager @Inject() (
 
 
     def startImporter(name: String)(source: => Source[_, _]) = {
-
       source
         .runWith(Sink.ignore)
         .andThen {
@@ -56,37 +58,46 @@ class ImportManager @Inject() (
         }
     }
 
-    val syncSolidity = config.get[Boolean]("sync.solidity")
-    val syncFull = config.get[Boolean]("sync.full")
-    val syncAddresses = config.get[Boolean]("sync.addresses")
+    // Wait a few seconds for the GRPC Balancer to get ready
+    after(12.seconds, context.system.scheduler) {
 
-    if (syncFull) {
-      startImporter("FULL") {
-        Source.tick(0.seconds, 3.seconds, "")
-          .mapAsync(1)(_ => fullNodeImporter.buildStream.flatMap(_.run()))
-      }
-    }
+      Future {
+        val syncSolidity = config.get[Boolean]("sync.solidity")
+        val syncFull = config.get[Boolean]("sync.full")
+        val syncAddresses = config.get[Boolean]("sync.addresses")
 
-    if (syncSolidity) {
-      startImporter("SOLIDITY") {
-        Source.tick(0.seconds, 3.seconds, "")
-          .mapAsync(1)(_ => solidityNodeImporter.buildStream.flatMap(_.run()))
-      }
-    }
-
-    if (syncAddresses) {
-      implicit val scheduler = context.system.scheduler
-      startImporter("ADDRESSES") {
-        Source.tick(0.seconds, 15.seconds, "")
-          .mapAsync(1) { _ =>
-            accountImporter
-              .buildAccountSyncSource
-              .runWith(accountImporter.buildAddressSynchronizerFlow(walletClient))
+        if (syncFull) {
+          startImporter("FULL") {
+            Source.tick(0.seconds, 3.seconds, "")
+              .mapAsync(1)(_ => fullNodeImporter.buildStream.flatMap(_.run()))
           }
+        }
+
+        if (syncSolidity) {
+          startImporter("SOLIDITY") {
+            Source.tick(0.seconds, 3.seconds, "")
+              .mapAsync(1)(_ => solidityNodeImporter.buildStream.flatMap(_.run()))
+          }
+        }
+
+        if (syncAddresses) {
+          implicit val scheduler = context.system.scheduler
+          startImporter("ADDRESSES") {
+            Source.tick(0.seconds, 15.seconds, "")
+              .mapAsync(1) { _ =>
+                accountImporter
+                  .buildAccountSyncSource
+                  .runWith(accountImporter.buildAddressSynchronizerFlow(walletClient))
+              }
+          }
+        }
       }
     }
   }
 
+  override def preStart(): Unit = {
+    startImporters()
+  }
 
   def receive = {
     case _ =>

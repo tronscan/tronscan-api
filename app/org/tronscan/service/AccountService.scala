@@ -19,8 +19,7 @@ class AccountService @Inject() (
     */
   def syncAddress(address: String, walletClient: WalletClient)(implicit executionContext: ExecutionContext) = async {
 
-    val wallet  = await(walletClient.full)
-    val account = await(wallet.getAccount(address.toAccount))
+    val account = await(walletClient.fullRequest(_.getAccount(address.toAccount)))
 
     if (account != null) {
       val accountModel = AccountModel(

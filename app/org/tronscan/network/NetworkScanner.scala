@@ -82,14 +82,14 @@ class NetworkScanner @Inject()(
   def buildReadStream: Flow[NodeAddress, NodeAddress, NotUsed] = {
     implicit val executionContext = workContext
     Flow[NodeAddress]
-        .via(NetworkStreams.networkScanner(nodeFromIp))
-        .via(StreamUtils.distinct)
-        .map { node =>
-          if (debugEnabled) {
-            Logger.debug("Found Node: " + node)
-          }
-          node
+      .via(NetworkStreams.networkScanner(nodeFromIp))
+      .via(StreamUtils.distinct)
+      .map { node =>
+        if (debugEnabled) {
+          Logger.debug("Found Node: " + node)
         }
+        node
+      }
   }
 
   def readNodeChannels(ips: List[NodeAddress]) = {
@@ -231,7 +231,6 @@ class NetworkScanner @Inject()(
     }
 
     val watchdogEnabled = configurationProvider.get.get[Boolean]("network.scanner.enabled")
-    println("WATCHDOG ENABLED", watchdogEnabled)
     if (watchdogEnabled) {
       startReader()
       context.system.scheduler.schedule(5.minutes, 1.minute, self, CleanupNodes())

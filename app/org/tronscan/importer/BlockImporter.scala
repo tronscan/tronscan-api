@@ -39,14 +39,16 @@ class BlockImporter @Inject() (
         val header = block.getBlockHeader.getRawData
         val queries: ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]] = ListBuffer()
 
-        Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}, CONFIRM: $confirmBlocks")
+        if (header.number % 1000 == 0) {
+          Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}, CONFIRM: $confirmBlocks")
+        }
 
         // Import Block
         queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
 
         // Import Transactions
         queries.appendAll(block.transactions.map { trx =>
-          transactionModelRepository.buildInsertOrUpdate(ModelUtils.transactionToModel(trx, block).copy(confirmed = confirmBlocks))
+          transactionModelRepository.buildInsert(ModelUtils.transactionToModel(trx, block).copy(confirmed = confirmBlocks))
         })
 
         // Import Contracts
@@ -139,6 +141,20 @@ class BlockImporter @Inject() (
       .groupedWithin(500, 10.seconds)
       .mapAsync(1)(queries => blockModelRepository.executeQueries(queries))
       .toMat(Sink.ignore)(Keep.right)
+  }
+
+
+  /**
+    * Build a stream that just logs every 1000th block
+    * @return
+    */
+  def buildDebugStream(): Sink[Block, Future[Done]] = {
+    Sink.foreach { block =>
+      val header = block.getBlockHeader.getRawData
+      if (header.number % 1000 == 0) {
+        Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}")
+      }
+    }
   }
 
 }

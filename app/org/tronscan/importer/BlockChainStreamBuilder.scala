@@ -10,6 +10,7 @@ import org.tron.api.api.{BlockLimit, NumberMessage}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AssetIssueContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, VoteWitnessContract, WitnessCreateContract}
 import org.tron.protos.Tron.{Block, Transaction}
 import org.tronscan.domain.Events._
+import org.tronscan.grpc.WalletClient
 import org.tronscan.importer.StreamTypes.ContractFlow
 import org.tronscan.models._
 import org.tronscan.utils.ModelUtils
@@ -39,24 +40,25 @@ class BlockChainStreamBuilder {
   /**
     * Reads all the blocks using batch calls
     */
-  def readFullNodeBlocksBatched(from: Long, to: Long, batchSize: Int = 50)(client: WalletStub)(implicit executionContext: ExecutionContext): Source[Block, NotUsed] = {
-
-    Source.unfoldAsync(from) { prev =>
+  def readFullNodeBlocksBatched(from: Long, to: Long, batchSize: Int = 50)(client: WalletClient)(implicit executionContext: ExecutionContext): Source[Block, NotUsed] = {
+    Source.unfold(from) { prev =>
       if (prev < to) {
 
         val toBlock = if (prev + batchSize > to) to else prev + batchSize
 
-        client
-          .getBlockByLimitNext(BlockLimit(prev, toBlock))
-          .map { blocks =>
-            Some((toBlock, blocks.block.filter(_.blockHeader.isDefined).sortBy(_.getBlockHeader.getRawData.number)))
-          }
+        Some((toBlock, (prev, toBlock)))
+
       } else {
-        Future.successful(None)
+        None
       }
     }
-    .flatMapConcat(x => Source(x.toList))
-    .buffer(500, OverflowStrategy.backpressure)
+    .mapAsync(30) { case (fromBlock, toBlock) =>
+      client.fullRequest(_.getBlockByLimitNext(BlockLimit(fromBlock, toBlock))).map { blocks =>
+        blocks.block.filter(_.blockHeader.isDefined).sortBy(_.getBlockHeader.getRawData.number)
+      }
+    }
+    .mapConcat(x => x.toList)
+    .buffer(50000, OverflowStrategy.backpressure)
   }
 
   def filterContracts(contractTypes: List[Transaction.Contract.ContractType]) = {

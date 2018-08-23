@@ -93,7 +93,7 @@ object NetworkStreams {
           if (online) {
             networkNode.copy(
               pingOnline = online,
-              pingResponse = response,
+              pingResponseTime = response,
             )
           } else {
             networkNode.copy(

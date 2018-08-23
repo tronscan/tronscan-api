@@ -193,10 +193,12 @@ class ImportStreamFactory @Inject()(
       .mapAsync(1) { status =>
         walletClient.full.map { walletFull =>
           val fullNodeBlockChain = new FullNodeBlockChain(walletFull)
+          val fromBlock = status.dbLatestBlock + 1
+          val toBlock = status.fullNodeBlock - 2
 
           // Switch between batch or single depending how far the sync is behind
-          if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(status.dbLatestBlock + 1, status.fullNodeBlock)(fullNodeBlockChain.client)
-          else                                    blockChainBuilder.readFullNodeBlocksBatched(status.dbLatestBlock + 1, status.fullNodeBlock, 100)(fullNodeBlockChain.client)
+          if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(fromBlock, toBlock)(fullNodeBlockChain.client)
+          else                                    blockChainBuilder.readFullNodeBlocksBatched(fromBlock, toBlock, 100)(walletClient)
         }
       }
       .flatMapConcat(blockStream => blockStream)

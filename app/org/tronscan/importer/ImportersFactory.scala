@@ -26,9 +26,6 @@ class ImportersFactory @Inject() (
 
   /**
     * Build importers for Full Node
-    * @param importAction
-    * @param actorSystem
-    * @param executionContext
     * @return
     */
   def buildFullNodeImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
@@ -60,8 +57,7 @@ class ImportersFactory @Inject() (
       Flow[ContractFlow]
     }
 
-    val blockFlow = Flow[Block].alsoTo(blockImporter.fullNodeBlockImporter(importAction.confirmBlocks))
-
+    val blockFlow = blockImporter.fullNodeBlockImporter(importAction.confirmBlocks).toFlow
 
     BlockchainImporters()
       .addAddress(accountUpdaterFlow)
