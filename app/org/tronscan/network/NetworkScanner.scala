@@ -1,22 +1,19 @@
 package org.tronscan.network
 
-import java.util.concurrent.TimeUnit
-
 import akka.NotUsed
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
+import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import akka.util.Timeout
-import io.grpc.ManagedChannel
 import javax.inject.{Inject, Named}
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
-import org.tron.api.api.{Node => _, _}
+import org.tron.api.api.{Node => _}
 import org.tronscan.grpc.GrpcClients
 import org.tronscan.grpc.GrpcPool.{Channel, RequestChannel}
-import org.tronscan.service.GeoIPService
 import org.tronscan.network.NetworkScanner._
+import org.tronscan.service.GeoIPService
 import org.tronscan.utils.StreamUtils
 import play.api.Logger
 import play.api.inject.ConfigurationProvider
@@ -48,6 +45,7 @@ class NetworkScanner @Inject()(
   implicit val futures: Futures) extends Actor {
 
   val workContext = context.system.dispatchers.lookup("contexts.node-watcher")
+  val debugEnabled = configurationProvider.get.get[Boolean]("network.scanner.debug")
 
   var networkNodes = Map[String, NetworkNode]()
   var syncStatus = "waiting_for_first_sync"
@@ -67,39 +65,65 @@ class NetworkScanner @Inject()(
     (actorRef ? RequestChannel(ip, 50051)).mapTo[Channel].map(_.channel)
   }
 
-
   def channelFromNode(node: NetworkNode) = {
     implicit val executionContext = workContext
     implicit val timeout = Timeout(5.seconds)
     (actorRef ? RequestChannel(node.ip, node.port)).mapTo[Channel].map(_.channel)
   }
 
-  def nodeFromIp(ip: String, port: Int = 50051) = {
+  def nodeFromIp(nodeAddress: NodeAddress) = {
     implicit val executionContext = workContext
 
     for {
-      channel <- channelFromIp(ip, port)
-    } yield NodeChannel(ip, port, channel)
+      channel <- channelFromIp(nodeAddress.ip, nodeAddress.port)
+    } yield NodeChannel(nodeAddress.ip, nodeAddress.port, channel)
   }
 
-  def buildReadStream = {
+  def buildReadStream: Flow[NodeAddress, NodeAddress, NotUsed] = {
     implicit val executionContext = workContext
-    Flow[String]
-        .via(NetworkStreams.networkScanner(nodeFromIp(_)))
+    Flow[NodeAddress]
+        .via(NetworkStreams.networkScanner(nodeFromIp))
         .via(StreamUtils.distinct)
+        .map { node =>
+          if (debugEnabled) {
+            Logger.debug("Found Node: " + node)
+          }
+          node
+        }
   }
 
-  def readNodeChannels(ips: List[String]): Source[String, NotUsed] = {
+  def readNodeChannels(ips: List[NodeAddress]) = {
     Source(ips)
       .via(buildReadStream)
       .via(buildReadStream)
       .via(buildReadStream)
   }
 
-  def readNodeHealth: Flow[String, NetworkNode, NotUsed] = {
+  def readNodeHealth: Flow[NodeAddress, NetworkNode, NotUsed] = {
     implicit val executionContext = workContext
-    Flow[String]
-      .via(NetworkStreams.networkPinger(nodeFromIp(_), 4))
+    Flow[NodeAddress]
+      .via(NetworkStreams.grpcPinger(nodeFromIp, 12))
+      .map { node =>
+        if (debugEnabled) {
+          if (node.grpcEnabled) {
+            Logger.debug("GRPC Online: " + node.hostname + ":" + node.ip)
+          } else {
+            Logger.debug("GRPC Offline: " + node.hostname + ":" + node.ip)
+          }
+        }
+        node
+      }
+      .via(NetworkStreams.nodePinger(12))
+      .map { node =>
+        if (debugEnabled) {
+          if (node.pingOnline) {
+            Logger.debug("Online: " + node.hostname + ":" + node.ip)
+          } else {
+            Logger.debug("Offline: " + node.hostname + ":" + node.ip)
+          }
+        }
+        node
+      }
   }
 
   def seedNodes = {
@@ -110,7 +134,7 @@ class NetworkScanner @Inject()(
 
     config.underlying.getStringList("fullnode.list").asScala.map { uri =>
       val Array(ip, port) = uri.split(":")
-      (ip, port.toInt)
+      NodeAddress(ip, port.toInt)
     }.toList
   }
 
@@ -122,7 +146,7 @@ class NetworkScanner @Inject()(
 
     config.underlying.getStringList("solidity.list").asScala.map { uri =>
       val Array(ip, port) = uri.split(":")
-      (ip, port.toInt)
+      NodeAddress(ip, port.toInt)
     }.toList
   }
 
@@ -142,7 +166,7 @@ class NetworkScanner @Inject()(
   def startReader() = {
     implicit val executionContext = workContext
 
-    Source.tick(10.seconds, 2.minutes, seedNodes.map(_._1))
+    Source.tick(10.seconds, 1.minute, seedNodes)
       .flatMapConcat(readNodeChannels)
       .via(readNodeHealth)
       .mapAsync(4)(includeGeo)
@@ -150,8 +174,7 @@ class NetworkScanner @Inject()(
         self ! UpdateNode(n)
         n
       })
-      .toMat(Sink.ignore)(Keep.right)
-      .run
+      .runWith(Sink.ignore)
       .recover { case x =>
         Logger.error("STREAM CRASH", x)
       }
@@ -182,25 +205,25 @@ class NetworkScanner @Inject()(
   override def preStart(): Unit = {
     implicit val executionContext = workContext
 
-    seedNodes.map { case (ip, port) =>
-      nodeFromIp(ip, port).map { _ =>
+    seedNodes.map { seedNodeAddress =>
+      nodeFromIp(seedNodeAddress).map { _ =>
         self ! UpdateNode(NetworkNode(
-          ip = ip,
+          ip = seedNodeAddress.ip,
+          port = seedNodeAddress.port,
           permanent = true,
-          port = port,
           grpcEnabled = true,
           grpcResponseTime = 1,
         ))
       }
     }
 
-    soliditySeedNodes.map { case (ip, port) =>
-      nodeFromIp(ip, port).map { _ =>
+    soliditySeedNodes.map { seedNodeAddress =>
+      nodeFromIp(seedNodeAddress).map { _ =>
         self ! UpdateNode(NetworkNode(
-          ip = ip,
+          ip = seedNodeAddress.ip,
+          port = seedNodeAddress.port,
           nodeType = NetworkScanner.solidity,
           permanent = true,
-          port = port,
           grpcEnabled = true,
           grpcResponseTime = 1,
         ))

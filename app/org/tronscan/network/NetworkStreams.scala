@@ -11,29 +11,29 @@ import play.api.libs.concurrent.Futures._
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+import org.tronscan.Extensions._
+import org.tronscan.utils.NetworkUtils
 
 object NetworkStreams {
 
   /**
     * Scans the given IP address
     */
-  def networkScanner(nodeFromIp: String => Future[NodeChannel], parallel: Int = 4)(implicit executionContext: ExecutionContext, futures: Futures) = {
-    Flow[String]
+  def networkScanner(nodeFromIp: NodeAddress => Future[NodeChannel], parallel: Int = 4)(implicit executionContext: ExecutionContext) = {
+    Flow[NodeAddress]
       .mapAsyncUnordered(parallel) { ip =>
 
         (for {
           nc <- nodeFromIp(ip)
           nodeList <- nc.full.withDeadlineAfter(15, TimeUnit.SECONDS).listNodes(EmptyMessage())
         } yield {
-          nodeList.nodes.map { n =>
-            new String(n.address.get.host.toByteArray)
-          }
+          nodeList.nodes.map(_.address.get).map(a => NodeAddress(a.host.decodeString, a.port))
         }).recover {
           case _ =>
             List.empty
         }
       }
-      .flatMapConcat(x => Source(x.toList))
+      .mapConcat(_.toList)
   }
 
   /**
@@ -42,24 +42,22 @@ object NetworkStreams {
     * @param nodeFromIp factory which creates a node from a string
     * @param parallel parallel number of processes
     */
-  def networkPinger(nodeFromIp: String => Future[NodeChannel], parallel: Int = 4)(implicit executionContext: ExecutionContext, futures: Futures): Flow[String, NetworkNode, NotUsed] = {
-    Flow[String]
-      .mapAsyncUnordered(parallel) { ip =>
+  def grpcPinger(nodeFromIp: NodeAddress => Future[NodeChannel], parallel: Int = 4)(implicit executionContext: ExecutionContext, futures: Futures): Flow[NodeAddress, NetworkNode, NotUsed] = {
+    Flow[NodeAddress]
+      .mapAsyncUnordered(parallel) { nodeAddress =>
 
-        val ia = InetAddress.getByName(ip)
+        val ia = InetAddress.getByName(nodeAddress.ip)
         val startPing = System.currentTimeMillis()
 
-
         (for {
-          n <- nodeFromIp(ip)
-          r <- n.full.withDeadlineAfter(6, TimeUnit.SECONDS).getNowBlock(EmptyMessage())
+          n <- nodeFromIp(nodeAddress)
+          r <- n.full.withDeadlineAfter(5, TimeUnit.SECONDS).getNowBlock(EmptyMessage())
           response = System.currentTimeMillis() - startPing
-          hostname <- Future(ia.getCanonicalHostName).withTimeout(6.seconds).recover { case _ => ip }
+          hostname <- Future(ia.getCanonicalHostName).withTimeout(6.seconds).recover { case _ => nodeAddress.ip }
         } yield {
-
           NetworkNode(
-            ip = ip,
-            port = 500051,
+            ip = nodeAddress.ip,
+            port = nodeAddress.port,
             lastBlock = r.getBlockHeader.getRawData.number,
             hostname = hostname,
             grpcEnabled = true,
@@ -67,11 +65,46 @@ object NetworkStreams {
         }).recover {
           case _ =>
             NetworkNode(
-              ip = ip,
+              ip = nodeAddress.ip,
               hostname = ia.getCanonicalHostName,
-              port = 500051,
+              port = nodeAddress.port,
               grpcEnabled = false,
               grpcResponseTime = 0)
+        }
+      }
+  }
+
+  /**
+    * Ping the given IPS and returns a node
+    *
+    * @param parallel parallel number of processes
+    */
+  def nodePinger(parallel: Int = 4)(implicit executionContext: ExecutionContext, futures: Futures): Flow[NetworkNode, NetworkNode, NotUsed] = {
+    Flow[NetworkNode]
+      .mapAsyncUnordered(parallel) { networkNode =>
+
+        val ia = InetAddress.getByName(networkNode.ip)
+        val startPing = System.currentTimeMillis()
+
+        (for {
+          online <- NetworkUtils.ping(networkNode.ip, networkNode.port)
+          response = System.currentTimeMillis() - startPing
+        } yield {
+          if (online) {
+            networkNode.copy(
+              pingOnline = online,
+              pingResponse = response,
+            )
+          } else {
+            networkNode.copy(
+              pingOnline = false,
+            )
+          }
+        }).recover {
+          case _ =>
+            networkNode.copy(
+              pingOnline = false,
+            )
         }
       }
   }
