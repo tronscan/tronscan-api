@@ -12,6 +12,7 @@ import org.tronscan.importer.StreamTypes.ContractFlow
 import org.tronscan.service.SynchronisationService
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
+import org.tronscan.Extensions._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -37,9 +38,9 @@ class ImportersFactory @Inject() (
     val accountUpdaterFlow: Flow[Address, Address, NotUsed] = {
       if (importAction.updateAccounts) {
         if (importAction.asyncAddressImport) {
-          Flow[Address].alsoTo(accountImporter.buildAddressMarkDirtyFlow)
+          accountImporter.buildAddressMarkDirtyFlow.toFlow
         } else {
-          accountImporter.buildAddressSynchronizerFlow(walletClient)(actorSystem.scheduler, executionContext)
+          accountImporter.buildAddressSynchronizerFlow(walletClient)(actorSystem.scheduler, executionContext).toFlow
         }
       } else {
         Flow[Address]
@@ -47,14 +48,14 @@ class ImportersFactory @Inject() (
     }
 
     val eventsPublisher = if (importAction.publishEvents) {
-      Flow[ContractFlow].alsoTo(blockChainBuilder.publishContractEvents(
+      blockChainBuilder.publishContractEvents(
         actorSystem.eventStream,
         List(
           TransferContract,
           TransferAssetContract,
           WitnessCreateContract
-        ))
-      )
+        )
+      ).toFlow
     } else {
       Flow[ContractFlow]
     }
@@ -72,15 +73,13 @@ class ImportersFactory @Inject() (
   def buildSolidityImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
 
     val eventsPublisher = if (importAction.publishEvents) {
-      Flow[ContractFlow].alsoTo(
-        blockChainBuilder.publishContractEvents(
-          actorSystem.eventStream,
-          List(
-            VoteWitnessContract,
-            AssetIssueContract,
-            ParticipateAssetIssueContract
-          ))
-      )
+      blockChainBuilder.publishContractEvents(
+        actorSystem.eventStream,
+        List(
+          VoteWitnessContract,
+          AssetIssueContract,
+          ParticipateAssetIssueContract
+        )).toFlow
     } else {
       Flow[ContractFlow]
     }

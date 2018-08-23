@@ -1,7 +1,7 @@
 package org.tronscan
 
 import akka.NotUsed
-import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.{Flow, Sink}
 import com.google.protobuf.ByteString
 import org.tron.common.BlockId
 import org.tron.common.utils.{Base58, ByteArray, Sha256Hash}
@@ -59,6 +59,10 @@ object Extensions {
       case (current, res) =>
         current.via(res)
     }
+  }
+
+  implicit class SinkUtils[A](sink: Sink[A, _]) {
+    def toFlow = Flow[A].alsoTo(sink)
   }
 
 }
