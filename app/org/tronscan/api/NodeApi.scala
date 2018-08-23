@@ -42,7 +42,7 @@ class NodeApi @Inject()(
       }
     }
 
-    if (config.get[Boolean]("cache.nodes")) {
+    if (config.get[Boolean]("cache.api.nodes")) {
       cached.status(x => "node.status", 200, 1.minute)(action)
     } else {
       action
