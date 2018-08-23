@@ -38,6 +38,9 @@ object NetworkScanner {
   case class GetBestNodes(number: Int, filter: NetworkNode => Boolean = b => true)
 }
 
+/**
+  * Scans the network for nodes
+  */
 class NetworkScanner @Inject()(
   configurationProvider: ConfigurationProvider,
   @Named("grpc-pool") actorRef: ActorRef,

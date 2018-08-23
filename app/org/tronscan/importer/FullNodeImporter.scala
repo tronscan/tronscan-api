@@ -1,19 +1,15 @@
 package org
 package tronscan.importer
 
-import akka.actor.Actor
-import akka.stream._
-import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.actor.ActorSystem
+import akka.stream.scaladsl.{Keep, Source}
 import javax.inject.Inject
 import monix.execution.Scheduler.Implicits.global
 import org.tronscan.grpc.WalletClient
-import org.tronscan.importer.ImportManager.Sync
 import org.tronscan.service.SynchronisationService
 import play.api.Logger
 
 import scala.async.Async._
-import scala.concurrent.duration._
-import scala.util.{Failure, Success}
 
 /**
   * Takes care of importing the Full Node Data
@@ -22,7 +18,7 @@ class FullNodeImporter @Inject()(
   importersFactory: ImportersFactory,
   importStreamFactory: ImportStreamFactory,
   synchronisationService: SynchronisationService,
-  walletClient: WalletClient) extends Actor {
+  walletClient: WalletClient) {
 
   /**
     * Builds the stream
@@ -34,8 +30,7 @@ class FullNodeImporter @Inject()(
     * 5. `synchronisationChecker`: verifies if the synchranisation should start
     * 6. `blockSource`: Builds the source from which the blocks will be read from the blockchain
     */
-  def buildStream() = {
-    implicit val system = context.system
+  def buildStream(implicit actorSystem: ActorSystem) = {
     async {
       val nodeState = await(synchronisationService.nodeState)
       Logger.info("BuildStream::nodeState -> " + nodeState)
@@ -55,32 +50,4 @@ class FullNodeImporter @Inject()(
     }
   }
 
-  def startSync() = {
-
-    val decider: Supervision.Decider = { exc =>
-      Logger.error("FULL NODE ERROR", exc)
-      Supervision.Restart
-    }
-
-    implicit val materializer = ActorMaterializer(
-      ActorMaterializerSettings(context.system)
-        .withSupervisionStrategy(decider))(context)
-
-    Logger.info("START FULL NODE SYNC")
-
-    Source.tick(0.seconds, 2.8.seconds, "")
-      .mapAsync(1)(_ => buildStream().flatMap(_.run()))
-      .runWith(Sink.ignore)
-      .andThen {
-        case Success(_) =>
-          Logger.info("BLOCKCHAIN SYNC SUCCESS")
-        case Failure(exc) =>
-          Logger.error("BLOCKCHAIN SYNC FAILURE", exc)
-      }
-  }
-
-  def receive = {
-    case Sync() =>
-      startSync()
-  }
 }

@@ -17,8 +17,6 @@ import play.engineio.EngineIOController
 class Module extends AbstractModule with AkkaGuiceSupport {
 
   def configure = {
-    bindActor[FullNodeImporter]("fullnode-reader")
-    bindActor[SolidityNodeImporter]("solidity-reader")
     bindActor[ImportManager]("blockchain-importer")
     bindActor[NetworkScanner]("node-watchdog")
     bindActor[GrpcPool]("grpc-pool")

@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 
 class FullNodeImporterSpec extends Specification with BaseStreamSpec with FutureMatchers with Awaiters with StreamSpecUtils {
 
-  val factory = new ImportStreamFactory(null, null, null)
+  val factory = new ImportStreamFactory(null, null)
   val blockchainStreamFactory = new BlockChainStreamBuilder
 
   "Full Node Importer" should {
