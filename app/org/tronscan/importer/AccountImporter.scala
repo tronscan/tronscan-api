@@ -40,18 +40,19 @@ class AccountImporter @Inject() (
     * Builds a stream that accepts addresses and syncs them to the database
     * @param parallel how many threads should be used
     */
-  def buildAddressSynchronizerFlow(walletClient: WalletClient, parallel: Int = 8)(implicit scheduler: Scheduler, executionContext: ExecutionContext): Flow[Address, Address, NotUsed] = {
+  def buildAddressSynchronizerFlow(walletClient: WalletClient, parallel: Int = 8)(implicit scheduler: Scheduler, executionContext: ExecutionContext): Sink[Address, Future[Done]] = {
     Flow[Address]
       .mapAsyncUnordered(parallel) { address =>
         Logger.info("Syncing Address: " + address)
 
         // Retry if it fails
-        FutureUtils.retry(250.milliseconds, 34.seconds, 1) { () =>
+        FutureUtils.retry(250.milliseconds, 34.seconds) { () =>
           accountService.syncAddress(address, walletClient).map { _ =>
             address
           }
         }
       }
+      .toMat(Sink.ignore)(Keep.right)
   }
 
   /**

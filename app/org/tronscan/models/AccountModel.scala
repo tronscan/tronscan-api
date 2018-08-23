@@ -52,7 +52,7 @@ class AccountModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) ex
     * Find addresses which need sync
     */
   def findAddressesWhichNeedSync() = run {
-    table.filter(address => address.dateUpdated > address.dateSynced).take(100).result
+    table.filter(address => address.dateUpdated > address.dateSynced).take(250).result
   }
 
   def insertOrUpdate(accountModel: AccountModel) = run {

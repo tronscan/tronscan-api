@@ -1,10 +1,10 @@
 package org.tronscan.importer
 
 import akka.actor.Actor
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import javax.inject.Inject
-import org.tronscan.importer.ImportManager.Sync
+import org.tronscan.grpc.WalletClient
 import play.api.Logger
 import play.api.inject.ConfigurationProvider
 
@@ -22,7 +22,9 @@ object ImportManager {
 class ImportManager @Inject() (
   configurationProvider: ConfigurationProvider,
   fullNodeImporter: FullNodeImporter,
-  solidityNodeImporter: SolidityNodeImporter) extends Actor {
+  solidityNodeImporter: SolidityNodeImporter,
+  walletClient: WalletClient,
+  accountImporter: AccountImporter) extends Actor {
 
   val config = configurationProvider.get
 
@@ -41,6 +43,7 @@ class ImportManager @Inject() (
 
     val syncSolidity = config.get[Boolean]("sync.solidity")
     val syncFull = config.get[Boolean]("sync.full")
+    val syncAddresses = config.get[Boolean]("sync.addresses")
 
     if (syncFull) {
       Source.tick(0.seconds, 3.seconds, "")
@@ -63,6 +66,23 @@ class ImportManager @Inject() (
             Logger.info("SOLIDITY SYNC SUCCESS")
           case Failure(exc) =>
             Logger.error("SOLIDITY SYNC FAILURE", exc)
+        }
+    }
+
+    if (syncAddresses) {
+      implicit val scheduler = context.system.scheduler
+      Source.tick(0.seconds, 15.seconds, "")
+        .mapAsync(1) { _ =>
+          accountImporter
+            .buildAccountSyncSource
+            .runWith(accountImporter.buildAddressSynchronizerFlow(walletClient))
+        }
+        .runWith(Sink.ignore)
+        .andThen {
+          case Success(_) =>
+            Logger.info("ADDRESS SYNC SUCCESS")
+          case Failure(exc) =>
+            Logger.error("ADDRESS SYNC FAILURE", exc)
         }
     }
   }

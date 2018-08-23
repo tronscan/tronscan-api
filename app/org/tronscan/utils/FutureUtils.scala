@@ -8,7 +8,7 @@ import akka.actor.Scheduler
 
 object FutureUtils {
 
-  def retry[T](minBackoff: FiniteDuration, maxBackoff: FiniteDuration, randomFactor: Double)(f: () => Future[T])(implicit ec: ExecutionContext, s: Scheduler): Future[T] = {
+  def retry[T](minBackoff: FiniteDuration, maxBackoff: FiniteDuration, randomFactor: Double = 1)(f: () => Future[T])(implicit ec: ExecutionContext, s: Scheduler): Future[T] = {
     f() recoverWith {
       case _ if minBackoff < maxBackoff =>
         val nextBackof = minBackoff.toMillis * (1 + randomFactor)
