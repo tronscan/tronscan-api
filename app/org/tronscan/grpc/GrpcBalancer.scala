@@ -4,11 +4,14 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef, Cancellable, Props, Terminated}
 import akka.routing.{ActorRefRoutee, RoundRobinRoutingLogic, Router}
+import cats.Inject
 import io.grpc.ManagedChannelBuilder
 import org.tron.api.api.WalletGrpc.WalletStub
 import org.tron.api.api.{EmptyMessage, WalletGrpc}
 import org.tronscan.Extensions._
-
+import org.tronscan.network.NodeAddress
+import play.api.inject.ConfigurationProvider
+import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
@@ -29,52 +32,26 @@ object GrpcBalancerOptions {
   val blockListSize = 12
 }
 
-class GrpcBalancer extends Actor {
+class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) extends Actor {
 
-  // TODO All the seednodes, make this dynamic later
-  val ips = List(
-    "52.56.56.149",
-    "54.236.37.243",
-    "52.53.189.99",
-    "18.196.99.16",
-    "34.253.187.192",
-    "35.180.51.163",
-    "54.252.224.209",
-    "18.228.15.36",
-    "52.15.93.92",
-    "34.220.77.106",
-    "13.127.47.162",
-    "13.124.62.58",
-    "13.229.128.108",
-    "35.182.37.246",
-    "34.200.228.125",
-    "18.220.232.201",
-    "13.57.30.186",
-    "35.165.103.105",
-    "18.184.238.21",
-    "34.250.140.143",
-    "35.176.192.130",
-    "52.47.197.188",
-    "52.62.210.100",
-    "13.231.4.243",
-    "18.231.76.29",
-    "35.154.90.144",
-    "13.125.210.234",
-    "13.250.40.82",
-    "35.183.101.48",
-  )
+  val config = configurationProvider.get
 
+  val seedNodes = config.underlying.getStringList("fullnode.list").asScala.map { uri =>
+    val Array(ip, port) = uri.split(":")
+    NodeAddress(ip, port.toInt)
+  }.toList
 
+  val maxClients = config.get[Int]("grpc.balancer.maxClients")
+
+  // Contains the stats of all the seednodes
   var nodeStatuses = Map[String, GrpcStats]()
 
-  def buildRouter(nodeIps: List[String]) = {
-    val routees = nodeIps.map { ip =>
-      val r = context.actorOf(Props(classOf[GrpcClient], ip))
-      context watch r
-      ActorRefRoutee(r)
+  def buildRouter(nodeIps: List[NodeAddress]) = {
+    val routeRefs = nodeIps.map { ip =>
+      context.actorOf(Props(classOf[GrpcClient], ip))
     }
 
-    Router(RoundRobinRoutingLogic(), routees.toVector)
+    buildRouterWithRefs(routeRefs)
   }
 
   def buildRouterWithRefs(nodeIps: List[ActorRef]) = {
@@ -86,7 +63,7 @@ class GrpcBalancer extends Actor {
     Router(RoundRobinRoutingLogic(), routees.toVector)
   }
 
-  var router = buildRouter(ips)
+  var router = buildRouter(seedNodes)
 
   def cleanup() = {
 
@@ -96,13 +73,16 @@ class GrpcBalancer extends Actor {
       .groupBy(x => x)
       .map(x => (x._1, x._2.size))
 
-    val mostCommonBlock = chainCounts.toList.maxBy(x => x._2)._1
+    // Find the most common block hash
+    val mostCommonBlockHash = chainCounts.toList.maxBy(x => x._2)._1
 
+    // Find all the nodes which have the common hash in their recent blocks
     val validChainNodes = for {
       (ip, stats) <- nodeStatuses
-      if stats.blocks.exists(_.hash == mostCommonBlock)
+      if stats.blocks.exists(_.hash == mostCommonBlockHash)
     } yield stats
 
+    // Take the 12 fastest nodes
     val fastestNodes = validChainNodes.toList.sortBy(_.responseTime).take(12)
 
     router = buildRouterWithRefs(fastestNodes.map(_.ref))
@@ -136,7 +116,7 @@ class GrpcBalancer extends Actor {
   }
 }
 
-class GrpcClient(ip: String) extends Actor {
+class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   var pinger: Option[Cancellable] = None
   var latency = 999999L
@@ -144,7 +124,7 @@ class GrpcClient(ip: String) extends Actor {
   var latestBlocks = List[GrpcBlock]()
 
   lazy val channel = ManagedChannelBuilder
-    .forAddress(ip, 50051)
+    .forAddress(nodeAddress.ip, nodeAddress.port)
     .usePlaintext(true)
     .build
 
@@ -167,7 +147,7 @@ class GrpcClient(ip: String) extends Actor {
       latency = responseTime
       context.parent ! GrpcStats(
         ref = self,
-        ip = ip,
+        ip = nodeAddress.ip,
         responseTime = responseTime,
         blocks = latestBlocks
       )
@@ -175,7 +155,7 @@ class GrpcClient(ip: String) extends Actor {
       case _ =>
         context.parent ! GrpcStats(
           ref = self,
-          ip = ip,
+          ip = nodeAddress.ip,
           responseTime = 9999L,
           blocks = List.empty
         )
