@@ -126,8 +126,6 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
 class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   var pinger: Option[Cancellable] = None
-  var latency = 999999L
-  var currentBlock = GrpcBlock(0, "")
   var latestBlocks = List[GrpcBlock]()
 
   lazy val channel = ManagedChannelBuilder
@@ -139,6 +137,9 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
     WalletGrpc.stub(channel)
   }
 
+  /**
+    * Ping the node and gather stats, send it back to the balancer
+    */
   def ping() = {
     import context.dispatcher
 
@@ -149,9 +150,12 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
       block <- w.withDeadlineAfter(5, TimeUnit.SECONDS).getNowBlock(EmptyMessage())
       responseTime = System.currentTimeMillis() - startPing
     } yield {
-      currentBlock = GrpcBlock(block.getBlockHeader.getRawData.number, block.hash)
+
+      val currentBlock = GrpcBlock(block.getBlockHeader.getRawData.number, block.hash)
+
+      // Keep a maximum of 5 recent blocks in the list
       latestBlocks = (if (latestBlocks.size > GrpcBalancerOptions.blockListSize) latestBlocks.drop(1) else latestBlocks) :+ currentBlock
-      latency = responseTime
+
       context.parent ! GrpcStats(
         ref = self,
         ip = nodeAddress.ip,
