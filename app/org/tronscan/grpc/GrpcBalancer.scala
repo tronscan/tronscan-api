@@ -4,13 +4,14 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef, Cancellable, Props, Terminated}
 import akka.routing.{ActorRefRoutee, RoundRobinRoutingLogic, Router}
-import cats.Inject
 import io.grpc.ManagedChannelBuilder
+import javax.inject.Inject
 import org.tron.api.api.WalletGrpc.WalletStub
 import org.tron.api.api.{EmptyMessage, WalletGrpc}
 import org.tronscan.Extensions._
 import org.tronscan.network.NodeAddress
 import play.api.inject.ConfigurationProvider
+
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import scala.concurrent.duration._
