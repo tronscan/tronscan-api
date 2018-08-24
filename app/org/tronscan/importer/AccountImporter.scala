@@ -18,7 +18,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * Handles the importing of accounts
   */
 class AccountImporter @Inject() (
-  accountImporter: AccountModelRepository,
+  accountModelRepository: AccountModelRepository,
   accountService: AccountService) {
 
   /**
@@ -26,7 +26,7 @@ class AccountImporter @Inject() (
     */
   def buildAccountSyncSource(implicit executionContext: ExecutionContext): Source[Address, NotUsed] = {
     Source.unfoldAsync(()) { _ =>
-      accountImporter.findAddressesWhichNeedSync().map {
+      accountModelRepository.findAddressesWhichNeedSync().map {
         case addresses if addresses.nonEmpty =>
           Some(((), addresses.map(_.address)))
         case _ =>
@@ -61,11 +61,11 @@ class AccountImporter @Inject() (
   def buildAddressMarkDirtyFlow(implicit executionContext: ExecutionContext): Sink[Address, Future[Done]] = {
     Flow[Address]
       // Build a query to mark the address query
-      .map { address => accountImporter.buildMarkAddressDirtyQuery(address) }
+      .map { address => accountModelRepository.buildMarkAddressDirtyQuery(address) }
       // Batch queries together
       .groupedWithin(1000, 3.seconds)
       // Insert batched queries in database
-      .mapAsync(1)(accountImporter.executeQueries)
+      .mapAsync(1)(accountModelRepository.executeQueries)
       .toMat(Sink.ignore)(Keep.right)
   }
 }

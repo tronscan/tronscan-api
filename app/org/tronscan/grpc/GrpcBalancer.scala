@@ -18,8 +18,8 @@ import scala.concurrent.duration._
 case class GrpcRequest(request: WalletStub => Future[Any])
 case class GrpcRetry(request: GrpcRequest)
 case class GrpcResponse(response: Any)
-case class GrpcKill(actorRef: ActorRef)
 case class GrpcBlock(num: Long, hash: String)
+case class OptimizeNodes()
 
 case class GrpcStats(
   ref: ActorRef,
@@ -32,6 +32,10 @@ object GrpcBalancerOptions {
   val blockListSize = 12
 }
 
+/**
+  * Manages the seedNodes and periodically checks which nodes are the fastest
+  * The fastest nodes will be used to handle GRPC calls
+  */
 class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) extends Actor {
 
   val config = configurationProvider.get
@@ -65,7 +69,7 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
 
   var router = buildRouter(seedNodes)
 
-  def cleanup() = {
+  def optimizeNodes() = {
 
     // Cleanup nodes which don't share the common chain
     val chainCounts = nodeStatuses.values
@@ -78,22 +82,23 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
 
     // Find all the nodes which have the common hash in their recent blocks
     val validChainNodes = for {
-      (ip, stats) <- nodeStatuses
+      (_, stats) <- nodeStatuses
       if stats.blocks.exists(_.hash == mostCommonBlockHash)
     } yield stats
 
     // Take the 12 fastest nodes
-    val fastestNodes = validChainNodes.toList.sortBy(_.responseTime).take(12)
+    val fastestNodes = validChainNodes.toList
+      .sortBy(_.responseTime)
+      .take(maxClients)
 
     router = buildRouterWithRefs(fastestNodes.map(_.ref))
   }
 
   var pinger: Option[Cancellable] = None
 
-
   override def preStart(): Unit = {
     import context.dispatcher
-    pinger = Some(context.system.scheduler.schedule(6.second, 6.seconds, self, "cleanup"))
+    pinger = Some(context.system.scheduler.schedule(6.second, 6.seconds, self, OptimizeNodes()))
   }
 
   override def postStop(): Unit = {
@@ -105,17 +110,18 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
       router.route(w, sender())
     case GrpcRetry(request) =>
       router.route(request, sender())
-    case GrpcKill(ref) ⇒
-      router = router.removeRoutee(ref)
     case stats: GrpcStats =>
       nodeStatuses = nodeStatuses ++ Map(stats.ip -> stats)
     case Terminated(a) ⇒
       router = router.removeRoutee(a)
-    case "cleanup" =>
-      cleanup()
+    case OptimizeNodes() =>
+      optimizeNodes()
   }
 }
 
+/**
+  * Connects to GRPC and periodically pings the port to determine latency
+  */
 class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   var pinger: Option[Cancellable] = None

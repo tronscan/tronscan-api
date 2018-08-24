@@ -41,17 +41,7 @@ class AccountService @Inject() (
   /**
     * Marks the address as dirty so it will be synchronized by the address importer
     */
-  def markAddressDirty(address: String)(implicit executionContext: ExecutionContext) = async {
-    if (!await(accountModelRepository.markDirty(address))) {
-      await(accountModelRepository.insertAsync(AccountModel(
-        address       = address,
-        name          = "-",
-        balance       = 0,
-        power         = 0,
-        dateCreated   = DateTime.now,
-        dateUpdated   = DateTime.now,
-        dateSynced    = DateTime.now.minusMinutes(5)
-      )))
-    }
+  def markAddressDirty(address: String)(implicit executionContext: ExecutionContext) = {
+    accountModelRepository.executeQueries(List(accountModelRepository.buildMarkAddressDirtyQuery(address)))
   }
 }
