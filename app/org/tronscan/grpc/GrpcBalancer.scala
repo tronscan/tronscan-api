@@ -17,8 +17,8 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 
 case class GrpcRequest(request: WalletStub => Future[Any])
-case class GrpcResponse(response: Any)
 case class GrpcRetry(request: GrpcRequest)
+case class GrpcResponse(response: Any)
 case class GrpcBlock(num: Long, hash: String)
 case class OptimizeNodes()
 
@@ -138,8 +138,7 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
   }
 
   /**
-    * Ping the node and gather stats
-    * Send the statistics back to the balancer
+    * Ping the node and gather stats, send it back to the balancer
     */
   def ping() = {
     import context.dispatcher
@@ -174,23 +173,6 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
     }
   }
 
-  /**
-    * Handles a request
-    *
-    * If the request is a success then send the response back in a GrpcResponse
-    * If the request fails then send a GrpcRetry to the GrpcBalancer so the request can be tried by another GRPC Client
-    */
-  def handleRequest(request: GrpcRequest) = {
-    import context.dispatcher
-    val s = sender()
-    request.request(walletStub.withDeadlineAfter(5, TimeUnit.SECONDS)).map { x =>
-      s ! GrpcResponse(x)
-    }.recover {
-      case _ =>
-        context.parent.tell(GrpcRetry(request), s)
-    }
-  }
-
   override def preStart(): Unit = {
     import context.dispatcher
     pinger = Some(context.system.scheduler.schedule(0.second, GrpcBalancerOptions.pingInterval, self, "ping"))
@@ -202,7 +184,14 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   def receive = {
     case c: GrpcRequest =>
-     handleRequest(c)
+      import context.dispatcher
+      val s = sender()
+      c.request(walletStub.withDeadlineAfter(5, TimeUnit.SECONDS)).map { x =>
+        s ! GrpcResponse(x)
+      }.recover {
+        case _ =>
+          context.parent.tell(GrpcRetry(c), s)
+      }
 
     case "ping" =>
       ping()

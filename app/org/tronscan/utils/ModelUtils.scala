@@ -11,8 +11,6 @@ object ModelUtils {
 
   /**
     * Converts transaction to database model
-    * @param trx
-    * @param block
     * @return
     */
   def transactionToModel(trx: Transaction, block: Block) = {

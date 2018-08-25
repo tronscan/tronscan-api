@@ -1,330 +1,53 @@
-package org.tronscan.importer
+package org
+package tronscan.importer
 
-import akka.actor.Actor
-import akka.stream._
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
-import akka.{Done, NotUsed}
+import akka.actor.ActorSystem
+import akka.stream.scaladsl.{Keep, Source}
 import javax.inject.Inject
 import monix.execution.Scheduler.Implicits.global
-import org.tron.protos.Tron.Transaction.Contract.ContractType.{TransferAssetContract, TransferContract, WitnessCreateContract}
-import org.tron.protos.Tron.{Block, Transaction}
-import org.tronscan.Extensions._
-import org.tronscan.domain.Types.Address
-import org.tronscan.grpc.{FullNodeBlockChain, WalletClient}
-import org.tronscan.importer.ImportManager.Sync
-import org.tronscan.models._
-import org.tronscan.service.{ImportStatus, SynchronisationService}
-import org.tronscan.utils.{ModelUtils, StreamUtils}
+import org.tronscan.grpc.WalletClient
+import org.tronscan.service.SynchronisationService
 import play.api.Logger
-import play.api.cache.NamedCache
-import play.api.cache.redis.CacheAsyncApi
-import play.api.inject.ConfigurationProvider
-import slick.dbio.{Effect, NoStream}
-import slick.sql.FixedSqlAction
 
-import scala.async.Async.{async, await}
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.async.Async._
 
-
-case class ImportAction(
- /**
-   * If all blocks should be confirmed
-   */
-  confirmBlocks: Boolean = false,
-
- /**
-   * If the accounts should be imported from GRPC and updated into the database
-   */
-  updateAccounts: Boolean = false,
-
- /**
-   * If redis should be resetted
-   */
-  cleanRedisCache: Boolean = false,
-
- /**
-   * If address importing should be done asynchronously
-   */
-  asyncAddressImport: Boolean = false,
-
- /**
-   * If events should be published to the websockets
-   */
- publishEvents: Boolean = false,
-
- /**
-   * If db should be reset
-   */
- resetDB: Boolean = false,
-                       )
-
-
+/**
+  * Takes care of importing the Full Node Data
+  */
 class FullNodeImporter @Inject()(
-  blockModelRepository: BlockModelRepository,
-  transactionModelRepository: TransactionModelRepository,
-  transferRepository: TransferModelRepository,
-  witnessModelRepository: WitnessModelRepository,
-  walletClient: WalletClient,
-  syncService: SynchronisationService,
-  databaseImporter: DatabaseImporter,
-  blockChainBuilder: BlockChainStreamBuilder,
-  @NamedCache("redis") redisCache: CacheAsyncApi,
-  configurationProvider: ConfigurationProvider) extends Actor {
-
-  val config = configurationProvider.get
-  val syncFull = configurationProvider.get.get[Boolean]("sync.full")
-  val syncSolidity = configurationProvider.get.get[Boolean]("sync.solidity")
-
-  val decider: Supervision.Decider = { exc =>
-    Logger.error("FULL NODE ERROR", exc)
-    Supervision.Resume
-  }
-
-  implicit val materializer = ActorMaterializer(
-    ActorMaterializerSettings(context.system)
-      .withSupervisionStrategy(decider))(context)
+  importersFactory: ImportersFactory,
+  importStreamFactory: ImportStreamFactory,
+  synchronisationService: SynchronisationService,
+  walletClient: WalletClient) {
 
   /**
-    * Build import action from import status
-    */
-  def buildImportActionFromImportStatus(importStatus: ImportStatus) = {
-    var autoConfirmBlocks = false
-    var updateAccounts = false
-    var redisCleaner = true
-    var asyncAddressImport = false
-    var publishEvents = true
-
-    val fullNodeBlockHash = Await.result(syncService.getFullNodeHashByNum(importStatus.solidityBlock), 2.second)
-    val resetDB = !Await.result(syncService.isSameChain(), 2.second)
-
-    if (!syncSolidity) {
-      autoConfirmBlocks = true
-      updateAccounts = true
-    }
-
-    if ((importStatus.dbLatestBlock <= importStatus.solidityBlock - 1000) && (fullNodeBlockHash == importStatus.solidityBlockHash)) {
-      autoConfirmBlocks = true
-      updateAccounts = true
-    }
-
-    if (importStatus.dbLatestBlock < (importStatus.fullNodeBlock - 1000)) {
-      publishEvents = false
-    }
-
-    if (importStatus.dbLatestBlock == 0) {
-      redisCleaner = false
-    }
-
-    ImportAction(
-      confirmBlocks       = autoConfirmBlocks,
-      updateAccounts      = updateAccounts,
-      cleanRedisCache     = redisCleaner,
-      asyncAddressImport  = asyncAddressImport,
-      publishEvents       = publishEvents,
-      resetDB             = resetDB
-    )
-  }
-
-  def buildSource(importState: ImportStatus) = {
-
-    Logger.info("buildSource: " + importState.toString)
-
-    val importAction = buildImportActionFromImportStatus(importState)
-
-    println("importAction-confirmBlocks = " + importAction.confirmBlocks)
-
-    if (importAction.resetDB) {
-      Await.result(syncService.resetDatabase(), 2.second)
-    }
-
-    def redisCleaner = if (importAction.cleanRedisCache) Flow[Address].alsoTo(redisCacheCleaner) else Flow[Address]
-
-    def accountUpdaterFlow: Flow[Address, Any, NotUsed] = {
-      if (importAction.updateAccounts) {
-        if (importAction.asyncAddressImport) {
-//          Flow[Address].alsoTo(Sink.actorRef(addressSync, PoisonPill))
-//          Flow[Address].alsoTo(Sink.)
-          syncService.buildAddressSynchronizer()
-        } else {
-          syncService.buildAddressSynchronizer()
-        }
-      } else {
-        Flow[Address]
-      }
-    }
-
-    def eventsPublisher = {
-      if (importAction.publishEvents) {
-        blockChainBuilder.publishContractEvents(List(
-          TransferContract,
-          TransferAssetContract,
-          WitnessCreateContract
-        ))
-      } else {
-        Flow[Transaction.Contract]
-      }
-    }
-
-    RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit b => sink =>
-        import GraphDSL.Implicits._
-        val blocks = b.add(Broadcast[Block](3))
-        val transactions = b.add(Broadcast[(Block, Transaction)](1))
-        val contracts = b.add(Broadcast[(Block, Transaction, Transaction.Contract)](2))
-        val addresses = b.add(Merge[Address](2))
-        val out = b.add(Merge[Any](3))
-
-        // Periodically start sync
-        val importStatus = Source
-          .single(importState)
-          .via(syncStarter)
-
-        /***** Channels *****/
-
-        // Blocks
-        importStatus.via(readBlocksFromStatus) ~> blocks.in
-
-        // Pass block witness addresses to address stream
-        blocks.map(_.witness) ~> addresses
-
-        // Transactions
-        blocks.mapConcat(b => b.transactions.map(t => (b, t)).toList) ~> transactions.in
-
-        // Contracts
-        transactions.mapConcat { case (block, t) => t.getRawData.contract.map(c => (block, t, c)).toList } ~> contracts.in
-
-        // Read addresses from contracts
-        contracts.mapConcat(_._3.addresses) ~> addresses
-
-        /** Importers **/
-
-        // Synchronize Blocks
-        blocks ~> fullNodeBlockImporter(importAction.confirmBlocks) ~> out
-
-        // Sync addresses
-        addresses ~> StreamUtils.distinct[Address] ~> redisCleaner ~> accountUpdaterFlow ~> out
-
-        // Broadcast contract events
-        contracts.map(_._3) ~> eventsPublisher ~> out
-
-        /** Close Stream **/
-
-        // Route everything to sink
-        out ~> sink.in
-
-        ClosedShape
-    })
-  }
-
-  /**
-    * Invalidate addresses in the redis cache
-    */
-  def redisCacheCleaner: Sink[Any, Future[Done]] = Sink
-    .foreach { address =>
-      redisCache.removeMatching(s"address/$address/*")
-    }
-
-  /**
-    * Build a stream of blocks from the given import status
-    */
-  def readBlocksFromStatus = Flow[ImportStatus]
-    .mapAsync(1) { status =>
-      walletClient.full.map { walletFull =>
-        val fullNodeBlockChain = new FullNodeBlockChain(walletFull)
-        // Switch between batch or single depending how far the sync is behind
-        val action = buildImportActionFromImportStatus(status)
-        val blockEnd = if (action.confirmBlocks) status.solidityBlock else status.fullNodeBlock
-        Logger.info("status.fullNodeBlocksToSync = " + status.fullNodeBlocksToSync)
-        if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(status.dbLatestBlock + 1, blockEnd)(fullNodeBlockChain.client)
-        else                                    blockChainBuilder.readFullNodeBlocksBatched(status.dbLatestBlock + 1, blockEnd, 100)(fullNodeBlockChain.client)
-      }
-    }
-    .flatMapConcat { blockStream => blockStream }
-
-  /**
-    * Retrieves the latest synchronisation status and checks if the sync should proceed
-    */
-  def syncStarter = Flow[ImportStatus]
-    .filter {
-      // Stop if there are more then 100 blocks to sync for full node
-      case status if status.fullNodeBlocksToSync > 0 =>
-        Logger.info(s"START SYNC FROM ${status.dbLatestBlock} TO ${status.fullNodeBlock}. " + status.toString)
-        true
-      case status =>
-        Logger.info("IGNORE FULL NODE SYNC: " + status.toString)
-        false
-    }
-
-
-  def buildContractSqlBuilder = {
-    import databaseImporter._
-    importWitnessCreate orElse importTransfers orElse buildConfirmedEvents orElse elseEmpty
-  }
-
-  /**
-    * Build block importer
+    * Builds the stream
     *
-    * @param confirmBlocks if all blocks that are being imported should be automatically confirmed
+    * 1. `nodeState`: First check what the state of the nodes are by requesting the nodeState
+    * 2. `importAction`: Determine how the import should behave based on the `nodeState`
+    * 3. `importers`: Build the importers based on the `importAction`
+    * 4. `blockSink`: Build the sink that extracts all the data from the blockchain
+    * 5. `synchronisationChecker`: verifies if the synchranisation should start
+    * 6. `blockSource`: Builds the source from which the blocks will be read from the blockchain
     */
-  def fullNodeBlockImporter(confirmBlocks: Boolean = false) = {
-    val importer = buildContractSqlBuilder
+  def buildStream(implicit actorSystem: ActorSystem) = {
+    async {
+      val nodeState = await(synchronisationService.nodeState)
+      Logger.info("BuildStream::nodeState -> " + nodeState)
+      val importAction = await(importStreamFactory.buildImportActionFromImportStatus(nodeState))
+      Logger.info("BuildStream::importAction -> " + importAction)
+      val importers = importersFactory.buildFullNodeImporters(importAction)
+      Logger.info("BuildStream::importers -> " + importers.debug)
+      val synchronisationChecker = importStreamFactory.fullNodePreSynchronisationChecker
+      val blockSource = importStreamFactory.buildBlockSource(walletClient)
+      val blockSink = importStreamFactory.buildBlockSink(importers)
 
-    Flow[Block]
-      .map { block =>
-
-        val header = block.getBlockHeader.getRawData
-        val queries: ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]] = ListBuffer()
-
-        Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}, CONFIRM: $confirmBlocks")
-
-        // Import Block
-        queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
-
-        // Import Transactions
-        queries.appendAll(block.transactions.map { trx =>
-          transactionModelRepository.buildInsertOrUpdate(ModelUtils.transactionToModel(trx, block).copy(confirmed = confirmBlocks))
-        })
-
-        // Import Contracts
-        queries.appendAll(block.transactionContracts.flatMap {
-          case (trx, contract) =>
-            ModelUtils.contractToModel(contract, trx, block).map {
-              case transfer: TransferModel =>
-                importer((contract.`type`, contract, transfer.copy(confirmed = confirmBlocks || block.getBlockHeader.getRawData.number == 0)))
-              case x =>
-                importer((contract.`type`, contract, x))
-            }.getOrElse(Seq.empty)
-        })
-
-        queries.toList
-      }
-      // Flatmap the queries
-      .flatMapConcat(q => Source(q))
-      // Batch queries together
-      .groupedWithin(1000, 2.seconds)
-      // Insert batched queries in database
-      .mapAsync(1)(blockModelRepository.executeQueries)
+      Source
+        .single(nodeState)
+        .via(synchronisationChecker)
+        .via(blockSource)
+        .toMat(blockSink)(Keep.right)
+    }
   }
 
-  def startSync() = {
-
-    Logger.info("START FULL NODE SYNC")
-
-    Source.tick(0.seconds, 2.seconds, "")
-      .mapAsync(1)(_ => syncService.importStatus.flatMap(buildSource(_).run()))
-      .runWith(Sink.ignore)
-      .andThen {
-        case Success(_) =>
-          Logger.info("BLOCKCHAIN SYNC SUCCESS")
-        case Failure(exc) =>
-          Logger.error("BLOCKCHAIN SYNC FAILURE", exc)
-      }
-  }
-
-  def receive = {
-    case Sync() =>
-      startSync()
-  }
 }

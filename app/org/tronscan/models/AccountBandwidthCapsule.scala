@@ -7,11 +7,13 @@ case class AccountBandwidthCapsule(accountNetMessage: AccountNetMessage) {
   val freeNetRemaining = accountNetMessage.freeNetLimit - accountNetMessage.freeNetUsed
   val netRemaining = accountNetMessage.netLimit - accountNetMessage.netUsed
 
-  val netRemainingPercentage = if (accountNetMessage.netLimit == 0) 0 else
-    (accountNetMessage.netUsed.toDouble / accountNetMessage.netLimit.toDouble) * 100
+  val netRemainingPercentage =
+    if (accountNetMessage.netLimit == 0) 0
+    else (accountNetMessage.netUsed.toDouble / accountNetMessage.netLimit.toDouble) * 100
 
-  val freeNetRemainingPercentage =  if (accountNetMessage.freeNetLimit == 0) 0 else
-    (accountNetMessage.freeNetUsed.toDouble / accountNetMessage.freeNetLimit.toDouble) * 100
+  val freeNetRemainingPercentage =
+    if (accountNetMessage.freeNetLimit == 0) 0
+    else (accountNetMessage.freeNetUsed.toDouble / accountNetMessage.freeNetLimit.toDouble) * 100
 
   val assets = accountNetMessage.assetNetUsed.map { case (token, used) =>
 

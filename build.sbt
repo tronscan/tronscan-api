@@ -52,7 +52,6 @@ libraryDependencies ++= Seq(
   "com.github.tminglei" %% "slick-pg_joda-time" % "0.16.2",
 
   "org.postgresql" %  "postgresql" % "42.2.2",
-
   "com.maxmind.geoip2" % "geoip2" % "2.10.0",
 
   "io.monix" %% "monix" % "3.0.0-RC1",
@@ -83,13 +82,11 @@ libraryDependencies ++= Seq(
   "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test,
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.9.2"
 
-) ++ grpcDeps ++ akkaDeps ++ circeDependencies
+) ++ grpcDeps ++ akkaDeps ++ circeDependencies ++ akkaStreamsContribDeps
 
 // Disable API Documentation
 sources in (Compile, doc) := Seq.empty
 publishArtifact in (Compile, packageDoc) := false
-
-
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)

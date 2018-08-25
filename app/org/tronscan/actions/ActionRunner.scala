@@ -19,7 +19,7 @@ class ActionRunner @Inject()(
 
   val decider: Supervision.Decider = { exc =>
     Logger.error("CACHE WARMER ERROR", exc)
-    Supervision.Resume
+    Supervision.Restart
   }
 
   implicit val materializer = ActorMaterializer(

@@ -5,7 +5,7 @@ import org.tron.api.api.WalletGrpc.Wallet
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import org.tron.api.api.{WalletGrpc, WalletSolidityGrpc}
 import org.tronscan.actions.ActionRunner
-import org.tronscan.grpc.GrpcPool
+import org.tronscan.grpc.{GrpcBalancer, GrpcPool}
 import org.tronscan.importer.{FullNodeImporter, ImportManager, SolidityNodeImporter}
 import org.tronscan.network.NetworkScanner
 import org.tronscan.service.Bootstrap
@@ -17,11 +17,10 @@ import play.engineio.EngineIOController
 class Module extends AbstractModule with AkkaGuiceSupport {
 
   def configure = {
-    bindActor[FullNodeImporter]("fullnode-reader")
-    bindActor[SolidityNodeImporter]("solidity-reader")
     bindActor[ImportManager]("blockchain-importer")
     bindActor[NetworkScanner]("node-watchdog")
     bindActor[GrpcPool]("grpc-pool")
+    bindActor[GrpcBalancer]("grpc-balancer")
     bindActor[ActionRunner]("action-runner")
 
     bind(classOf[WalletSolidity]).to(classOf[WalletSolidityGrpc.WalletSolidityStub])
