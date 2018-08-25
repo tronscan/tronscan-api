@@ -22,25 +22,15 @@ import org.tronscan.Extensions._
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.domain.Constants
 import org.tronscan.grpc.WalletClient
+import org.tronscan.importer.AccountImporter
 import org.tronscan.models._
-import org.tronscan.service.SRService
+import org.tronscan.service.{AccountService, SRService}
 import pdi.jwt.{JwtAlgorithm, JwtJson}
 import play.api.cache.Cached
 import play.api.inject.ConfigurationProvider
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.InjectedController
-import org.tronscan.db.PgProfile.api._
-import org.tronscan.grpc.WalletClient
-import org.tronscan.models._
-import org.tronscan.Extensions._
-import org.tronscan.service.SRService
-import io.circe.syntax._
-import io.circe.generic.auto._
-import org.spongycastle.util.encoders.Hex
-import org.tron.common.crypto.ECKey
-import org.tronscan.domain.Constants
-import org.tronscan.Extensions._
-import scala.async.Async.{async, await}
+import scala.async.Async._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -59,6 +49,8 @@ class AccountApi @Inject()(
   configurationProvider: ConfigurationProvider,
   walletClient: WalletClient,
   witnessRepository: WitnessModelRepository,
+  accountService: AccountService,
+  accountImporter: AccountImporter,
   srService: SRService) extends InjectedController {
 
   val key = configurationProvider.get.get[String]("play.http.secret.key")
@@ -122,18 +114,13 @@ class AccountApi @Inject()(
     response = classOf[AccountModel])
   def findByAddress(address: String) = Action.async {
 
+    val account = address.toAccount
+
+    val accountF = walletClient.fullRequest(_.getAccount(account))
+    val accountBandwidthF = walletClient.fullRequest(_.getAccountNet(account))
+    val witnessF = witnessRepository.findByAddress(address)
+
     for {
-      wallet <- walletClient.full
-
-      account = Account(
-        address = address.decodeAddress
-      )
-
-      // Run in parallel
-      accountF = wallet.getAccount(account)
-      accountBandwidthF = wallet.getAccountNet(account)
-      witnessF = witnessRepository.findByAddress(address)
-
       account <- accountF
       accountBandwidth <- accountBandwidthF
       witness <- witnessF
@@ -197,9 +184,7 @@ class AccountApi @Inject()(
   def getAddressBalance(address: String) = Action.async {
     for {
       wallet <- walletClient.full
-      account <- wallet.getAccount(Account(
-        address = address.decodeAddress
-      ))
+      account <- walletClient.fullRequest(_.getAccount(address.toAccount))
     } yield {
 
       val balances = List(
@@ -243,7 +228,7 @@ class AccountApi @Inject()(
     } yield {
 
       Ok(Json.obj(
-        "votes" -> account.votes.map(vote => (Base58.encode58Check(vote.voteAddress.toByteArray), vote.voteCount)).toMap.asJson
+        "votes" -> account.votes.map(vote => (vote.voteAddress.encodeAddress, vote.voteCount)).toMap.asJson
       ))
     }
   }
@@ -388,30 +373,7 @@ class AccountApi @Inject()(
     value = "",
     hidden = true)
   def sync(address: String) = Action.async { req =>
-
-    async {
-
-        val wallet = await(walletClient.full)
-
-        val account = await(wallet.getAccount(Account(
-          address = address.decodeAddress,
-        )))
-
-        if (account != null) {
-
-          val accountModel = AccountModel(
-            address = address,
-            name = new String(account.accountName.toByteArray),
-            balance = account.balance,
-            power = account.frozen.map(_.frozenBalance).sum,
-            tokenBalances = Json.toJson(account.asset),
-            dateUpdated = DateTime.now,
-          )
-
-          await(repo.insertOrUpdate(accountModel))
-          await(addressBalanceModelRepository.updateBalance(accountModel))
-        }
-
+    accountService.syncAddress(address, walletClient).map { _ =>
       Ok("Done")
     }
   }
@@ -518,6 +480,10 @@ class AccountApi @Inject()(
     }
   }
 
+  /**
+    * Generates a new private key
+    * @return
+    */
   def create = Action {
 
     val ecKey = new ECKey()

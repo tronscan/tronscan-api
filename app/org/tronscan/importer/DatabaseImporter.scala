@@ -8,6 +8,10 @@ import slick.dbio.{Effect, NoStream}
 import slick.sql.FixedSqlAction
 import org.tronscan.Extensions._
 
+
+/**
+  * Builds queries from transaction contracts
+  */
 class DatabaseImporter @Inject() (
   blockModelRepository: BlockModelRepository,
   transactionModelRepository: TransactionModelRepository,

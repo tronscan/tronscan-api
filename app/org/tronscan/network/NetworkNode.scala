@@ -14,6 +14,8 @@ case class NetworkNode(
   lastBlock: Long = 0L,
   grpcEnabled: Boolean = false,
   grpcResponseTime: Long = 0,
+  pingOnline: Boolean = false,
+  pingResponseTime: Long = 0,
   country: String = "",
   city: String = "",
   lat: Double = 0,

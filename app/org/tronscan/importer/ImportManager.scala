@@ -1,11 +1,18 @@
 package org.tronscan.importer
 
-import akka.actor.{Actor, ActorRef}
-import javax.inject.{Inject, Named}
-import org.tronscan.importer.ImportManager.Sync
-import org.tronscan.models.BlockModelRepository
+import akka.actor.Actor
+import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
+import javax.inject.Inject
+import org.tronscan.grpc.WalletClient
+import play.api.Logger
 import play.api.inject.ConfigurationProvider
+
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
+import akka.pattern.after
+
+import scala.concurrent.Future
 
 object ImportManager {
   case class Sync()
@@ -17,23 +24,79 @@ object ImportManager {
   */
 class ImportManager @Inject() (
   configurationProvider: ConfigurationProvider,
-  @Named("fullnode-reader") fullNodeReader: ActorRef,
-  @Named("solidity-reader") solidityNodeReader: ActorRef) extends Actor {
+  fullNodeImporter: FullNodeImporter,
+  solidityNodeImporter: SolidityNodeImporter,
+  walletClient: WalletClient,
+  accountImporter: AccountImporter) extends Actor {
+
+  val config = configurationProvider.get
+
+
+  def startImporters(): Unit = {
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    val decider: Supervision.Decider = { exc =>
+      Logger.error("SYNC NODE ERROR", exc)
+      Supervision.Restart
+    }
+
+    implicit val materializer = ActorMaterializer(
+      ActorMaterializerSettings(context.system)
+        .withSupervisionStrategy(decider))(context)
+    implicit val system = context.system
+
+
+    def startImporter(name: String)(source: => Source[_, _]) = {
+      source
+        .runWith(Sink.ignore)
+        .andThen {
+          case Success(_) =>
+            Logger.info("$name SYNC SUCCESS")
+          case Failure(exc) =>
+            Logger.error(s"$name SYNC FAILURE", exc)
+        }
+    }
+
+    // Wait a few seconds for the GRPC Balancer to get ready
+    after(12.seconds, context.system.scheduler) {
+
+      Future {
+        val syncSolidity = config.get[Boolean]("sync.solidity")
+        val syncFull = config.get[Boolean]("sync.full")
+        val syncAddresses = config.get[Boolean]("sync.addresses")
+
+        if (syncFull) {
+          startImporter("FULL") {
+            Source.tick(0.seconds, 3.seconds, "")
+              .mapAsync(1)(_ => fullNodeImporter.buildStream.flatMap(_.run()))
+          }
+        }
+
+        if (syncSolidity) {
+          startImporter("SOLIDITY") {
+            Source.tick(0.seconds, 3.seconds, "")
+              .mapAsync(1)(_ => solidityNodeImporter.buildStream.flatMap(_.run()))
+          }
+        }
+
+        if (syncAddresses) {
+          implicit val scheduler = context.system.scheduler
+          startImporter("ADDRESSES") {
+            Source.tick(0.seconds, 15.seconds, "")
+              .mapAsync(1) { _ =>
+                accountImporter
+                  .buildAccountSyncSource
+                  .runWith(accountImporter.buildAddressSynchronizerFlow(walletClient))
+              }
+          }
+        }
+      }
+    }
+  }
 
   override def preStart(): Unit = {
-
-    import context.dispatcher
-
-    val syncSolidity = configurationProvider.get.get[Boolean]("sync.solidity")
-    val syncFull = configurationProvider.get.get[Boolean]("sync.full")
-
-    if (syncFull) {
-      context.system.scheduler.scheduleOnce(2.seconds, fullNodeReader, Sync())
-    }
-
-    if (syncSolidity) {
-      context.system.scheduler.scheduleOnce(12.seconds, solidityNodeReader, Sync())
-    }
+    startImporters()
   }
 
   def receive = {
