@@ -85,6 +85,7 @@ class AccountApi @Inject()(
       case (t, "address") => t.address
       case (t, "name") => t.name
       case (t, "balance") => t.balance
+      case (t, "power") => t.power
       case (t, "date_created") => t.dateCreated
       case (t, "date_updated") => t.dateUpdated
     }
