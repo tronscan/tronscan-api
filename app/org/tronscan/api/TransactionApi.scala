@@ -63,8 +63,8 @@ class TransactionApi @Inject()(
     import transactionRepository._
 
     val queryParams = request.queryString.map(x => x._1.toLowerCase -> x._2.mkString)
-    val queryHash = queryParams.map(x => x._1 + "-" + x._2).mkString
-    val filterHash = stripNav(queryParams).map(x => x._1 + "-" + x._2).mkString
+    val queryHash = queryParams.map(x => x._1 + "-" + x._2).mkString.toLowerCase
+    val filterHash = stripNav(queryParams).map(x => x._1 + "-" + x._2).mkString.toLowerCase
     val includeCount = request.getQueryString("count").exists(x => true)
 
 
