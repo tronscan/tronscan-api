@@ -9,17 +9,23 @@ import org.joda.time.DateTime
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
+import play.api.inject.ConfigurationProvider
 import play.api.mvc.InjectedController
 
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class TokenApi @Inject()(
     repo: AssetIssueContractModelRepository,
+    configurationProvider: ConfigurationProvider,
     accountRepository: AccountModelRepository,
     transferRepository: TransferModelRepository,
     addressBalanceModelRepository: AddressBalanceModelRepository,
     walletClient: WalletClient,
     participateAssetIssueModelRepository: ParticipateAssetIssueModelRepository) extends InjectedController {
+
+  val tokenBlacklist = configurationProvider.get.underlying.getStringList("tokens.blacklist").asScala.map(_.toLowerCase).toList
 
   def findAll() = Action.async { implicit request =>
 
@@ -32,10 +38,8 @@ class TokenApi @Inject()(
       case (t, "supply") => t.totalSupply
     }
 
-    q = q andThen specialProcess {
-      case query => query.filter(x => x.name =!= "XP" && x.name =!= "WWGoneWGA" && x.name =!= "ZTX" && x.name =!= "Fortnite" && x.name =!= "ZZZ" && x.name =!= "VBucks" && x.name =!= "CheapAirGoCoin")
-    }
-
+    // Filter blacklist
+    q = q andThen(_.filter(x => !x.name.toLowerCase.inSet(tokenBlacklist)))
 
     q = q andThen filterRequest {
       case (query, ("name", value)) =>
@@ -101,37 +105,39 @@ class TokenApi @Inject()(
     }
   }
 
-  def findByName(name: String) = Action.async {
-    var token = name
-    if (name == "Fortnite" || name == "VBucks" || name == "CheapAirGoCoin") {token = ""}
-    for {
-      asset <- repo.findByName(token).map(_.get)
-      account <- accountRepository.findByAddress(asset.ownerAddress).map(_.get)
-      totalTransactions <- transferRepository.countTokenTransfers(asset.name)
-      tokenHolders <- addressBalanceModelRepository.countTokenHolders(asset.name)
-    } yield {
+  def findByName(tokenName: String) = Action.async {
+    if (tokenBlacklist.contains(tokenName.toLowerCase)) {
+      Future.successful(NotFound)
+    } else {
+      for {
+        asset <- repo.findByName(tokenName).map(_.get)
+        account <- accountRepository.findByAddress(asset.ownerAddress).map(_.get)
+        totalTransactions <- transferRepository.countTokenTransfers(asset.name)
+        tokenHolders <- addressBalanceModelRepository.countTokenHolders(asset.name)
+      } yield {
 
-      val frozenSupply = asset.frozenSupply
-      val totalSupply = asset.totalSupply.toDouble
+        val frozenSupply = asset.frozenSupply
+        val totalSupply = asset.totalSupply.toDouble
 
-      val availableSupply = asset.availableSupply
-      val availableTokens = asset.availableTokensFromAccount(account)
+        val availableSupply = asset.availableSupply
+        val availableTokens = asset.availableTokensFromAccount(account)
 
-      val issuedTokens = availableSupply - availableTokens
-      val issuedPercentage = (issuedTokens / availableSupply) * 100
+        val issuedTokens = availableSupply - availableTokens
+        val issuedPercentage = (issuedTokens / availableSupply) * 100
 
-      val remainingTokens = totalSupply - frozenSupply - issuedTokens
-      val percentage = (remainingTokens / availableSupply) * 100
+        val remainingTokens = totalSupply - frozenSupply - issuedTokens
+        val percentage = (remainingTokens / availableSupply) * 100
 
-      Ok(asset.asJson.deepMerge(Json.obj(
-        "totalTransactions" -> totalTransactions.asJson,
-        "nrOfTokenHolders" -> tokenHolders.asJson,
-        "price" -> asset.price.asJson,
-        "remaining" -> remainingTokens.asJson,
-        "issued" -> issuedTokens.asJson,
-        "issuedPercentage" -> issuedPercentage.asJson,
-        "percentage" -> percentage.asJson,
-      )))
+        Ok(asset.asJson.deepMerge(Json.obj(
+          "totalTransactions" -> totalTransactions.asJson,
+          "nrOfTokenHolders" -> tokenHolders.asJson,
+          "price" -> asset.price.asJson,
+          "remaining" -> remainingTokens.asJson,
+          "issued" -> issuedTokens.asJson,
+          "issuedPercentage" -> issuedPercentage.asJson,
+          "percentage" -> percentage.asJson,
+        )))
+      }
     }
   }
 
