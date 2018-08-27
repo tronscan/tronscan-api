@@ -8,20 +8,18 @@ import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.common.utils.ByteArray
 import org.tron.protos.Tron.Transaction
-import play.api.cache.redis.CacheAsyncApi
-import play.api.cache.{Cached, NamedCache}
-import play.api.libs.json.{JsObject, Json}
-import play.api.mvc.InjectedController
-import org.tronscan.App._
 import org.tronscan.api.models.TransactionSerializer
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models.{TransactionModel, TransactionModelRepository}
+import play.api.cache.redis.CacheAsyncApi
+import play.api.cache.{Cached, NamedCache}
+import play.api.libs.json.{JsObject, Json}
 
-import concurrent.duration._
 import scala.async.Async._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
 
@@ -85,7 +83,7 @@ class TransactionApi @Inject()(
         case (query, ("address_to", value)) =>
           query.filter(_.toAddress === value)
         case (query, ("hash", value)) =>
-          query.filter(_.hash === value)
+          query.filter(_.hash === value.toLowerCase)
         case (query, ("date_start", value)) =>
           val dateStart = Try(value.toLong) match {
             case Success(timestamp) =>
