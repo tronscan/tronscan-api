@@ -46,6 +46,7 @@ GET     /api/node                               org.tronscan.api.NodeApi.status
 # System
 
 GET     /api/system/status                      org.tronscan.api.SystemApi.status
+GET     /api/system/balancer                    org.tronscan.api.SystemApi.balancer
 GET     /api/system/sync-accounts               org.tronscan.api.AccountApi.resync
 GET     /api/system/sync-account/:address       org.tronscan.api.AccountApi.sync(address: String)
 

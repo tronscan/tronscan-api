@@ -300,6 +300,7 @@ object TransactionSerializer {
     "timestamp" -> transaction.getRawData.timestamp.asJson,
     "contracts" -> transaction.getRawData.contract.map(contract => serializeContract(contract, includeType = true)).asJson,
     "data" -> transaction.getRawData.data.decodeString.asJson,
+    "bandwidth" -> transaction.serializedSize.asJson,
     "signatures" -> transaction.signature.map { signature =>
       Js.obj(
         "bytes" -> Crypto.getBase64FromByteString(signature).asJson,

@@ -82,6 +82,7 @@ create table if not exists accounts
   token_balances jsonb,
   date_created timestamp with time zone default now() not null,
   date_updated timestamp with time zone default now() not null,
+  date_synced timestamp with time zone default now() not null,
   power bigint default 0 not null
 )
 ;
@@ -148,7 +149,7 @@ create table if not exists sr_account
 )
 ;
 
-CREATE SCHEMA analytics;
+CREATE SCHEMA IF NOT EXISTS analytics;
 
 create table if not exists analytics.vote_snapshot
 (

@@ -21,12 +21,19 @@ case class GrpcRetry(request: GrpcRequest)
 case class GrpcResponse(response: Any)
 case class GrpcBlock(num: Long, hash: String)
 case class OptimizeNodes()
+case class GrpcBalancerStats(
+  activeNodes: List[GrpcStats] = List.empty,
+  nodes: List[GrpcStats] = List.empty)
+case class GrpcBalancerRequest()
 
 case class GrpcStats(
   ref: ActorRef,
   ip: String,
   responseTime: Long,
-  blocks: List[GrpcBlock])
+  blocks: List[GrpcBlock],
+  requestHandled: Int = 0,
+  requestErrors: Int = 0
+)
 
 object GrpcBalancerOptions {
   val pingInterval = 9.seconds
@@ -50,6 +57,8 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
 
   // Contains the stats of all the seednodes
   var nodeStatuses = Map[String, GrpcStats]()
+  var router = buildRouter(seedNodes)
+  var totalStats = GrpcBalancerStats()
 
   def buildRouter(nodeIps: List[NodeAddress]) = {
     val routeRefs = nodeIps.map { ip =>
@@ -67,8 +76,6 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
 
     Router(RoundRobinRoutingLogic(), routees.toVector)
   }
-
-  var router = buildRouter(seedNodes)
 
   def optimizeNodes() = {
 
@@ -88,9 +95,13 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
     } yield stats
 
     // Take the 12 fastest nodes
-    val fastestNodes = validChainNodes.toList
-      .sortBy(_.responseTime)
-      .take(maxClients)
+    val sortedNodes = validChainNodes.toList.sortBy(_.responseTime)
+    val fastestNodes = sortedNodes.take(maxClients)
+
+    totalStats = GrpcBalancerStats(
+      activeNodes = fastestNodes,
+      nodes = sortedNodes.drop(maxClients)
+    )
 
     router = buildRouterWithRefs(fastestNodes.map(_.ref))
   }
@@ -117,6 +128,8 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
       router = router.removeRoutee(a)
     case OptimizeNodes() =>
       optimizeNodes()
+    case GrpcBalancerRequest() =>
+      sender() ! totalStats
   }
 }
 
@@ -127,6 +140,8 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   var pinger: Option[Cancellable] = None
   var latestBlocks = List[GrpcBlock]()
+  var requestsHandled = 0
+  var requestErrors = 0
 
   lazy val channel = ManagedChannelBuilder
     .forAddress(nodeAddress.ip, nodeAddress.port)
@@ -160,8 +175,12 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
         ref = self,
         ip = nodeAddress.ip,
         responseTime = responseTime,
-        blocks = latestBlocks
+        blocks = latestBlocks,
+        requestHandled = requestsHandled,
+        requestErrors = requestErrors,
       )
+
+      requestsHandled += 1
     }).recover {
       case _ =>
         context.parent ! GrpcStats(
@@ -170,6 +189,20 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
           responseTime = 9999L,
           blocks = List.empty
         )
+        requestErrors += 1
+    }
+  }
+
+  def handleRequest(request: GrpcRequest) = {
+    import context.dispatcher
+    val s = sender()
+    request.request(walletStub.withDeadlineAfter(5, TimeUnit.SECONDS)).map { x =>
+      s ! GrpcResponse(x)
+      requestsHandled += 1
+    }.recover {
+      case _ =>
+        requestErrors += 1
+        context.parent.tell(GrpcRetry(request), s)
     }
   }
 
@@ -184,14 +217,7 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   def receive = {
     case c: GrpcRequest =>
-      import context.dispatcher
-      val s = sender()
-      c.request(walletStub.withDeadlineAfter(5, TimeUnit.SECONDS)).map { x =>
-        s ! GrpcResponse(x)
-      }.recover {
-        case _ =>
-          context.parent.tell(GrpcRetry(c), s)
-      }
+      handleRequest(c)
 
     case "ping" =>
       ping()
