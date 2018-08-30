@@ -7,6 +7,7 @@ GET     /swagger.json                   controllers.ApiHelpController.getResourc
 GET     /api/block/stats                org.tronscan.api.BlockApi.stats
 GET     /api/block                      org.tronscan.api.BlockApi.findAll
 GET     /api/block/latest               org.tronscan.api.BlockApi.latest
+GET     /api/block/sync                 org.tronscan.api.BlockApi.syncBlocks
 GET     /api/block/:id                  org.tronscan.api.BlockApi.findById(id: Long)
 
 # Transfers
