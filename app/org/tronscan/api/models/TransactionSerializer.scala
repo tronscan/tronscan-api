@@ -7,7 +7,7 @@ import io.circe.{Decoder, Encoder, HCursor, Json => Js}
 import org.joda.time.DateTime
 import org.tron.common.crypto.ECKey
 import org.tron.common.utils.{Base58, ByteArray, Crypto, Sha256Hash}
-import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountCreateContract, AccountUpdateContract, AssetIssueContract, DeployContract, FreezeBalanceContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, UpdateAssetContract, VoteAssetContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
+import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountCreateContract, AccountUpdateContract, AssetIssueContract, CreateSmartContract, ExchangeCreateContract, ExchangeInjectContract, ExchangeTransactionContract, ExchangeWithdrawContract, FreezeBalanceContract, ParticipateAssetIssueContract, ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract, TransferAssetContract, TransferContract, TriggerSmartContract, UnfreezeAssetContract, UnfreezeBalanceContract, UpdateAssetContract, VoteAssetContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tron.protos.Tron.{AccountType, Transaction}
 import org.tronscan.Extensions._
 import org.tronscan.protocol.MainNetFormatter
@@ -216,14 +216,82 @@ object TransactionSerializer {
 
   implicit val encodeUnfreezeAssetContract = new Encoder[org.tron.protos.Contract.UnfreezeAssetContract] {
     def apply(contract: org.tron.protos.Contract.UnfreezeAssetContract): Js = Js.obj(
-      "ownerAddress" -> Base58.encode58Check(contract.ownerAddress.toByteArray).asJson,
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
     )
   }
 
-  implicit val encodeDeployContract = new Encoder[org.tron.protos.Contract.DeployContract] {
-    def apply(contract: org.tron.protos.Contract.DeployContract): Js = Js.obj(
-      "ownerAddress" -> Base58.encode58Check(contract.ownerAddress.toByteArray).asJson,
-      "script" -> ByteArray.toHexString(contract.script.toByteArray).asJson,
+
+  implicit val encodeProposalCreateContract = new Encoder[org.tron.protos.Contract.ProposalCreateContract] {
+    def apply(contract: org.tron.protos.Contract.ProposalCreateContract): Js = Js.obj(
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+      "parameters" -> contract.parameters.asJson,
+    )
+  }
+
+  implicit val encodeProposalApproveContract = new Encoder[org.tron.protos.Contract.ProposalApproveContract] {
+    def apply(contract: org.tron.protos.Contract.ProposalApproveContract): Js = Js.obj(
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+      "proposalId" -> contract.proposalId.asJson,
+      "isAddApproval" -> contract.isAddApproval.asJson,
+    )
+  }
+
+  implicit val encodeProposalDeleteContract = new Encoder[org.tron.protos.Contract.ProposalDeleteContract] {
+    def apply(contract: org.tron.protos.Contract.ProposalDeleteContract): Js = Js.obj(
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+      "proposalId" -> contract.proposalId.asJson,
+    )
+  }
+
+  implicit val encodeCreateSmartContract = new Encoder[org.tron.protos.Contract.CreateSmartContract] {
+    def apply(contract: org.tron.protos.Contract.CreateSmartContract): Js = Js.obj(
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+    )
+  }
+
+  implicit val encodeTriggerSmartContract = new Encoder[org.tron.protos.Contract.TriggerSmartContract] {
+    def apply(contract: org.tron.protos.Contract.TriggerSmartContract): Js = Js.obj(
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+      "contractAddress" -> contract.contractAddress.encodeAddress.asJson,
+      "callValue" -> contract.callValue.asJson,
+      "data" -> ByteArray.toHexString(contract.data.toByteArray).asJson,
+    )
+  }
+
+  implicit val encodeExchangeCreateContract = new Encoder[org.tron.protos.Contract.ExchangeCreateContract] {
+    def apply(contract: org.tron.protos.Contract.ExchangeCreateContract): Js = Js.obj(
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+      "firstTokenId" -> contract.firstTokenId.decodeString.asJson,
+      "firstTokenBalance" -> contract.firstTokenBalance.asJson,
+      "secondTokenId" -> contract.secondTokenId.decodeString.asJson,
+      "secondTokenBalance" -> contract.secondTokenBalance.asJson,
+    )
+  }
+
+  implicit val encodeExchangeInjectContract = new Encoder[org.tron.protos.Contract.ExchangeInjectContract] {
+    def apply(contract: org.tron.protos.Contract.ExchangeInjectContract): Js = Js.obj(
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+      "exchangeId" -> contract.exchangeId.asJson,
+      "tokenId" -> contract.tokenId.decodeString.asJson,
+      "quant" -> contract.quant.asJson,
+    )
+  }
+
+  implicit val encodeExchangeWithdrawContract = new Encoder[org.tron.protos.Contract.ExchangeWithdrawContract] {
+    def apply(contract: org.tron.protos.Contract.ExchangeWithdrawContract): Js = Js.obj(
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+      "exchangeId" -> contract.exchangeId.asJson,
+      "tokenId" -> contract.tokenId.decodeString.asJson,
+      "quant" -> contract.quant.asJson,
+    )
+  }
+
+  implicit val encodeExchangeTransactionContract = new Encoder[org.tron.protos.Contract.ExchangeTransactionContract] {
+    def apply(contract: org.tron.protos.Contract.ExchangeTransactionContract): Js = Js.obj(
+      "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,
+      "exchangeId" -> contract.exchangeId.asJson,
+      "tokenId" -> contract.tokenId.decodeString.asJson,
+      "quant" -> contract.quant.asJson,
     )
   }
 
@@ -246,9 +314,6 @@ object TransactionSerializer {
 
       case AssetIssueContract =>
         org.tron.protos.Contract.AssetIssueContract.parseFrom(contract.getParameter.value.toByteArray).asJson
-
-      case DeployContract =>
-        org.tron.protos.Contract.DeployContract.parseFrom(contract.getParameter.value.toByteArray).asJson
 
       case ParticipateAssetIssueContract =>
         org.tron.protos.Contract.ParticipateAssetIssueContract.parseFrom(contract.getParameter.value.toByteArray).asJson
@@ -277,10 +342,44 @@ object TransactionSerializer {
       case UpdateAssetContract =>
         org.tron.protos.Contract.UpdateAssetContract.parseFrom(contract.getParameter.value.toByteArray).asJson
 
+      case ProposalCreateContract =>
+        org.tron.protos.Contract.ProposalCreateContract.parseFrom(contract.getParameter.value.toByteArray).asJson
+
+      case ProposalApproveContract =>
+        org.tron.protos.Contract.ProposalApproveContract.parseFrom(contract.getParameter.value.toByteArray).asJson
+
+      case ProposalDeleteContract =>
+        org.tron.protos.Contract.ProposalDeleteContract.parseFrom(contract.getParameter.value.toByteArray).asJson
+
+      case CreateSmartContract =>
+        org.tron.protos.Contract.CreateSmartContract.parseFrom(contract.getParameter.value.toByteArray).asJson
+
+      case TriggerSmartContract =>
+        org.tron.protos.Contract.TriggerSmartContract.parseFrom(contract.getParameter.value.toByteArray).asJson
+
+      //      case BuyStorageBytesContract =>
+      //        org.tron.protos.Contract.BuyStorageBytesContract.parseFrom(any.value.toByteArray)
+
+      //      case BuyStorageContract =>
+      //        org.tron.protos.Contract.BuyStorageContract.parseFrom(any.value.toByteArray)
+
+      //      case SellStorageContract =>
+      //        org.tron.protos.Contract.SellStorageContract.parseFrom(any.value.toByteArray)
+
+      case ExchangeCreateContract =>
+        org.tron.protos.Contract.ExchangeCreateContract.parseFrom(contract.getParameter.value.toByteArray).asJson
+
+      case ExchangeInjectContract =>
+        org.tron.protos.Contract.ExchangeInjectContract.parseFrom(contract.getParameter.value.toByteArray).asJson
+
+      case ExchangeWithdrawContract =>
+        org.tron.protos.Contract.ExchangeWithdrawContract.parseFrom(contract.getParameter.value.toByteArray).asJson
+
+      case ExchangeTransactionContract =>
+        org.tron.protos.Contract.ExchangeTransactionContract.parseFrom(contract.getParameter.value.toByteArray).asJson
+
       case _ =>
-        Js.obj(
-          "type" -> contract.`type`.toString().asJson
-        )
+        Js.obj()
     }
 
 
