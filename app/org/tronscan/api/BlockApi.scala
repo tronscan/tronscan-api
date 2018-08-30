@@ -73,7 +73,7 @@ class BlockApi @Inject() (
     val queryParams = request.queryString.map(x => x._1.toLowerCase -> x._2.mkString)
     val queryHash = queryParams.map(x => x._1 + "-" + x._2).mkString
     val filterHash = stripNav(queryParams).map(x => x._1 + "-" + x._2).mkString
-    val includeCount = request.getQueryString("count").exists(x => true)
+    val includeCount = request.getQueryString("count").isDefined
 
     def getBlocks = {
 
@@ -146,10 +146,10 @@ class BlockApi @Inject() (
         size = block.toByteArray.length,
         hash = block.hash,
         timestamp = new DateTime(header.timestamp),
-        txTrieRoot = Base58.encode58Check(header.txTrieRoot.toByteArray),
+        txTrieRoot = ByteUtil.toHexString(header.txTrieRoot.toByteArray),
         parentHash = ByteUtil.toHexString(header.parentHash.toByteArray),
         witnessId = header.witnessId,
-        witnessAddress = Base58.encode58Check(header.witnessAddress.toByteArray),
+        witnessAddress = header.witnessAddress.encodeAddress,
         nrOfTrx = block.transactions.size,
       ).asJson)
     }

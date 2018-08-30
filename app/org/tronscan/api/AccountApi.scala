@@ -149,7 +149,7 @@ class AccountApi @Inject()(
           "allowance" -> account.allowance,
           "url" -> witness.map(_.url),
         ),
-        "name" -> new String(account.accountName.toByteArray).toString,
+        "name" -> account.accountName.decodeString,
         "address" -> address,
         "bandwidth" -> Json.obj(
           "freeNetUsed" -> accountBandwidth.freeNetUsed,
@@ -226,7 +226,7 @@ class AccountApi @Inject()(
     for {
       wallet <- walletClient.full
       account <- wallet.getAccount(Account(
-        address = ByteString.copyFrom(Base58.decode58Check(address))
+        address = address.decodeAddress,
       ))
     } yield {
 

@@ -11,6 +11,9 @@ trait BaseApi extends InjectedController {
     "count",
   )
 
+  /**
+    * Strip query parameters which are related to paging and navigation of the results
+    */
   def stripNav(params: Map[String, String], sortParams: List[String] = List.empty) = {
     val navs = navParams ++ sortParams
     params.filterKeys(x => !navs.contains(x))

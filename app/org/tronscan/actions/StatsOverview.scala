@@ -5,6 +5,9 @@ import org.tron.common.repositories.StatsRepository
 
 import scala.concurrent.ExecutionContext
 
+/**
+  * Reads the total stats
+  */
 class StatsOverview @Inject()(
   statsRepository: StatsRepository) {
 
