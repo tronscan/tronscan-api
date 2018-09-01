@@ -3,7 +3,6 @@ package org.tronscan.api.models
 import io.circe.syntax._
 import io.circe.{Encoder, Json}
 import org.tron.common.utils.{ByteArray, ByteUtil, Sha256Hash}
-import org.tron.protos.Tron.Transaction.Result.code
 import org.tronscan.Extensions._
 
 class TronModelsSerializers(includeLinks: Boolean = false) {

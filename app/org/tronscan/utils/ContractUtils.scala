@@ -27,8 +27,8 @@ object ContractUtils {
       case c: AssetIssueContract =>
         c.ownerAddress.encodeAddress
 
-      case c: DeployContract =>
-        c.ownerAddress.encodeAddress
+//      case c: DeployContract =>
+//        c.ownerAddress.encodeAddress
 
       case c: ParticipateAssetIssueContract =>
         c.ownerAddress.encodeAddress

@@ -1,8 +1,8 @@
 package org.tronscan.protocol
 
-import org.tronscan.Extensions._
 import org.tron.protos.Tron.Transaction
 import org.tron.protos.Tron.Transaction.Contract.ContractType._
+import org.tronscan.Extensions._
 
 object TransactionUtils {
 
@@ -26,8 +26,8 @@ object TransactionUtils {
       case AssetIssueContract =>
         org.tron.protos.Contract.AssetIssueContract.parseFrom(contract.getParameter.value.toByteArray).ownerAddress.encodeAddress
 
-      case DeployContract =>
-        org.tron.protos.Contract.DeployContract.parseFrom(contract.getParameter.value.toByteArray).ownerAddress.encodeAddress
+//      case DeployContract =>
+//        org.tron.protos.Contract.DeployContract.parseFrom(contract.getParameter.value.toByteArray).ownerAddress.encodeAddress
 
       case ParticipateAssetIssueContract =>
         org.tron.protos.Contract.ParticipateAssetIssueContract.parseFrom(contract.getParameter.value.toByteArray).ownerAddress.encodeAddress
