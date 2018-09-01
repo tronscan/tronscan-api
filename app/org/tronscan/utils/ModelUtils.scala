@@ -62,6 +62,7 @@ object ModelUtils {
       case c: VoteWitnessContract =>
         val inserts = for (vote <- c.votes) yield {
           VoteWitnessContractModel(
+            id = transactionHash,
             transaction = transactionHash,
             block = header.number,
             timestamp = transactionTime,

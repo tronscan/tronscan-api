@@ -45,9 +45,7 @@ create index if not exists transactions_block_hash_index
 
 create table if not exists vote_witness_contract
 (
-  id uuid not null
-    constraint vote_witness_contract_id_pk
-    primary key,
+  id text not null constraint vote_witness_contract_id_pk primary key,
   transaction text,
   voter_address text,
   candidate_address text,

@@ -110,7 +110,7 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
 
   override def preStart(): Unit = {
     import context.dispatcher
-    pinger = Some(context.system.scheduler.schedule(6.second, 6.seconds, self, OptimizeNodes()))
+    pinger = Some(context.system.scheduler.schedule(4.second, 6.seconds, self, OptimizeNodes()))
   }
 
   override def postStop(): Unit = {

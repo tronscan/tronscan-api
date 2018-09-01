@@ -15,7 +15,7 @@ case class VoteWitnessList(
   votes: List[VoteWitnessContractModel] = List.empty)
 
 case class VoteWitnessContractModel(
-  id: UUID = UUID.randomUUID(),
+  id: String,
   block: Long,
   transaction: String,
   timestamp: DateTime,
@@ -24,7 +24,7 @@ case class VoteWitnessContractModel(
   votes: Long = 0L)
 
 class VoteWitnessContractModelTable(tag: Tag) extends Table[VoteWitnessContractModel](tag, "vote_witness_contract") {
-  def id = column[UUID]("id")
+  def id = column[String]("id")
   def block = column[Long]("block")
   def transaction = column[String]("transaction")
   def timestamp = column[DateTime]("date_created")
