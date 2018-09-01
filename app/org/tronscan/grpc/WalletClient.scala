@@ -30,7 +30,7 @@ class WalletClient @Inject() (
   }
 
   def fullRequest[A](request: WalletStub => Future[A]) = {
-    implicit val timeout = Timeout(9.seconds)
+    implicit val timeout = Timeout(3.seconds)
     (grpcBalancer ? GrpcRequest(request)).mapTo[GrpcResponse].map(_.response.asInstanceOf[A])
   }
 

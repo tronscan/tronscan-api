@@ -6,7 +6,7 @@ import io.circe.Json
 import io.circe.syntax._
 import io.swagger.annotations.Api
 import javax.inject.Inject
-import org.tron.api.api.{BytesMessage, EmptyMessage, NumberMessage, WalletGrpc}
+import org.tron.api.api._
 import org.tron.common.utils.{Base58, ByteArray, ByteUtil}
 import org.tron.protos.Tron.Account
 import org.tronscan.api.models.{TransactionSerializer, TronModelsSerializers}
@@ -67,6 +67,21 @@ class GrpcFullApi @Inject() (
         case _ =>
           NotFound
       }
+    }
+  }
+
+  def getBlockByLimitNext = Action.async { implicit req =>
+
+    val from = req.getQueryString("from").get.toLong
+    val to = req.getQueryString("to").get.toLong
+
+    for {
+      client <- getClient
+      blocks <- client.getBlockByLimitNext(BlockLimit(from, to))
+    } yield {
+      Ok(Json.obj(
+        "data" -> blocks.block.sortBy(_.getBlockHeader.getRawData.number).toList.asJson
+      ))
     }
   }
 

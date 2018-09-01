@@ -403,7 +403,7 @@ object TransactionSerializer {
     "signatures" -> transaction.signature.map { signature =>
       Js.obj(
         "bytes" -> Crypto.getBase64FromByteString(signature).asJson,
-        "address" -> ByteString.copyFrom(ECKey.signatureToAddress(Sha256Hash.of(transaction.getRawData.toByteArray).getBytes, Crypto.getBase64FromByteString(transaction.signature(0)))).encodeAddress.asJson,
+//        "address" -> ByteString.copyFrom(ECKey.signatureToAddress(Sha256Hash.of(transaction.getRawData.toByteArray).getBytes, Crypto.getBase64FromByteString(transaction.signature(0)))).encodeAddress.asJson,
       )
     }.asJson,
   )

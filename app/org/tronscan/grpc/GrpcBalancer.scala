@@ -17,7 +17,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 
 case class GrpcRequest(request: WalletStub => Future[Any])
-case class GrpcRetry(request: GrpcRequest)
+case class GrpcRetry(request: GrpcRequest, sender: ActorRef)
 case class GrpcResponse(response: Any)
 case class GrpcBlock(num: Long, hash: String)
 case class OptimizeNodes()
@@ -120,8 +120,8 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
   def receive = {
     case w: GrpcRequest ⇒
       router.route(w, sender())
-    case GrpcRetry(request) =>
-      router.route(request, sender())
+    case GrpcRetry(request, s) =>
+      router.route(request, s)
     case stats: GrpcStats =>
       nodeStatuses = nodeStatuses ++ Map(stats.ip -> stats)
     case Terminated(a) ⇒
@@ -193,16 +193,15 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
     }
   }
 
-  def handleRequest(request: GrpcRequest) = {
+  def handleRequest(request: GrpcRequest, s: ActorRef) = {
     import context.dispatcher
-    val s = sender()
     request.request(walletStub.withDeadlineAfter(5, TimeUnit.SECONDS)).map { x =>
       s ! GrpcResponse(x)
       requestsHandled += 1
     }.recover {
       case _ =>
         requestErrors += 1
-        context.parent.tell(GrpcRetry(request), s)
+        context.parent.tell(GrpcRetry(request, s), s)
     }
   }
 
@@ -217,7 +216,7 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   def receive = {
     case c: GrpcRequest =>
-      handleRequest(c)
+      handleRequest(c, sender())
 
     case "ping" =>
       ping()

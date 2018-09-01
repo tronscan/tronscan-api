@@ -142,7 +142,7 @@ class ImportStreamFactory @Inject()(
   /**
     * A sync that extracts all the blocks, transactions, contracts, addresses from the blocks and passes them to streams
     */
-  def buildBlockSink(importers: BlockchainImporters): Sink[Block, Future[Done]] = {
+  def   buildBlockSink(importers: BlockchainImporters): Sink[Block, Future[Done]] = {
     Sink.fromGraph(GraphDSL.create(Sink.ignore) { implicit b => sink =>
       import GraphDSL.Implicits._
       val blocks = b.add(Broadcast[Block](3))
@@ -198,7 +198,7 @@ class ImportStreamFactory @Inject()(
 
           // Switch between batch or single depending how far the sync is behind
           if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(fromBlock, toBlock)(fullNodeBlockChain.client)
-          else                                    blockChainBuilder.readFullNodeBlocksBatched(fromBlock, toBlock, 100)(walletClient)
+          else                                    blockChainBuilder.readFullNodeBlocksBatched(fromBlock, toBlock, 90)(walletClient)
         }
       }
       .flatMapConcat(blockStream => blockStream)
@@ -227,7 +227,7 @@ class ImportStreamFactory @Inject()(
       .filter {
         // Stop if there are more then 100 blocks to sync for full node
         case status if status.fullNodeBlocksToSync > 0 =>
-          Logger.info(s"START SYNC FROM ${status.dbLatestBlock} TO ${status.fullNodeBlock}. " + status.toString)
+          Logger.info(s"START SYNC FROM ${status.dbLatestBlock} TO ${status.fullNodeBlock}.")
           true
         case status =>
           Logger.info("IGNORE FULL NODE SYNC: " + status.toString)

@@ -32,11 +32,11 @@ class SolidityNodeImporter @Inject()(
 
     async {
       val nodeState = await(synchronisationService.nodeState)
-      Logger.info("BuildStream::nodeState -> " + nodeState)
+//      Logger.info("BuildStream::nodeState -> " + nodeState)
       val importAction = await(importStreamFactory.buildImportActionFromImportStatus(nodeState))
-      Logger.info("BuildStream::importAction -> " + importAction)
+//      Logger.info("BuildStream::importAction -> " + importAction)
       val importers = importersFactory.buildSolidityImporters(importAction)
-      Logger.info("BuildStream::importers -> " + importers.debug)
+//      Logger.info("BuildStream::importers -> " + importers.debug)
       val synchronisationChecker = importStreamFactory.solidityNodePreSynchronisationChecker
       val blockSource = importStreamFactory.buildSolidityBlockSource(walletClient)
       val blockSink = importStreamFactory.buildBlockSink(importers)

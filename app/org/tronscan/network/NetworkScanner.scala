@@ -244,7 +244,7 @@ class NetworkScanner @Inject()(
       case None =>
         networkNodes = networkNodes + (node.ip -> node)
       case x =>
-        println("ignoring update", x)
+
     }
   }
 

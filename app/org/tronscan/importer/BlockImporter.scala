@@ -39,16 +39,14 @@ class BlockImporter @Inject() (
         val header = block.getBlockHeader.getRawData
         val queries: ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]] = ListBuffer()
 
-        if (header.number % 1000 == 0) {
-          Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}, CONFIRM: $confirmBlocks")
-        }
+        Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}, CONFIRM: $confirmBlocks")
 
         // Import Block
-        queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
+        queries.append(blockModelRepository.buildInsertOrUpdate(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
 
         // Import Transactions
         queries.appendAll(block.transactions.map { trx =>
-          transactionModelRepository.buildInsert(ModelUtils.transactionToModel(trx, block).copy(confirmed = confirmBlocks))
+          transactionModelRepository.buildInsertOrUpdate(ModelUtils.transactionToModel(trx, block).copy(confirmed = confirmBlocks))
         })
 
         // Import Contracts
@@ -86,12 +84,12 @@ class BlockImporter @Inject() (
       .mapAsync(12) { solidityBlock =>
         for {
           databaseBlock <- blockModelRepository.findByNumber(solidityBlock.getBlockHeader.getRawData.number)
-        } yield (solidityBlock, databaseBlock.get)
+        } yield (solidityBlock, databaseBlock)
       }
       // Filter empty or confirmed blocks
-      .filter(x => x._1.blockHeader.isDefined && !x._2.confirmed)
+      .filter(x => x._1.blockHeader.isDefined && x._2.nonEmpty && !x._2.get.confirmed)
       .map {
-        case (solidityBlock, databaseBlock) =>
+        case (solidityBlock, Some(databaseBlock)) =>
 
           val queries = ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]]()
 

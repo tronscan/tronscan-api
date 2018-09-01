@@ -14,6 +14,7 @@ import org.tronscan.grpc.WalletClient
 import org.tronscan.importer.StreamTypes.ContractFlow
 import org.tronscan.models._
 import org.tronscan.utils.ModelUtils
+import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -41,24 +42,25 @@ class BlockChainStreamBuilder {
     * Reads all the blocks using batch calls
     */
   def readFullNodeBlocksBatched(from: Long, to: Long, batchSize: Int = 50)(client: WalletClient)(implicit executionContext: ExecutionContext): Source[Block, NotUsed] = {
-    Source.unfold(from) { prev =>
-      if (prev < to) {
+    Source.unfold(from) { fromBlock =>
+      if (fromBlock < to) {
 
-        val toBlock = if (prev + batchSize > to) to else prev + batchSize
-
-        Some((toBlock, (prev, toBlock)))
+        val nextBlock = fromBlock + batchSize
+        val toBlock = if (nextBlock <= to) nextBlock else to
+        Some((toBlock, (fromBlock, toBlock)))
 
       } else {
         None
       }
     }
     .mapAsync(30) { case (fromBlock, toBlock) =>
-      client.fullRequest(_.getBlockByLimitNext(BlockLimit(fromBlock, toBlock))).map { blocks =>
-        blocks.block.filter(_.blockHeader.isDefined).sortBy(_.getBlockHeader.getRawData.number)
+      client.fullRequest(_.getBlockByLimitNext(BlockLimit(fromBlock, toBlock + 1))).map { blocks =>
+        val bs = blocks.block.filter(_.blockHeader.isDefined).sortBy(_.getBlockHeader.getRawData.number)
+//        Logger.info(s"DOWNLOADED $fromBlock to $toBlock. GOT ${bs.head.getBlockHeader.getRawData.number} => ${bs.last.getBlockHeader.getRawData.number}")
+        bs
       }
     }
     .mapConcat(x => x.toList)
-    .buffer(50000, OverflowStrategy.backpressure)
   }
 
   def filterContracts(contractTypes: List[Transaction.Contract.ContractType]) = {
