@@ -12,7 +12,7 @@ import org.tronscan.Extensions._
 /**
   * Builds queries from transaction contracts
   */
-class DatabaseImporter @Inject() (
+class ContractImporter @Inject()(
   blockModelRepository: BlockModelRepository,
   transactionModelRepository: TransactionModelRepository,
   transferRepository: TransferModelRepository,
@@ -36,7 +36,7 @@ class DatabaseImporter @Inject() (
 
   def importWitnessVote: ContractQueryBuilder = {
     case (VoteWitnessContract, _, votes: VoteWitnessList) =>
-      voteWitnessContractModelRepository.buildUpdateVotes(votes.voterAddress, votes.votes)
+      voteWitnessContractModelRepository.buildInsertVotes(votes.votes)
   }
 
   def importAssetIssue: ContractQueryBuilder = {

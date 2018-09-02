@@ -134,6 +134,30 @@ object TransactionSerializer {
     )
   }
 
+  implicit val decodeVoteWitnessContractVote = new Decoder[org.tron.protos.Contract.VoteWitnessContract.Vote] {
+    def apply(c: HCursor) = {
+      for {
+        voteAddress <- c.downField("voteAddress").as[String]
+        voteCount <- c.downField("voteCount").as[Long]
+      } yield org.tron.protos.Contract.VoteWitnessContract.Vote(
+        voteAddress = voteAddress.decodeAddress,
+        voteCount = voteCount
+      )
+    }
+  }
+
+  implicit val decodeVoteWitnessContract = new Decoder[org.tron.protos.Contract.VoteWitnessContract] {
+    def apply(c: HCursor) = {
+      for {
+        ownerAddress <- c.downField("ownerAddress").as[String]
+        votes <- c.downField("votes").as[List[org.tron.protos.Contract.VoteWitnessContract.Vote]]
+      } yield org.tron.protos.Contract.VoteWitnessContract(
+        ownerAddress = ownerAddress.decodeAddress,
+        votes = votes
+      )
+    }
+  }
+
   implicit val encodeAccountUpdateContract = new Encoder[org.tron.protos.Contract.AccountUpdateContract] {
     def apply(accountUpdateContract: org.tron.protos.Contract.AccountUpdateContract): Js = Js.obj(
       "ownerAddress" -> accountUpdateContract.ownerAddress.encodeAddress.asJson,

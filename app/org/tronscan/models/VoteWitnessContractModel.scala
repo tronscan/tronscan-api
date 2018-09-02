@@ -3,11 +3,16 @@ package org.tronscan.models
 import java.util.UUID
 
 import com.google.inject.{Inject, Singleton}
+import io.circe.Json
 import org.joda.time.DateTime
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
 import play.api.db.slick.DatabaseConfigProvider
+import slick.dbio.Effect
+import slick.sql.FixedSqlAction
+import io.circe.parser._
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class VoteWitnessList(
@@ -24,12 +29,12 @@ case class VoteWitnessContractModel(
   votes: Long = 0L)
 
 class VoteWitnessContractModelTable(tag: Tag) extends Table[VoteWitnessContractModel](tag, "vote_witness_contract") {
-  def id = column[String]("id")
+  def id = column[String]("id", O.PrimaryKey)
+  def candidateAddress = column[String]("candidate_address", O.PrimaryKey)
   def block = column[Long]("block")
   def transaction = column[String]("transaction")
   def timestamp = column[DateTime]("date_created")
   def voterAddress = column[String]("voter_address")
-  def candidateAddress = column[String]("candidate_address")
   def votes = column[Long]("votes")
   def * = (id, block, transaction, timestamp, voterAddress, candidateAddress, votes) <> (VoteWitnessContractModel.tupled, VoteWitnessContractModel.unapply)
 }
@@ -57,8 +62,12 @@ class VoteWitnessContractModelRepository @Inject() (val dbConfig: DatabaseConfig
     DBIO.seq(Seq(table.filter(_.voterAddress === address).delete) ++ votes.map(x => table += x): _*).transactionally
   }
 
-  def buildUpdateVotes(address: String, votes: Seq[VoteWitnessContractModel]) = {
+  def buildUpdateVotes(address: String, votes: Seq[VoteWitnessContractModel]): Seq[FixedSqlAction[Int, NoStream, Effect.Write]] = {
     Seq(table.filter(_.voterAddress === address).delete) ++ votes.map(x => table += x)
+  }
+
+  def buildInsertVotes(votes: Seq[VoteWitnessContractModel]) = {
+    votes.map(x => table.insertOrUpdate(x))
   }
 
   def buildDeleteVotesForAddress(address: String) = {

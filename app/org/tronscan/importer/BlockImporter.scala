@@ -3,6 +3,7 @@ package org.tronscan.importer
 import akka.{Done, NotUsed}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import javax.inject.Inject
+import org.joda.time.DateTime
 import org.tron.protos.Tron.Block
 import org.tronscan.models._
 import org.tronscan.utils.ModelUtils
@@ -17,11 +18,12 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class BlockImporter @Inject() (
   blockModelRepository: BlockModelRepository,
+  maintenanceRoundModelRepository: MaintenanceRoundModelRepository,
   transactionModelRepository: TransactionModelRepository,
   transferRepository: TransferModelRepository,
   assetIssueContractModelRepository: AssetIssueContractModelRepository,
   participateAssetIssueModelRepository: ParticipateAssetIssueModelRepository,
-  databaseImporter: DatabaseImporter) {
+  databaseImporter: ContractImporter) {
 
   /**
     * Build block importer that imports the full nodes into the database
@@ -39,7 +41,9 @@ class BlockImporter @Inject() (
         val header = block.getBlockHeader.getRawData
         val queries: ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]] = ListBuffer()
 
-        Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}, CONFIRM: $confirmBlocks")
+        if (header.number % 1000 == 0) {
+          Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}, CONFIRM: $confirmBlocks")
+        }
 
         // Import Block
         queries.append(blockModelRepository.buildInsertOrUpdate(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
@@ -134,6 +138,8 @@ class BlockImporter @Inject() (
           })
 
           queries.toList
+        case _ =>
+          List.empty
       }
       .flatMapConcat(queries => Source(queries))
       .groupedWithin(500, 10.seconds)
@@ -151,6 +157,42 @@ class BlockImporter @Inject() (
       val header = block.getBlockHeader.getRawData
       if (header.number % 1000 == 0) {
         Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}")
+      }
+    }
+  }
+
+  /**
+    * Builds the importer of voting rounds
+    */
+  def buildVotingRoundImporter(previousVotingRound: Option[MaintenanceRoundModel] = None) = {
+    val maintenanceRoundTime = 21600000L
+
+    var currentRound = previousVotingRound
+
+    Sink.foreach[Block] { block =>
+//      Logger.info("Block Timestamp" + block.getBlockHeader.getRawData.timestamp)
+
+      currentRound match {
+        case Some(round) =>
+          if ((round.timestamp + maintenanceRoundTime) < block.getBlockHeader.getRawData.timestamp) {
+          val newRound = MaintenanceRoundModel(
+              block = block.getBlockHeader.getRawData.number,
+              number = round.number + 1,
+              timestamp = block.getBlockHeader.getRawData.timestamp,
+              dateStart = new DateTime(block.getBlockHeader.getRawData.timestamp),
+          )
+          maintenanceRoundModelRepository.insertAsync(newRound)
+          Logger.info("Next Round: " + newRound.block + " => " + newRound.number)
+          currentRound = Some(newRound)
+        }
+        case _ =>
+          currentRound = Some(MaintenanceRoundModel(
+            block = block.getBlockHeader.getRawData.number,
+            number = 1,
+            timestamp = block.getBlockHeader.getRawData.timestamp,
+            dateStart = new DateTime(block.getBlockHeader.getRawData.timestamp),
+          ))
+          maintenanceRoundModelRepository.insertAsync(currentRound.get)
       }
     }
   }

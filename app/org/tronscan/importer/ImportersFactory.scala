@@ -13,7 +13,8 @@ import org.tronscan.service.SynchronisationService
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
 import org.tronscan.Extensions._
-
+import org.tronscan.models.MaintenanceRoundModelRepository
+import async.Async._
 import scala.concurrent.{ExecutionContext, Future}
 
 class ImportersFactory @Inject() (
@@ -22,15 +23,18 @@ class ImportersFactory @Inject() (
   @NamedCache("redis") redisCache: CacheAsyncApi,
   accountImporter: AccountImporter,
   walletClient: WalletClient,
+  maintenanceRoundModelRepository: MaintenanceRoundModelRepository,
   blockImporter: BlockImporter) {
 
   /**
     * Build importers for Full Node
     * @return
     */
-  def buildFullNodeImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
+  def buildFullNodeImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = async {
 
     val redisCleaner = if (importAction.cleanRedisCache) Flow[Address].alsoTo(redisCacheCleaner) else Flow[Address]
+
+    val maintenanceRound = blockImporter.buildVotingRoundImporter(await(maintenanceRoundModelRepository.findLatest)).toFlow
 
     val accountUpdaterFlow: Flow[Address, Address, NotUsed] = {
       if (importAction.updateAccounts) {
@@ -64,8 +68,12 @@ class ImportersFactory @Inject() (
       .addAddress(redisCleaner)
       .addContract(eventsPublisher)
       .addBlock(blockFlow)
+      .addBlock(maintenanceRound)
   }
 
+  /**
+    * Build Solidity Blockchain importers
+    */
   def buildSolidityImporters(importAction: ImportAction)(implicit actorSystem: ActorSystem, executionContext: ExecutionContext) = {
 
     val eventsPublisher = if (importAction.publishEvents) {

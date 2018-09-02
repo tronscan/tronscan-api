@@ -1,5 +1,7 @@
 package org.tronscan.importer
 
+import java.util.UUID
+
 import akka.NotUsed
 import akka.event.EventStream
 import akka.stream.OverflowStrategy
@@ -47,20 +49,33 @@ class BlockChainStreamBuilder {
 
         val nextBlock = fromBlock + batchSize
         val toBlock = if (nextBlock <= to) nextBlock else to
-        Some((toBlock, (fromBlock, toBlock)))
+        Logger.info(s"Publish $fromBlock -> $toBlock)")
+        Some((toBlock + 1, (fromBlock, toBlock)))
 
       } else {
         None
       }
     }
-    .mapAsync(30) { case (fromBlock, toBlock) =>
-      client.fullRequest(_.getBlockByLimitNext(BlockLimit(fromBlock, toBlock + 1))).map { blocks =>
-        val bs = blocks.block.filter(_.blockHeader.isDefined).sortBy(_.getBlockHeader.getRawData.number)
-//        Logger.info(s"DOWNLOADED $fromBlock to $toBlock. GOT ${bs.head.getBlockHeader.getRawData.number} => ${bs.last.getBlockHeader.getRawData.number}")
+    .mapAsync(1) { case (fromBlock, toBlock) =>
+      val id = UUID.randomUUID()
+      val range = BlockLimit(fromBlock, toBlock + 1)
+      client.fullRequest(_.getBlockByLimitNext(range)).map { blocks =>
+        val bs = blocks.block.sortBy(_.getBlockHeader.getRawData.number)
+//        if (range.startNum != bs.head.getBlockHeader.getRawData.number) {
+//          Logger.warn(s"WRONG START BLOCK: ${range.startNum} => ${bs.head.getBlockHeader.getRawData.number}")
+//        }
+//        if (range.endNum - 1 != bs.last.getBlockHeader.getRawData.number) {
+//          Logger.warn(s"WRONG END BLOCK: ${range.endNum} => ${bs.last.getBlockHeader.getRawData.number}")
+//        }
+//        Logger.info(s"DOWNLOADED $fromBlock to $toBlock. GOT ${bs.headOption.map(_.getBlockHeader.getRawData.number)} => ${bs.lastOption.map(_.getBlockHeader.getRawData.number)}")
         bs
       }
     }
     .mapConcat(x => x.toList)
+    .map { block =>
+      Logger.info("Block: " + block.getBlockHeader.getRawData.number)
+      block
+    }
   }
 
   def filterContracts(contractTypes: List[Transaction.Contract.ContractType]) = {

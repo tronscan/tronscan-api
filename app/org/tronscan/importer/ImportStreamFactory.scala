@@ -1,7 +1,7 @@
 package org.tronscan.importer
 
 import akka.stream.SinkShape
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, Sink, Source}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, Sink}
 import akka.{Done, NotUsed}
 import javax.inject.Inject
 import org.tron.protos.Tron.{Block, Transaction}
@@ -9,18 +9,12 @@ import org.tronscan.Extensions._
 import org.tronscan.domain.Types.Address
 import org.tronscan.grpc.{FullNodeBlockChain, SolidityBlockChain, WalletClient}
 import org.tronscan.importer.StreamTypes._
-import org.tronscan.models._
+import org.tronscan.models.MaintenanceRoundModelRepository
 import org.tronscan.service.SynchronisationService
-import org.tronscan.utils.{ModelUtils, StreamUtils}
+import org.tronscan.utils.StreamUtils
 import play.api.Logger
-import play.api.cache.NamedCache
-import play.api.cache.redis.CacheAsyncApi
-import slick.dbio.{Effect, NoStream}
-import slick.sql.FixedSqlAction
 
 import scala.async.Async._
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -88,6 +82,11 @@ case class ImportAction(
    * If db should be reset
    */
   resetDB: Boolean = false,
+
+  /**
+    * If every block should be logged
+    */
+  logAllBlocks: Boolean = true,
 )
 
 class ImportStreamFactory @Inject()(
@@ -103,6 +102,7 @@ class ImportStreamFactory @Inject()(
     var redisCleaner = true
     var asyncAddressImport = true
     var publishEvents = true
+    var logAllBlocks = true
 
     val fullNodeBlockHash = await(syncService.getFullNodeHashByNum(importStatus.solidityBlock))
     val resetDB = !await(syncService.isSameChain())
@@ -122,6 +122,7 @@ class ImportStreamFactory @Inject()(
     // Don't publish events when there is lots to sync
     if (importStatus.dbLatestBlock < (importStatus.fullNodeBlock - 250)) {
       publishEvents = false
+      logAllBlocks = false
     }
 
     // No need to clean cache when starting a clean sync
@@ -135,14 +136,15 @@ class ImportStreamFactory @Inject()(
       cleanRedisCache     = redisCleaner,
       asyncAddressImport  = asyncAddressImport,
       publishEvents       = publishEvents,
-      resetDB             = resetDB
+      resetDB             = resetDB,
+      logAllBlocks        = logAllBlocks,
     )
   }
 
   /**
     * A sync that extracts all the blocks, transactions, contracts, addresses from the blocks and passes them to streams
     */
-  def   buildBlockSink(importers: BlockchainImporters): Sink[Block, Future[Done]] = {
+  def buildBlockSink(importers: BlockchainImporters): Sink[Block, Future[Done]] = {
     Sink.fromGraph(GraphDSL.create(Sink.ignore) { implicit b => sink =>
       import GraphDSL.Implicits._
       val blocks = b.add(Broadcast[Block](3))
@@ -186,6 +188,30 @@ class ImportStreamFactory @Inject()(
   }
 
   /**
+    * Verifies that blocks are properly sequential
+    */
+  def buildBlockSequenceChecker = {
+    Flow[Block]
+      .statefulMapConcat { () =>
+        var number = -1L
+        block => {
+          val currentNumber = block.getBlockHeader.getRawData.number
+          if (number == -1) {
+            number = currentNumber
+            List(block)
+          } else if (number + 1 == currentNumber) {
+            number = block.getBlockHeader.getRawData.number
+            List(block)
+          } else if (number == currentNumber) {
+            List.empty
+          } else {
+            throw new Exception(s"Incorrect block number sequence, $number => $currentNumber")
+          }
+        }
+      }
+  }
+
+  /**
     * Build a stream of blocks from a solidity node
     */
   def buildBlockSource(walletClient: WalletClient)(implicit context: ExecutionContext) = {
@@ -193,8 +219,8 @@ class ImportStreamFactory @Inject()(
       .mapAsync(1) { status =>
         walletClient.full.map { walletFull =>
           val fullNodeBlockChain = new FullNodeBlockChain(walletFull)
-          val fromBlock = status.dbLatestBlock + 1
-          val toBlock = status.fullNodeBlock - 2
+          val fromBlock = if (status.dbLatestBlock <= 0) 0 else status.dbLatestBlock + 1
+          val toBlock = status.fullNodeBlock - 1
 
           // Switch between batch or single depending how far the sync is behind
           if (status.fullNodeBlocksToSync < 100)  blockChainBuilder.readFullNodeBlocks(fromBlock, toBlock)(fullNodeBlockChain.client)

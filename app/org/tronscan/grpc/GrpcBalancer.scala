@@ -1,5 +1,6 @@
 package org.tronscan.grpc
 
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef, Cancellable, Props, Terminated}
@@ -16,9 +17,9 @@ import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-case class GrpcRequest(request: WalletStub => Future[Any])
+case class GrpcRequest(request: WalletStub => Future[Any], id: UUID)
 case class GrpcRetry(request: GrpcRequest, sender: ActorRef)
-case class GrpcResponse(response: Any)
+case class GrpcResponse(response: Any, id: UUID, ip: NodeAddress)
 case class GrpcBlock(num: Long, hash: String)
 case class OptimizeNodes()
 case class GrpcBalancerStats(
@@ -196,7 +197,7 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
   def handleRequest(request: GrpcRequest, s: ActorRef) = {
     import context.dispatcher
     request.request(walletStub.withDeadlineAfter(5, TimeUnit.SECONDS)).map { x =>
-      s ! GrpcResponse(x)
+      s ! GrpcResponse(x, request.id, nodeAddress)
       requestsHandled += 1
     }.recover {
       case _ =>

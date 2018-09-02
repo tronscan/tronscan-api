@@ -1,3 +1,28 @@
+create database "tron-explorer"
+;
+
+create sequence analytics.vote_snapshot_id_seq
+;
+
+create table if not exists analytics.vote_snapshot
+(
+  id bigserial not null
+    constraint vote_snapshot_pkey
+    primary key,
+  address text not null,
+  timestamp timestamp with time zone default now() not null,
+  votes bigint default 0 not null
+)
+;
+
+create table if not exists analytics.requests
+(
+  id uuid not null,
+  timestamp timestamp with time zone default now() not null,
+  host text default ''::text,
+  uri text default ''::text
+)
+;
 
 create table if not exists blocks
 (
@@ -19,10 +44,7 @@ create table if not exists blocks
 create table if not exists transactions
 (
   date_created timestamp with time zone,
-  block bigint
-    constraint transactions_blocks_id_fk
-    references blocks
-    on update cascade on delete cascade,
+  block bigint,
   hash text not null
     constraint transactions_hash_pk
     primary key,
@@ -43,15 +65,25 @@ create index if not exists transactions_block_hash_index
   on transactions (block, hash)
 ;
 
+create index if not exists transactions_date_created_owner_address_contract_type_block_ind
+  on transactions (owner_address, date_created, block, contract_type)
+;
+
+create index if not exists transactions_owner_address_date_created_index
+  on transactions (owner_address, date_created)
+;
+
 create table if not exists vote_witness_contract
 (
-  id text not null constraint vote_witness_contract_id_pk primary key,
+  id text not null,
   transaction text,
   voter_address text,
-  candidate_address text,
+  candidate_address text not null,
   votes bigint,
   date_created timestamp with time zone,
-  block bigint
+  block bigint,
+  constraint vote_witness_contract_id_candidate_address_pk
+  primary key (id, candidate_address)
 )
 ;
 
@@ -75,9 +107,9 @@ create table if not exists accounts
   address text not null
     constraint accounts_pkey
     primary key,
-  name text,
-  balance bigint,
-  token_balances jsonb,
+  name text default ''::text,
+  balance bigint default 0,
+  token_balances jsonb default '{}'::jsonb,
   date_created timestamp with time zone default now() not null,
   date_updated timestamp with time zone default now() not null,
   date_synced timestamp with time zone default now() not null,
@@ -97,7 +129,6 @@ create table if not exists asset_issue_contract
   num integer,
   date_end timestamp with time zone,
   date_start timestamp with time zone,
-  decay_ratio integer,
   vote_score integer,
   description text,
   url text,
@@ -147,19 +178,6 @@ create table if not exists sr_account
 )
 ;
 
-CREATE SCHEMA IF NOT EXISTS analytics;
-
-create table if not exists analytics.vote_snapshot
-(
-  id bigserial not null
-    constraint vote_snapshot_pkey
-    primary key,
-  address text not null,
-  timestamp timestamp with time zone default now() not null,
-  votes bigint default 0 not null
-)
-;
-
 create table if not exists transfers
 (
   id uuid not null
@@ -170,10 +188,7 @@ create table if not exists transfers
   transfer_to_address text,
   amount bigint default 0,
   token_name text default 'TRX'::text,
-  block bigint
-    constraint transfers_blocks_id_fk
-    references blocks
-    on update cascade on delete cascade,
+  block bigint,
   transaction_hash text not null,
   confirmed boolean default false not null
 )
@@ -207,17 +222,6 @@ create index if not exists transfers_transfer_to_address_index
   on transfers (transfer_to_address)
 ;
 
-create table if not exists analytics.requests
-(
-  id uuid not null,
-  timestamp timestamp with time zone default now() not null,
-  host text default ''::text,
-  uri text default ''::text,
-  referer text default ''::text not null,
-  ip text default ''::text not null
-)
-;
-
 create table if not exists trx_request
 (
   address text not null
@@ -230,7 +234,31 @@ create table if not exists trx_request
 
 create table if not exists funds
 (
-  id int,
+  id integer,
   address text
 )
 ;
+
+create table if not exists maintenance_round
+(
+  block bigint not null
+    constraint maintenance_rounds_pkey
+    primary key,
+  number integer default 1,
+  date_start timestamp with time zone default now(),
+  date_end timestamp with time zone,
+  timestamp bigint
+)
+;
+
+create table if not exists round_votes
+(
+  address text not null,
+  round integer not null,
+  candidate text not null,
+  votes bigint,
+  constraint round_votes_address_round_candidate_pk
+  primary key (address, round, candidate)
+)
+;
+
