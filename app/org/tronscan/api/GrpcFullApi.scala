@@ -4,7 +4,7 @@ package tronscan.api
 import com.google.protobuf.ByteString
 import io.circe.Json
 import io.circe.syntax._
-import io.swagger.annotations.Api
+import io.swagger.annotations.{Api, ApiImplicitParam, ApiImplicitParams, ApiOperation}
 import javax.inject.Inject
 import org.tron.api.api._
 import org.tron.common.utils.ByteArray
@@ -46,6 +46,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve the latest block on")
   def getNowBlock = Action.async { implicit req =>
 
     for {
@@ -57,7 +59,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
-
+  @ApiOperation(
+    value = "Retrieve a block by number")
   def getBlockByNum(number: Long) = Action.async { implicit req =>
 
     for {
@@ -74,6 +77,22 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve a range of blocks")
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      name = "from",
+      value = "From block",
+      required = true,
+      dataType = "long",
+      paramType = "query"),
+    new ApiImplicitParam(
+      name = "to",
+      value = "To block",
+      required = true,
+      dataType = "long",
+      paramType = "query"),
+  ))
   def getBlockByLimitNext = Action.async { implicit req =>
 
     val from = req.getQueryString("from").get.toLong
@@ -88,6 +107,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve a transaction by the transaction hash")
   def getTransactionById(hash: String) = Action.async { implicit req =>
 
     for {
@@ -99,6 +120,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve total number of transactions")
   def totalTransaction = Action.async { implicit req =>
 
     for {
@@ -110,6 +133,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve account by address")
   def getAccount(address: String) = Action.async { implicit req =>
 
     for {
@@ -121,6 +146,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve bandwidth information for the given account")
   def getAccountNet(address: String) = Action.async { implicit req =>
 
     for {
@@ -132,7 +159,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
-
+  @ApiOperation(
+    value = "Retrieve nodes")
   def listNodes = Action.async { implicit req =>
 
     for {
@@ -146,6 +174,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve all witnesses")
   def listWitnesses = Action.async { implicit req =>
 
     for {
@@ -157,6 +187,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve all proposals")
   def listProposals = Action.async { implicit req =>
 
     for {
@@ -168,6 +200,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve exchanges")
   def listExchanges = Action.async { implicit req =>
 
     for {
@@ -179,6 +213,8 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve blockchain parameters")
   def getChainParameters = Action.async { implicit req =>
 
     for {

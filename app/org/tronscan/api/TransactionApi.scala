@@ -53,7 +53,7 @@ class TransactionApi @Inject()(
       paramType = "query"),
   ))
   @ApiOperation(
-    value = "List Transfers",
+    value = "Retrieve transactions",
     response = classOf[TransactionModel],
     responseContainer = "List")
   def findAll() = Action.async { implicit request =>
