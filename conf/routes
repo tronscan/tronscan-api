@@ -103,6 +103,9 @@ GET     /api/grpc/full/gettransactionbyid/:hash         org.tronscan.api.GrpcFul
 GET     /api/grpc/full/getaccountnet/:address           org.tronscan.api.GrpcFullApi.getAccountNet(address: String)
 GET     /api/grpc/full/listnodes                        org.tronscan.api.GrpcFullApi.listNodes
 GET     /api/grpc/full/listwitnesses                    org.tronscan.api.GrpcFullApi.listWitnesses
+GET     /api/grpc/full/listproposals                    org.tronscan.api.GrpcFullApi.listProposals
+GET     /api/grpc/full/listexchanges                    org.tronscan.api.GrpcFullApi.listExchanges
+GET     /api/grpc/full/getchainparameters               org.tronscan.api.GrpcFullApi.getChainParameters
 
 # GRPC Solidity API
 

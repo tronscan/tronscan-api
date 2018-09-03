@@ -7,12 +7,12 @@ import io.circe.syntax._
 import io.swagger.annotations.Api
 import javax.inject.Inject
 import org.tron.api.api._
-import org.tron.common.utils.{Base58, ByteArray}
-import org.tron.protos.Tron.Account
+import org.tron.common.utils.ByteArray
+import org.tronscan.Extensions._
+import org.tronscan.api.models.TransactionSerializer._
 import org.tronscan.api.models.{TransactionSerializer, TronModelsSerializers}
 import org.tronscan.grpc.{GrpcService, WalletClient}
 import play.api.mvc.Request
-import org.tronscan.Extensions._
 
 import scala.concurrent.Future
 
@@ -156,4 +156,38 @@ class GrpcFullApi @Inject() (
       ))
     }
   }
+
+  def listProposals = Action.async { implicit req =>
+
+    for {
+      proposalList <- walletClient.fullRequest(_.listProposals(EmptyMessage()))
+    } yield {
+      Ok(Json.obj(
+        "data" -> proposalList.proposals.map(_.asJson).asJson
+      ))
+    }
+  }
+
+  def listExchanges = Action.async { implicit req =>
+
+    for {
+      exchangeList <- walletClient.fullRequest(_.listExchanges(EmptyMessage()))
+    } yield {
+      Ok(Json.obj(
+        "data" -> exchangeList.exchanges.map(_.asJson).asJson
+      ))
+    }
+  }
+
+  def getChainParameters = Action.async { implicit req =>
+
+    for {
+      chainParameters <- walletClient.fullRequest(_.getChainParameters(EmptyMessage()))
+    } yield {
+      Ok(Json.obj(
+        "data" -> chainParameters.chainParameter.map(_.asJson).asJson
+      ))
+    }
+  }
+
 }

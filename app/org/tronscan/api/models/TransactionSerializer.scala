@@ -245,6 +245,37 @@ object TransactionSerializer {
   }
 
 
+  implicit val encodeProposal = new Encoder[org.tron.protos.Tron.Proposal] {
+    def apply(contract: org.tron.protos.Tron.Proposal): Js = Js.obj(
+      "proposalId" -> contract.proposalId.asJson,
+      "proposerAddress" -> contract.proposerAddress.encodeAddress.asJson,
+      "parameters" -> contract.parameters.asJson,
+      "expirationTime" -> contract.expirationTime.asJson,
+      "createTime" -> contract.createTime.asJson,
+      "approvals" -> contract.approvals.map(_.encodeAddress).asJson,
+      "state" -> contract.state.name.asJson,
+    )
+  }
+
+  implicit val encodeExchange = new Encoder[org.tron.protos.Tron.Exchange] {
+    def apply(contract: org.tron.protos.Tron.Exchange): Js = Js.obj(
+      "exchangeId" -> contract.exchangeId.asJson,
+      "creatorAddress" -> contract.creatorAddress.encodeAddress.asJson,
+      "createTime" -> contract.createTime.asJson,
+      "firstTokenId" -> contract.firstTokenId.decodeString.asJson,
+      "firstTokenBalance" -> contract.firstTokenBalance.asJson,
+      "secondTokenId" -> contract.secondTokenId.decodeString.asJson,
+      "secondTokenBalance" -> contract.secondTokenBalance.asJson,
+    )
+  }
+
+  implicit val encodeChainParameter = new Encoder[org.tron.protos.Tron.ChainParameters.ChainParameter] {
+    def apply(contract: org.tron.protos.Tron.ChainParameters.ChainParameter): Js = Js.obj(
+      "key" -> contract.key.asJson,
+      "value" -> contract.value.asJson,
+    )
+  }
+
   implicit val encodeProposalCreateContract = new Encoder[org.tron.protos.Contract.ProposalCreateContract] {
     def apply(contract: org.tron.protos.Contract.ProposalCreateContract): Js = Js.obj(
       "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,

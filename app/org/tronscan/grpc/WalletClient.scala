@@ -34,13 +34,7 @@ class WalletClient @Inject() (
 
   def fullRequest[A](request: WalletStub => Future[A], id: UUID = UUID.randomUUID()) = {
     implicit val timeout = Timeout(3.seconds)
-    (grpcBalancer ? GrpcRequest(request, id)).mapTo[GrpcResponse].map { response =>
-      if (id != response.id) {
-        throw new Exception(s"ID MISMATCH $id to ${response.id}")
-      }
-      Logger.info(s"RESPONSE FROM: ${response.ip}")
-      response.response.asInstanceOf[A]
-    }
+    (grpcBalancer ? GrpcRequest(request, id)).mapTo[GrpcResponse].map(_.response.asInstanceOf[A])
   }
 
   def solidity = {
