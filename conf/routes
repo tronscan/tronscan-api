@@ -116,11 +116,12 @@ GET     /api/grpc/solidity/listwitnesses                org.tronscan.api.GrpcSol
 
 # Transaction Builder
 
-POST    /api/transaction-builder/contract/transfer              org.tronscan.api.TransactionBuilderApi.transfer
-POST    /api/transaction-builder/contract/transferasset         org.tronscan.api.TransactionBuilderApi.transferAsset
-POST    /api/transaction-builder/contract/accountcreate         org.tronscan.api.TransactionBuilderApi.accountCreate
-POST    /api/transaction-builder/contract/accountupdate         org.tronscan.api.TransactionBuilderApi.accountUpdate
-POST    /api/transaction-builder/contract/withdrawbalance       org.tronscan.api.TransactionBuilderApi.withdrawBalance
+POST    /api/transaction-builder/contract/transfer                      org.tronscan.api.TransactionBuilderApi.transfer
+POST    /api/transaction-builder/contract/transferasset                 org.tronscan.api.TransactionBuilderApi.transferAsset
+POST    /api/transaction-builder/contract/accountcreate                 org.tronscan.api.TransactionBuilderApi.accountCreate
+POST    /api/transaction-builder/contract/accountupdate                 org.tronscan.api.TransactionBuilderApi.accountUpdate
+POST    /api/transaction-builder/contract/withdrawbalance               org.tronscan.api.TransactionBuilderApi.withdrawBalance
+POST    /api/transaction-builder/contract/proposalapprovecontract       org.tronscan.api.TransactionBuilderApi.proposalApprove
 
 # Socket IO
 

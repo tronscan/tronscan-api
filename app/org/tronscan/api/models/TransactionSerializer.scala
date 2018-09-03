@@ -291,6 +291,22 @@ object TransactionSerializer {
     )
   }
 
+  implicit val decodeProposalApproveContract = new Decoder[org.tron.protos.Contract.ProposalApproveContract] {
+    def apply(c: HCursor) = {
+      for {
+        ownerAddress <- c.downField("ownerAddress").as[String]
+        proposalId <- c.downField("proposalId").as[Long]
+        isAddApproval <- c.downField("approve").as[Boolean]
+      } yield {
+        org.tron.protos.Contract.ProposalApproveContract(
+          ownerAddress = ownerAddress.decodeAddress,
+          proposalId = proposalId,
+          isAddApproval = isAddApproval
+        )
+      }
+    }
+  }
+
   implicit val encodeProposalDeleteContract = new Encoder[org.tron.protos.Contract.ProposalDeleteContract] {
     def apply(contract: org.tron.protos.Contract.ProposalDeleteContract): Js = Js.obj(
       "ownerAddress" -> contract.ownerAddress.encodeAddress.asJson,

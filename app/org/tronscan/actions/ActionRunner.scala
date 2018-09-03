@@ -7,6 +7,7 @@ import javax.inject.Inject
 import play.api.Logger
 import play.api.cache.NamedCache
 import play.api.cache.redis.CacheAsyncApi
+import play.api.inject.ConfigurationProvider
 
 import scala.concurrent.duration._
 
@@ -15,7 +16,8 @@ class ActionRunner @Inject()(
   representativeListReader: RepresentativeListReader,
   statsOverview: StatsOverview,
   voteList: VoteList,
-  voteScraper: VoteScraper) extends Actor {
+  voteScraper: VoteScraper,
+  configurationProvider: ConfigurationProvider) extends Actor {
 
   val decider: Supervision.Decider = { exc =>
     Logger.error("CACHE WARMER ERROR", exc)
@@ -57,10 +59,12 @@ class ActionRunner @Inject()(
   }
 
   override def preStart(): Unit = {
-    startWitnessReader()
-    startVoteListWarmer()
-    startVoteScraper()
-    startStatsOverview()
+    if (configurationProvider.get.get[Boolean]("cache.warmer")) {
+      startWitnessReader()
+      startVoteListWarmer()
+      startVoteScraper()
+      startStatsOverview()
+    }
   }
 
   def receive = {
