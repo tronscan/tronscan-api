@@ -57,6 +57,11 @@ GET     /api/vote/current-cycle         org.tronscan.api.VoteApi.candidateTotals
 GET     /api/vote/next-cycle            org.tronscan.api.VoteApi.nextCycle
 GET     /api/vote/stats                 org.tronscan.api.VoteApi.stats
 
+# Vote Rounds
+
+GET     /api/round/:number              org.tronscan.api.VoteApi.round(number: Int)
+GET     /api/round/:number/votes        org.tronscan.api.VoteApi.roundVotes(number: Int)
+
 # Tokens
 
 GET     /api/token                      org.tronscan.api.TokenApi.findAll

@@ -73,4 +73,8 @@ class MaintenanceRoundModelRepository @Inject() (val dbConfig: DatabaseConfigPro
       }
   }
 
+
+  def findByNumber(number: Int) = run {
+    table.filter(_.number === number).result.headOption
+  }
 }

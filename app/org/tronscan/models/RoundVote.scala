@@ -35,6 +35,10 @@ class RoundVoteModelRepository @Inject() (val dbConfig: DatabaseConfigProvider) 
     table.result
   }
 
+  def findByNumber(number: Int) = run {
+    table.filter(_.round === number).result.headOption
+  }
+
   def insertVoteRounds(votes: Map[String, Map[String, Long]], round: Int) = run {
     val models = for {
       (address, candidateVotes) <- votes

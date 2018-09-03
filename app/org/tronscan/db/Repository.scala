@@ -63,7 +63,6 @@ case class EntityModel(id: Option[Int]) extends Entity
   * @tparam T Entity type
   */
 abstract class EntityTable[T <: Entity](tag: Tag, tableName: String) extends Table[T](tag, tableName) {
-
   def id: Rep[Int] = column[Int]("id", O.PrimaryKey, O.AutoInc)
 }
 
@@ -114,11 +113,11 @@ trait TableRepository[T <: Table[E], E <: Any] extends Repository {
     runQuery(params.foldLeft(query)(e))
   }
 
-  def specialProcess(fun: QueryType => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
+  def specialProcess(fun: QueryType => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { query: QueryType =>
     fun(query)
   }
 
-  def filterRequest(e: (QueryType, (String, String)) => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { (query: QueryType) =>
+  def filterRequest(e: (QueryType, (String, String)) => QueryType)(implicit request: Request[AnyContent]): QueryType => QueryType = { query: QueryType =>
     val params = request.queryString.map(x => (x._1, x._2.mkString))
     params.foldLeft(query)(e)
   }
@@ -130,7 +129,6 @@ trait TableRepository[T <: Table[E], E <: Any] extends Repository {
   def readTotals[TR, TG](func: QueryType => Query[TR, TG, Seq]) = run {
     func(table).length.result
   }
-
 
   def sortWithRequest(sortParam: String = "sort")(sorter: PartialFunction[(T, String), Rep[_ <: Any]])
                      (implicit request: Request[AnyContent]): QueryType => QueryType = { query: QueryType =>
