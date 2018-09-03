@@ -170,6 +170,7 @@ class AccountApi @Inject()(
         ),
         "balances" -> Json.toJson(balances),
         "balance" -> account.balance,
+        "allowance" -> account.allowance,
         "tokenBalances" -> Json.toJson(balances),
         "frozen" -> Json.obj(
           "total" -> account.frozen.map(_.frozenBalance).sum,
