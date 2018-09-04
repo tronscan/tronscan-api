@@ -13,6 +13,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import org.tronscan.Extensions._
 import org.tronscan.utils.NetworkUtils
+import play.api.libs.ws.WSClient
 
 object NetworkStreams {
 
@@ -105,6 +106,41 @@ object NetworkStreams {
             networkNode.copy(
               pingOnline = false,
             )
+        }
+      }
+  }
+
+  /**
+    * Ping the given IPS and returns a node
+    *
+    * @param parallel parallel number of processes
+    */
+  def httpPinger(parallel: Int = 4)(implicit executionContext: ExecutionContext, wsClient: WSClient): Flow[NetworkNode, NetworkNode, NotUsed] = {
+    Flow[NetworkNode]
+      .mapAsyncUnordered(parallel) { networkNode =>
+
+        val ia = InetAddress.getByName(networkNode.ip)
+        val startPing = System.currentTimeMillis()
+
+        (for {
+          (url, online) <- NetworkUtils.pingHttp(s"http://${networkNode.ip}:8090/wallet/getnowblock").recoverWith {
+            case _ =>
+              NetworkUtils.pingHttp(s"http://${networkNode.ip}:8091/walletsolidity/getnowblock")
+          }
+          response = System.currentTimeMillis() - startPing
+        } yield {
+          if (online) {
+            networkNode.copy(
+              httpEnabled = online,
+              httpResponseTime = response,
+              httpUrl = url,
+            )
+          } else {
+            networkNode.copy(httpEnabled = false)
+          }
+        }).recover {
+          case _ =>
+            networkNode.copy(httpEnabled = false)
         }
       }
   }

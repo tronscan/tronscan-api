@@ -146,7 +146,7 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   lazy val channel = ManagedChannelBuilder
     .forAddress(nodeAddress.ip, nodeAddress.port)
-    .usePlaintext(true)
+    .usePlaintext()
     .build
 
   lazy val walletStub = {

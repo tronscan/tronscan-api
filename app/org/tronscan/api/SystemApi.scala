@@ -90,7 +90,7 @@ class SystemApi @Inject()(
 //
 //    val channel = ManagedChannelBuilder
 //      .forAddress("47.254.146.147", 50051)
-//      .usePlaintext(true)
+//      .usePlainText()
 //      .build
 //
 //    val wallet = WalletGrpc.stub(channel)

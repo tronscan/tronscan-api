@@ -18,6 +18,7 @@ import org.tronscan.utils.StreamUtils
 import play.api.Logger
 import play.api.inject.ConfigurationProvider
 import play.api.libs.concurrent.Futures
+import play.api.libs.ws.WSClient
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -42,7 +43,8 @@ class NetworkScanner @Inject()(
   configurationProvider: ConfigurationProvider,
   @Named("grpc-pool") actorRef: ActorRef,
   geoIPService: GeoIPService,
-  implicit val futures: Futures) extends Actor {
+  implicit val futures: Futures,
+  implicit val WSClient: WSClient) extends Actor {
 
   val workContext = context.system.dispatchers.lookup("contexts.node-watcher")
   val debugEnabled = configurationProvider.get.get[Boolean]("network.scanner.debug")
@@ -120,6 +122,17 @@ class NetworkScanner @Inject()(
             Logger.debug("Online: " + node.hostname + ":" + node.ip)
           } else {
             Logger.debug("Offline: " + node.hostname + ":" + node.ip)
+          }
+        }
+        node
+      }
+      .via(NetworkStreams.httpPinger(12))
+      .map { node =>
+        if (debugEnabled) {
+          if (node.httpEnabled) {
+            Logger.debug("HTTP Online: " + node.ip)
+          } else {
+            Logger.debug("HTTP Offline: " + node.ip)
           }
         }
         node
