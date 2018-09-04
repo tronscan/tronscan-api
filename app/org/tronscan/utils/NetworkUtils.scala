@@ -32,6 +32,6 @@ object NetworkUtils {
       .url(url)
       .withRequestTimeout(timeout)
       .get()
-      .map(x => (url, (x.json \ "blockID").isDefined))
+      .map(x => (x.json \ "blockID").isDefined)
   }
 }

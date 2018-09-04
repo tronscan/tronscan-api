@@ -4,16 +4,16 @@ import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
 import akka.NotUsed
-import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.scaladsl.Flow
 import org.tron.api.api.EmptyMessage
+import org.tronscan.Extensions._
+import org.tronscan.utils.NetworkUtils
 import play.api.libs.concurrent.Futures
 import play.api.libs.concurrent.Futures._
+import play.api.libs.ws.WSClient
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import org.tronscan.Extensions._
-import org.tronscan.utils.NetworkUtils
-import play.api.libs.ws.WSClient
 
 object NetworkStreams {
 
@@ -123,17 +123,20 @@ object NetworkStreams {
         val startPing = System.currentTimeMillis()
 
         (for {
-          (url, online) <- NetworkUtils.pingHttp(s"http://${networkNode.ip}:8090/wallet/getnowblock").recoverWith {
-            case _ =>
-              NetworkUtils.pingHttp(s"http://${networkNode.ip}:8091/walletsolidity/getnowblock")
+          online <- if (networkNode.nodeType == NetworkScanner.full) {
+            NetworkUtils.pingHttp(s"http://${networkNode.ip}:8090/wallet/getnowblock")
+          } else {
+            NetworkUtils.pingHttp(s"http://${networkNode.ip}:8091/walletsolidity/getnowblock")
           }
           response = System.currentTimeMillis() - startPing
         } yield {
           if (online) {
+            val httpPort = if (networkNode.nodeType == NetworkScanner.full) 8090 else 8091
+
             networkNode.copy(
               httpEnabled = online,
               httpResponseTime = response,
-              httpUrl = url,
+              httpUrl = s"http://${networkNode.ip}:$httpPort",
             )
           } else {
             networkNode.copy(httpEnabled = false)
