@@ -47,15 +47,16 @@ GET     /api/node                               org.tronscan.api.NodeApi.status
 
 GET     /api/system/status                      org.tronscan.api.SystemApi.status
 GET     /api/system/balancer                    org.tronscan.api.SystemApi.balancer
+GET     /api/system/test                    org.tronscan.api.SystemApi.test
 GET     /api/system/sync-account/:address       org.tronscan.api.AccountApi.sync(address: String)
 
 # Votes
 
-GET     /api/vote                       org.tronscan.api.VoteApi.findAll
-GET     /api/vote/live                  org.tronscan.api.VoteApi.currentCycle
-GET     /api/vote/current-cycle         org.tronscan.api.VoteApi.candidateTotals
-GET     /api/vote/next-cycle            org.tronscan.api.VoteApi.nextCycle
-GET     /api/vote/stats                 org.tronscan.api.VoteApi.stats
+GET     /api/vote                               org.tronscan.api.VoteApi.findAll
+GET     /api/vote/live                          org.tronscan.api.VoteApi.currentCycle
+GET     /api/vote/current-cycle                 org.tronscan.api.VoteApi.candidateTotals
+GET     /api/vote/next-cycle                    org.tronscan.api.VoteApi.nextCycle
+GET     /api/vote/stats                         org.tronscan.api.VoteApi.stats
 
 # Vote Rounds
 
@@ -70,8 +71,8 @@ GET     /api/token/:name/address        org.tronscan.api.TokenApi.getAccounts(na
 
 # Witnesses
 
-GET     /api/witness                    org.tronscan.api.WitnessApi.findAll
-GET     /api/witness/maintenance-statistic         org.tronscan.api.WitnessApi.maintenanceStatistic
+GET     /api/witness                                org.tronscan.api.WitnessApi.findAll
+GET     /api/witness/maintenance-statistic          org.tronscan.api.WitnessApi.maintenanceStatistic
 
 # Nodes
 

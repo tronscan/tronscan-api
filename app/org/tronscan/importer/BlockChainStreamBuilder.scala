@@ -49,7 +49,6 @@ class BlockChainStreamBuilder {
 
         val nextBlock = fromBlock + batchSize
         val toBlock = if (nextBlock <= to) nextBlock else to
-        Logger.info(s"Publish $fromBlock -> $toBlock)")
         Some((toBlock + 1, (fromBlock, toBlock)))
 
       } else {

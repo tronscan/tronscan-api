@@ -2,7 +2,7 @@ package org.tronscan.api
 
 import akka.actor.ActorRef
 import javax.inject.{Inject, Named}
-import org.tron.api.api.EmptyMessage
+import org.tron.api.api.{BlockLimit, EmptyMessage, WalletGrpc}
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
 import play.api.cache.Cached
 import play.api.inject.ConfigurationProvider
@@ -16,6 +16,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import akka.pattern.ask
 import akka.util.Timeout
+import io.grpc.ManagedChannelBuilder
 
 class SystemApi @Inject()(
   walletClient: WalletClient,
@@ -83,4 +84,34 @@ class SystemApi @Inject()(
       }
     }
   }
+//
+//  def test = Action.async {
+//    import scala.concurrent.ExecutionContext.Implicits.global
+//
+//    val channel = ManagedChannelBuilder
+//      .forAddress("47.254.146.147", 50051)
+//      .usePlaintext(true)
+//      .build
+//
+//    val wallet = WalletGrpc.stub(channel)
+//
+//    val blocks = for (i <- 1 to 500 by 50) yield i
+//
+//    val done = Future.sequence(blocks.sliding(2).toList.map { case Seq(now, next) =>
+//      wallet.getBlockByLimitNext(BlockLimit(now, next)).map { result =>
+//        val resultBlocks = result.block.sortBy(_.getBlockHeader.getRawData.number).map(_.getBlockHeader.getRawData.number)
+//        if (resultBlocks.head != now) {
+//          println(s"INVALID HEAD ${resultBlocks.head} => $now")
+//        }
+//        if (resultBlocks.last != next) {
+//          println(s"INVALID HEAD ${resultBlocks.last} => $next")
+//        }
+//        resultBlocks
+//      }
+//    })
+//
+//    done.map { _ =>
+//      Ok("done")
+//    }
+//  }
 }

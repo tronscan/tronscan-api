@@ -5,7 +5,7 @@ organization := "org.tronscan"
 
 version := "latest"
 
-scalaVersion := "2.12.4"
+scalaVersion := "2.12.6"
 
 dependencyOverrides ++= Seq(
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.9.2"
