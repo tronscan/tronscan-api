@@ -127,7 +127,8 @@ POST    /api/transaction-builder/contract/transferasset                 org.tron
 POST    /api/transaction-builder/contract/accountcreate                 org.tronscan.api.TransactionBuilderApi.accountCreate
 POST    /api/transaction-builder/contract/accountupdate                 org.tronscan.api.TransactionBuilderApi.accountUpdate
 POST    /api/transaction-builder/contract/withdrawbalance               org.tronscan.api.TransactionBuilderApi.withdrawBalance
-POST    /api/transaction-builder/contract/proposalapprovecontract       org.tronscan.api.TransactionBuilderApi.proposalApprove
+POST    /api/transaction-builder/contract/proposalapprove               org.tronscan.api.TransactionBuilderApi.proposalApprove
+POST    /api/transaction-builder/contract/updateasset                   org.tronscan.api.TransactionBuilderApi.updateAsset
 
 # Socket IO
 

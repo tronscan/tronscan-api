@@ -47,6 +47,24 @@ object TransactionSerializer {
     )
   }
 
+  implicit val decodeUpdateAssetContract = new Encoder[org.tron.protos.Contract.UpdateAssetContract] {
+    def apply(c: HCursor) = {
+      for {
+        from <- c.downField("ownerAddress").as[String]
+        description <- c.downField("description").as[String]
+        url <- c.downField("url").as[String]
+      } yield {
+        org.tron.protos.Contract.UpdateAssetContract(
+          ownerAddress = from.decodeAddress,
+          description = description.encodeString,
+          url = url.encodeString,
+          newLimit = c.downField("newLimit").as[Long].getOrElse(0L),
+          newPublicLimit = c.downField("newPublicLimit").as[Long].getOrElse(0L),
+        )
+      }
+    }
+  }
+
   implicit val encodeTransferContract = new Encoder[org.tron.protos.Contract.TransferContract] {
     def apply(transferContract: org.tron.protos.Contract.TransferContract): Js = Js.obj(
       "from" -> Base58.encode58Check(transferContract.ownerAddress.toByteArray).asJson,

@@ -60,3 +60,15 @@ case class AccountCreate(
   ownerAddress: String,
   accountAddress: String)
 
+
+// Update Asset
+case class UpdateAssetTransaction(
+  contract: UpdateAsset) extends TransactionCreateBase
+
+case class UpdateAsset(
+  ownerAddress: String,
+  url: String,
+  description: String,
+  newLimit: Option[Long],
+  newPublicLimit: Option[Long])
+

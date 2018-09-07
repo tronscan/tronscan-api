@@ -75,6 +75,11 @@ class TransactionBuilderApi @Inject()(
           Transaction.Contract(
             `type` = ContractType.ProposalApproveContract,
             parameter = Some(Any.pack(c.asInstanceOf[ProposalApproveContract])))
+
+        case c: UpdateAssetContract =>
+          Transaction.Contract(
+            `type` = ContractType.UpdateAssetContract,
+            parameter = Some(Any.pack(c.asInstanceOf[UpdateAssetContract])))
       }
 
       TransactionAction(transactionContract, broadcast.getOrElse(false), key, json.hcursor.downField("data").as[String].toOption)
@@ -193,6 +198,18 @@ class TransactionBuilderApi @Inject()(
   ))
   def proposalApprove = Action.async { implicit req =>
     handleTransaction[org.tron.protos.Contract.ProposalApproveContract]()
+  }
+
+  @ApiOperation(
+    value = "Build UpdateAssetContract")
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      required = true,
+      dataType = "org.tronscan.api.models.UpdateAssetTransaction",
+      paramType = "body"),
+  ))
+  def updateAsset = Action.async { implicit req =>
+    handleTransaction[org.tron.protos.Contract.UpdateAssetContract]()
   }
 }
 
