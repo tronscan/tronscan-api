@@ -9,6 +9,7 @@ object Dependencies {
   val catsVersion = "0.9.0"
   val grpcVersion = "1.9.0"
   val scaleCubeVersion = "1.0.7"
+  val elasticSearchVersion = "6.3.6"
 
   val akkaStreamsContribDeps = Seq(
     "com.typesafe.akka" %% "akka-stream-contrib" % "0.9"
@@ -52,4 +53,16 @@ object Dependencies {
     "io.scalecube" % "scalecube-cluster",
     "io.scalecube" % "scalecube-transport"
   ).map(_ % scaleCubeVersion)
+
+  val elasticSearchDeps = Seq(
+    //    "com.sksamuel.elastic4s" %% "elastic4s-streams",
+    "com.sksamuel.elastic4s" %% "elastic4s-core",
+    "com.sksamuel.elastic4s" %% "elastic4s-http",
+    "com.sksamuel.elastic4s" %% "elastic4s-circe",
+    "com.sksamuel.elastic4s" %% "elastic4s-embedded"
+  ).map(_ % elasticSearchVersion) ++ Seq(
+    "com.sksamuel.elastic4s" %% "elastic4s-testkit" % elasticSearchVersion % "test",
+    "com.sksamuel.elastic4s" %% "elastic4s-embedded" % elasticSearchVersion % "test"
+  )
 }
+

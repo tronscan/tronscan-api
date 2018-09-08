@@ -80,7 +80,7 @@ libraryDependencies ++= Seq(
   "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test,
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.9.2"
 
-) ++ grpcDeps ++ akkaDeps ++ circeDependencies ++ akkaStreamsContribDeps
+) ++ grpcDeps ++ akkaDeps ++ circeDependencies ++ akkaStreamsContribDeps ++ elasticSearchDeps
 
 // Disable API Documentation
 sources in (Compile, doc) := Seq.empty
