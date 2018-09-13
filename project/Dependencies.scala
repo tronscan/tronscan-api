@@ -6,9 +6,9 @@ object Dependencies {
   val slickPgVersion = "0.16.1"
   val monixVersion = "2.3.0"
   val akkaVersion = "2.5.14"
-  val catsVersion = "0.9.0"
   val grpcVersion = "1.9.0"
   val scaleCubeVersion = "1.0.7"
+  val catsVersion = "1.3.1"
 
   val akkaStreamsContribDeps = Seq(
     "com.typesafe.akka" %% "akka-stream-contrib" % "0.9"
@@ -31,9 +31,6 @@ object Dependencies {
     "com.typesafe.akka" %% "akka-stream-testkit"
   ).map(_ % akkaVersion)
 
-  val catsDeps = Seq(
-    "org.typelevel" %% "cats" % catsVersion)
-
   val macroParadise = addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
 
   val scalaAsync = Seq(
@@ -52,4 +49,10 @@ object Dependencies {
     "io.scalecube" % "scalecube-cluster",
     "io.scalecube" % "scalecube-transport"
   ).map(_ % scaleCubeVersion)
+
+  val catsDeps = Seq(
+    "org.typelevel" %% "cats-core"
+  ).map(_ % catsVersion) ++ Seq(
+    "org.typelevel" %% "cats-effect" % "1.0.0"
+  )
 }
