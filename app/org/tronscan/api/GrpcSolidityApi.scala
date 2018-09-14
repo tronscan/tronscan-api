@@ -6,10 +6,10 @@ import io.circe.Json
 import io.circe.syntax._
 import io.swagger.annotations.Api
 import javax.inject.Inject
-import org.tron.api.api.{EmptyMessage, NumberMessage, WalletSolidityGrpc}
-import org.tron.common.utils.{Base58, ByteUtil}
+import org.tron.api.api.{BytesMessage, EmptyMessage, NumberMessage, WalletSolidityGrpc}
+import org.tron.common.utils.{Base58, ByteArray, ByteUtil}
 import org.tron.protos.Tron.Account
-import org.tronscan.api.models.TronModelsSerializers
+import org.tronscan.api.models.{TransactionSerializer, TronModelsSerializers}
 import org.tronscan.grpc.{GrpcService, WalletClient}
 import play.api.mvc.Request
 
@@ -58,6 +58,18 @@ class GrpcSolidityApi @Inject()(
     } yield {
       Ok(Json.obj(
         "data" -> block.asJson
+      ))
+    }
+  }
+
+  def getTransactionInfoById(hash: String) = Action.async { implicit req =>
+
+    for {
+      client <- getClient
+      transaction <- client.getTransactionInfoById(BytesMessage(ByteString.copyFrom(ByteArray.fromHexString(hash))))
+    } yield {
+      Ok(Json.obj(
+        "data" -> TransactionSerializer.serialize(transaction)
       ))
     }
   }

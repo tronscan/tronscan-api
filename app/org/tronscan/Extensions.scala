@@ -3,7 +3,7 @@ package org.tronscan
 import com.google.protobuf.ByteString
 import org.tron.common.BlockId
 import org.tron.common.utils.{Base58, ByteArray, Sha256Hash}
-import org.tron.protos.Tron.{Block, Transaction}
+import org.tron.protos.Tron.{Block, Transaction, TransactionInfo}
 
 object Extensions {
 
@@ -19,6 +19,7 @@ object Extensions {
     def hash: String = Sha256Hash.of(trx.getRawData.toByteArray).toString
     def hashBytes = Sha256Hash.of(trx.getRawData.toByteArray).getBytes
   }
+
 
   implicit class ByteStringUtils(byteString: ByteString) {
     def encodeAddress = {

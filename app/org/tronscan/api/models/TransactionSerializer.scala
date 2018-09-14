@@ -8,7 +8,7 @@ import org.joda.time.DateTime
 import org.tron.common.crypto.ECKey
 import org.tron.common.utils.{Base58, ByteArray, Crypto, Sha256Hash}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountCreateContract, AccountUpdateContract, AssetIssueContract, FreezeBalanceContract, ParticipateAssetIssueContract, TransferAssetContract, TransferContract, UnfreezeAssetContract, UnfreezeBalanceContract, UpdateAssetContract, VoteAssetContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
-import org.tron.protos.Tron.{AccountType, Transaction}
+import org.tron.protos.Tron.{AccountType, Transaction, TransactionInfo}
 import org.tronscan.Extensions._
 import org.tronscan.protocol.MainNetFormatter
 
@@ -295,4 +295,16 @@ object TransactionSerializer {
       )
     }.asJson,
   )
+
+  def serialize(transaction: TransactionInfo) = Js.obj(
+    "id" -> transaction.id.decodeString.asJson,
+    "fee" -> transaction.fee.asJson,
+    "blockNumber" -> transaction.blockNumber.asJson,
+    "blockTimestamp" -> transaction.blockTimeStamp.asJson,
+    "contractAddress" -> transaction.contractAddress.encodeAddress.asJson,
+    "resultMessage" -> transaction.resMessage.decodeString.asJson,
+    "result" -> transaction.result.name.asJson,
+    "unfreezeAmount" -> transaction.unfreezeAmount.asJson,
+    "withdrawAmount" -> transaction.withdrawAmount.asJson,
+  ).asJson
 }

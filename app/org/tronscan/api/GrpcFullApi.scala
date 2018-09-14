@@ -77,6 +77,18 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  def getTransactionInfoById(hash: String) = Action.async { implicit req =>
+
+    for {
+      client <- getClient
+      transaction <- client.getTransactionInfoById(BytesMessage(ByteString.copyFrom(ByteArray.fromHexString(hash))))
+    } yield {
+      Ok(Json.obj(
+        "data" -> TransactionSerializer.serialize(transaction)
+      ))
+    }
+  }
+
   def totalTransaction = Action.async { implicit req =>
 
     for {

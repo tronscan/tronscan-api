@@ -95,14 +95,15 @@ POST    /api/slack/command              org.tronscan.slack.SlackApi.handleComman
 
 # GRPC Full Node Api
 
-GET     /api/grpc/full/getnowblock                  org.tronscan.api.GrpcFullApi.getNowBlock
-GET     /api/grpc/full/getblockbynum/:number        org.tronscan.api.GrpcFullApi.getBlockByNum(number: Long)
-GET     /api/grpc/full/totaltransaction             org.tronscan.api.GrpcFullApi.totalTransaction
-GET     /api/grpc/full/getaccount/:address          org.tronscan.api.GrpcFullApi.getAccount(address: String)
-GET     /api/grpc/full/gettransactionbyid/:hash     org.tronscan.api.GrpcFullApi.getTransactionById(hash: String)
-GET     /api/grpc/full/getaccountnet/:address       org.tronscan.api.GrpcFullApi.getAccountNet(address: String)
-GET     /api/grpc/full/listnodes                    org.tronscan.api.GrpcFullApi.listNodes
-GET     /api/grpc/full/listwitnesses                org.tronscan.api.GrpcFullApi.listWitnesses
+GET     /api/grpc/full/getnowblock                      org.tronscan.api.GrpcFullApi.getNowBlock
+GET     /api/grpc/full/getblockbynum/:number            org.tronscan.api.GrpcFullApi.getBlockByNum(number: Long)
+GET     /api/grpc/full/totaltransaction                 org.tronscan.api.GrpcFullApi.totalTransaction
+GET     /api/grpc/full/getaccount/:address              org.tronscan.api.GrpcFullApi.getAccount(address: String)
+GET     /api/grpc/full/gettransactionbyid/:hash         org.tronscan.api.GrpcFullApi.getTransactionById(hash: String)
+GET     /api/grpc/full/gettransactioninfobyid/:hash     org.tronscan.api.GrpcFullApi.getTransactionInfoById(hash: String)
+GET     /api/grpc/full/getaccountnet/:address           org.tronscan.api.GrpcFullApi.getAccountNet(address: String)
+GET     /api/grpc/full/listnodes                        org.tronscan.api.GrpcFullApi.listNodes
+GET     /api/grpc/full/listwitnesses                    org.tronscan.api.GrpcFullApi.listWitnesses
 
 # GRPC Solidity API
 
@@ -110,6 +111,7 @@ GET     /api/grpc/solidity/getnowblock                  org.tronscan.api.GrpcSol
 GET     /api/grpc/solidity/getblockbynum/:number        org.tronscan.api.GrpcSolidityApi.getBlockByNum(number: Long)
 GET     /api/grpc/solidity/getaccount/:address          org.tronscan.api.GrpcSolidityApi.getAccount(address: String)
 GET     /api/grpc/solidity/listwitnesses                org.tronscan.api.GrpcSolidityApi.listWitnesses
+GET     /api/grpc/solidity/gettransactioninfobyid/:hash org.tronscan.api.GrpcSolidityApi.getTransactionInfoById(hash: String)
 
 # Transaction Builder
 
