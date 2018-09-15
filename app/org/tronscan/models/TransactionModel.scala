@@ -6,6 +6,7 @@ import org.joda.time.DateTime
 import play.api.db.slick.DatabaseConfigProvider
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
+import slick.sql.SqlProfile.ColumnOption.Nullable
 
 object TransactionModel {
 //  implicit val format = play.api.libs.json.Json.format[TransactionModel]
@@ -20,7 +21,10 @@ case class TransactionModel(
   toAddress: String = "",
   contractData: Json = io.circe.Json.obj(),
   contractType: Int = -1,
-  data: String = "")
+  data: String = "",
+  fee: Option[Long] = None) {
+
+}
 
 class TransactionModelTable(tag: Tag) extends Table[TransactionModel](tag, "transactions") {
   def hash = column[String]("hash", O.PrimaryKey)
@@ -32,7 +36,8 @@ class TransactionModelTable(tag: Tag) extends Table[TransactionModel](tag, "tran
   def contractData = column[io.circe.Json]("contract_data")
   def contractType = column[Int]("contract_type")
   def data = column[String]("data")
-  def * = (hash, block, timestamp, confirmed, ownerAddress, toAddress, contractData, contractType, data) <> ((TransactionModel.apply _).tupled, TransactionModel.unapply)
+  def fee = column[Option[Long]]("fee", Nullable)
+  def * = (hash, block, timestamp, confirmed, ownerAddress, toAddress, contractData, contractType, data, fee) <> ((TransactionModel.apply _).tupled, TransactionModel.unapply)
 }
 
 @Singleton()
@@ -50,5 +55,9 @@ class TransactionModelRepository @Inject() (val dbConfig: DatabaseConfigProvider
 
   def update(entity: TransactionModel) = run {
     table.filter(_.hash === entity.hash).update(entity)
+  }
+
+  def findWithoutFee(limit: Int = 100) = run {
+    table.filter(_.fee.isEmpty).sortBy(_.block.desc).take(250).result
   }
 }

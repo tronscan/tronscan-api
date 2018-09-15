@@ -16,7 +16,8 @@ class ImportManager @Inject() (
   configurationProvider: ConfigurationProvider,
   blockModelRepository: BlockModelRepository,
   @Named("fullnode-reader") fullNodeReader: ActorRef,
-  @Named("solidity-reader") solidityNodeReader: ActorRef)  extends Actor {
+  @Named("solidity-reader") solidityNodeReader: ActorRef,
+  @Named("fee-reader") feeReader: ActorRef)  extends Actor {
 
   override def preStart(): Unit = {
 
@@ -24,6 +25,7 @@ class ImportManager @Inject() (
 
     val syncSolidity = configurationProvider.get.get[Boolean]("sync.solidity")
     val syncFull = configurationProvider.get.get[Boolean]("sync.full")
+    val syncFee = configurationProvider.get.get[Boolean]("sync.fee")
 
     if (syncFull) {
       context.system.scheduler.schedule(6.seconds, 2.seconds, fullNodeReader, Sync())
@@ -31,6 +33,10 @@ class ImportManager @Inject() (
 
     if (syncSolidity) {
       context.system.scheduler.schedule(12.seconds, 2.seconds, solidityNodeReader, Sync())
+    }
+
+    if (syncFee) {
+      feeReader ! Sync()
     }
   }
 

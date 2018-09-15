@@ -288,6 +288,12 @@ object TransactionSerializer {
     "timestamp" -> transaction.getRawData.timestamp.asJson,
     "contracts" -> transaction.getRawData.contract.map(contract => serializeContract(contract, includeType = true)).asJson,
     "data" -> transaction.getRawData.data.decodeString.asJson,
+//    "result" -> transaction.ret.map(res => Js.obj(
+//      "fee" -> res.fee.asJson,
+//      "contractResult" -> res.contractRet.value.asJson,
+//      "contractResultName" -> res.contractRet.name.asJson,
+//      "ret" -> res.ret.value.asJson,
+//    )).asJson,
     "signatures" -> transaction.signature.map { signature =>
       Js.obj(
         "bytes" -> Crypto.getBase64FromByteString(signature).asJson,
@@ -297,7 +303,6 @@ object TransactionSerializer {
   )
 
   def serialize(transaction: TransactionInfo) = Js.obj(
-    "id" -> transaction.id.decodeString.asJson,
     "fee" -> transaction.fee.asJson,
     "blockNumber" -> transaction.blockNumber.asJson,
     "blockTimestamp" -> transaction.blockTimeStamp.asJson,

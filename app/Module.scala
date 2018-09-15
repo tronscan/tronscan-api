@@ -7,7 +7,7 @@ import org.tron.api.api.{WalletGrpc, WalletSolidityGrpc}
 import org.tronscan.actors.VoteScraper
 import org.tronscan.cache.CacheWarmer
 import org.tronscan.grpc.GrpcPool
-import org.tronscan.importer.{FullNodeReader, ImportManager, PartialReader, SolidityNodeReader}
+import org.tronscan.importer._
 import org.tronscan.protocol.{AddressFormatter, TestNetFormatter}
 import org.tronscan.realtime.SocketIOEngine
 import org.tronscan.service.Bootstrap
@@ -21,6 +21,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
   def configure = {
     bindActor[FullNodeReader]("fullnode-reader")
     bindActor[SolidityNodeReader]("solidity-reader")
+    bindActor[TransactionInfoReader]("fee-reader")
     bindActor[PartialReader]("partial-reader")
     bindActor[ImportManager]("blockchain-importer")
     bindActor[VoteScraper]("vote-scraper")

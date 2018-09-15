@@ -6,14 +6,14 @@ import io.circe.Json
 import io.circe.syntax._
 import io.swagger.annotations.Api
 import javax.inject.Inject
-import org.tron.api.api.{BytesMessage, EmptyMessage, NumberMessage, WalletGrpc}
+import org.tron.api.api._
 import org.tron.common.utils.{Base58, ByteArray, ByteUtil}
 import org.tron.protos.Tron.Account
 import org.tronscan.api.models.{TransactionSerializer, TronModelsSerializers}
 import org.tronscan.grpc.{GrpcService, WalletClient}
 import play.api.mvc.Request
 import org.tronscan.api.models.TransactionSerializer._
-
+import org.tronscan.Extensions._
 import scala.concurrent.Future
 
 @Api(
@@ -37,6 +37,16 @@ class GrpcFullApi @Inject() (
         grpcService.getChannel(ip, port).map(x => WalletGrpc.stub(x))
       case _ =>
         walletClient.full
+    }
+  }
+
+  def getClientExtension(implicit request: Request[_]): Future[WalletExtensionGrpc.WalletExtensionStub] = {
+    request.getQueryString("ip") match {
+      case Some(ip) =>
+        val port = request.getQueryString("port").map(_.toInt).getOrElse(50051)
+        grpcService.getChannel(ip, port).map(x => WalletExtensionGrpc.stub(x))
+      case _ =>
+        walletClient.extension
     }
   }
 
@@ -152,6 +162,40 @@ class GrpcFullApi @Inject() (
     } yield {
       Ok(Json.obj(
         "data" -> witnessList.witnesses.map(_.asJson).asJson
+      ))
+    }
+  }
+
+  def getTransactionsFromThis(address: String) = Action.async { implicit req =>
+
+    val accountPaginated = AccountPaginated()
+      .withAccount(Account(address = address.decodeAddress))
+      .withLimit(req.getQueryString("limit").map(_.toLong).getOrElse(25L))
+      .withOffset(req.getQueryString("start").map(_.toLong).getOrElse(0L))
+
+    for {
+      client <- getClientExtension
+      transactions <- client.getTransactionsFromThis(accountPaginated)
+    } yield {
+      Ok(Json.obj(
+        "data" -> transactions.transaction.map(TransactionSerializer.serialize).asJson
+      ))
+    }
+  }
+
+  def getTransactionsToThis(address: String) = Action.async { implicit req =>
+
+    val accountPaginated = AccountPaginated()
+      .withAccount(Account(address = address.decodeAddress))
+      .withLimit(req.getQueryString("limit").map(_.toLong).getOrElse(25L))
+      .withOffset(req.getQueryString("start").map(_.toLong).getOrElse(0L))
+
+    for {
+      client <- getClientExtension
+      transactions <- client.getTransactionsToThis(accountPaginated)
+    } yield {
+      Ok(Json.obj(
+        "data" -> transactions.transaction.map(TransactionSerializer.serialize).asJson
       ))
     }
   }
