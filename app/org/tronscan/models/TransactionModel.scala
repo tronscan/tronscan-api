@@ -8,6 +8,8 @@ import org.tronscan.db.PgProfile.api._
 import org.tronscan.db.TableRepository
 import slick.sql.SqlProfile.ColumnOption.Nullable
 
+import scala.concurrent.Future
+
 object TransactionModel {
 //  implicit val format = play.api.libs.json.Json.format[TransactionModel]
 }
@@ -57,7 +59,7 @@ class TransactionModelRepository @Inject() (val dbConfig: DatabaseConfigProvider
     table.filter(_.hash === entity.hash).update(entity)
   }
 
-  def findWithoutFee(limit: Int = 100) = run {
-    table.filter(_.fee.isEmpty).sortBy(_.block.desc).take(250).result
+  def findWithoutFee(limit: Int = 100): Future[Seq[TransactionModel]] = run {
+    table.filter(x => x.fee.isEmpty && x.confirmed).sortBy(_.block.desc).take(250).result
   }
 }

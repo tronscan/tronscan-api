@@ -2,6 +2,7 @@ package org.tronscan.importer
 
 import akka.NotUsed
 import akka.actor.Actor
+import akka.japi.Option.Some
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import com.google.protobuf.ByteString
@@ -16,6 +17,7 @@ import org.tronscan.models._
 import play.api.inject.ConfigurationProvider
 
 import scala.async.Async._
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
@@ -31,15 +33,17 @@ class TransactionInfoReader @Inject()(
 
     Source.unfoldAsync(0) { _ =>
 
-      transactionModelRepository.findWithoutFee(1000).map { txs =>
+      val q: Future[Option[(Int, List[TransactionModel])]] = transactionModelRepository.findWithoutFee(1000).map { txs =>
         if (txs.nonEmpty) {
-          Some(0, txs)
+          Some(0, txs.toList)
         } else {
           None
         }
       }
+
+      q
     }
-    .mapConcat(x => x.toList)
+    .mapConcat(x => x)
   }
 
   def buildFeeSync() = async {
