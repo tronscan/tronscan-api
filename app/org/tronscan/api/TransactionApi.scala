@@ -8,6 +8,7 @@ import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.common.utils.ByteArray
 import org.tron.protos.Tron.Transaction
+import org.tron.protos.Tron.Transaction.Contract.ContractType
 import play.api.cache.redis.CacheAsyncApi
 import play.api.cache.{Cached, NamedCache}
 import play.api.libs.json.{JsObject, Json}
@@ -104,6 +105,10 @@ class TransactionApi @Inject()(
           query.filter(x => x.timestamp <= dateStart)
         case (query, ("contract_type", value)) =>
           query.filter(x => x.contractType === value.toInt)
+        case (query, ("token", value)) if value.toUpperCase == "TRX" =>
+          query.filter(x => x.contractType === ContractType.TransferContract.value)
+        case (query, ("token", value)) =>
+          query.filter(x => x.contractType === ContractType.TransferAssetContract.value && x.contractData.+>>("token") === value)
         case (query, _) =>
           query
       }
