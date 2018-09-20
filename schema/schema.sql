@@ -1,10 +1,13 @@
 create database "tron-explorer"
 ;
 
+create schema if not exists analytics
+;
+
 create sequence analytics.vote_snapshot_id_seq
 ;
 
-create table if not exists analytics.vote_snapshot
+create table analytics.vote_snapshot
 (
   id bigserial not null
     constraint vote_snapshot_pkey
@@ -15,7 +18,7 @@ create table if not exists analytics.vote_snapshot
 )
 ;
 
-create table if not exists analytics.requests
+create table analytics.requests
 (
   id uuid not null,
   timestamp timestamp with time zone default now() not null,
@@ -24,7 +27,7 @@ create table if not exists analytics.requests
 )
 ;
 
-create table if not exists blocks
+create table blocks
 (
   id bigint not null
     constraint blocks_pkey
@@ -41,7 +44,7 @@ create table if not exists blocks
 )
 ;
 
-create table if not exists transactions
+create table transactions
 (
   date_created timestamp with time zone,
   block bigint,
@@ -53,27 +56,28 @@ create table if not exists transactions
   contract_type integer default '-1'::integer not null,
   owner_address text default ''::text not null,
   to_address text default ''::text not null,
-  data text default ''::text not null
+  data text default ''::text not null,
+  fee bigint
 )
 ;
 
-create index if not exists transactions_date_created_index
+create index transactions_date_created_index
   on transactions (date_created desc)
 ;
 
-create index if not exists transactions_block_hash_index
+create index transactions_block_hash_index
   on transactions (block, hash)
 ;
 
-create index if not exists transactions_date_created_owner_address_contract_type_block_ind
+create index transactions_date_created_owner_address_contract_type_block_ind
   on transactions (owner_address, date_created, block, contract_type)
 ;
 
-create index if not exists transactions_owner_address_date_created_index
+create index transactions_owner_address_date_created_index
   on transactions (owner_address, date_created)
 ;
 
-create table if not exists vote_witness_contract
+create table vote_witness_contract
 (
   id text not null,
   transaction text,
@@ -87,7 +91,7 @@ create table if not exists vote_witness_contract
 )
 ;
 
-create table if not exists participate_asset_issue
+create table participate_asset_issue
 (
   id uuid not null
     constraint participate_asset_issue_id_pk
@@ -102,7 +106,7 @@ create table if not exists participate_asset_issue
 )
 ;
 
-create table if not exists accounts
+create table accounts
 (
   address text not null
     constraint accounts_pkey
@@ -117,7 +121,7 @@ create table if not exists accounts
 )
 ;
 
-create table if not exists asset_issue_contract
+create table asset_issue_contract
 (
   id uuid
     constraint asset_issue_contract_id_pk
@@ -140,7 +144,7 @@ create table if not exists asset_issue_contract
 )
 ;
 
-create table if not exists address_balance
+create table address_balance
 (
   address text,
   token text,
@@ -150,7 +154,7 @@ create table if not exists address_balance
 )
 ;
 
-create table if not exists witness_create_contract
+create table witness_create_contract
 (
   address text not null
     constraint witness_create_contract_pkey
@@ -159,7 +163,7 @@ create table if not exists witness_create_contract
 )
 ;
 
-create table if not exists ip_geo
+create table ip_geo
 (
   ip text,
   city text,
@@ -169,7 +173,7 @@ create table if not exists ip_geo
 )
 ;
 
-create table if not exists sr_account
+create table sr_account
 (
   address text not null
     constraint sr_account_pkey
@@ -178,7 +182,7 @@ create table if not exists sr_account
 )
 ;
 
-create table if not exists transfers
+create table transfers
 (
   id uuid not null
     constraint transfers_pkey
@@ -194,35 +198,35 @@ create table if not exists transfers
 )
 ;
 
-create index if not exists transfers_transfer_from_address_transfer_to_address_date_cre
+create index transfers_transfer_from_address_transfer_to_address_date_cre
   on transfers (transfer_from_address asc, transfer_to_address asc, date_created desc)
 ;
 
-create index if not exists transfers_block_hash_index
+create index transfers_block_hash_index
   on transfers (block, transaction_hash)
 ;
 
-create index if not exists transfers_date_created_index
+create index transfers_date_created_index
   on transfers (date_created desc)
 ;
 
-create index if not exists transfers_transfer_from_address_date_created_index
+create index transfers_transfer_from_address_date_created_index
   on transfers (transfer_from_address asc, date_created desc)
 ;
 
-create index if not exists transfers_transfer_to_address_date_created_index
+create index transfers_transfer_to_address_date_created_index
   on transfers (transfer_to_address asc, date_created desc)
 ;
 
-create index if not exists transfers_transfer_from_address_index
+create index transfers_transfer_from_address_index
   on transfers (transfer_from_address)
 ;
 
-create index if not exists transfers_transfer_to_address_index
+create index transfers_transfer_to_address_index
   on transfers (transfer_to_address)
 ;
 
-create table if not exists trx_request
+create table trx_request
 (
   address text not null
     constraint trx_request_pkey
@@ -232,14 +236,14 @@ create table if not exists trx_request
 )
 ;
 
-create table if not exists funds
+create table funds
 (
   id integer,
   address text
 )
 ;
 
-create table if not exists maintenance_round
+create table maintenance_round
 (
   block bigint not null
     constraint maintenance_rounds_pkey
@@ -251,7 +255,7 @@ create table if not exists maintenance_round
 )
 ;
 
-create table if not exists round_votes
+create table round_votes
 (
   address text not null,
   round integer not null,
