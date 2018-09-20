@@ -102,6 +102,10 @@ class TransactionApi @Inject()(
           query.filter(x => x.timestamp <= dateStart)
         case (query, ("contract_type", value)) =>
           query.filter(x => x.contractType === value.toInt)
+        case (query, ("token", value)) if value.toUpperCase == "TRX" =>
+          query.filter(x => x.contractType === ContractType.TransferContract.value)
+        case (query, ("token", value)) =>
+          query.filter(x => x.contractType === ContractType.TransferAssetContract.value && x.contractData.+>>("token") === value)
         case (query, _) =>
           query
       }

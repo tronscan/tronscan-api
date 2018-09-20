@@ -56,7 +56,6 @@ class BlockChainStreamBuilder {
       }
     }
     .mapAsync(1) { case (fromBlock, toBlock) =>
-      val id = UUID.randomUUID()
       val range = BlockLimit(fromBlock, toBlock + 1)
       client.fullRequest(_.getBlockByLimitNext(range)).map { blocks =>
         val bs = blocks.block.sortBy(_.getBlockHeader.getRawData.number)

@@ -1,6 +1,11 @@
+/*
+ * Models which are shown in the Swagger API for the TransactionBuilder will be listed here
+ */
+
 package org.tronscan.api.models
 
 import io.swagger.annotations.ApiModelProperty
+
 
 // Approve Proposal
 case class ProposalApproveTransaction(

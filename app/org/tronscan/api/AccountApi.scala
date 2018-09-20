@@ -56,6 +56,10 @@ class AccountApi @Inject()(
 
   val key = configurationProvider.get.get[String]("play.http.secret.key")
 
+  /**
+    * Query accounts
+    * @return
+    */
   @ApiResponses(Array(
     new ApiResponse(
       code = 200,
@@ -259,6 +263,11 @@ class AccountApi @Inject()(
     }
   }
 
+  /**
+    * Retrieve the Super Representative github link
+    * @param address address of the SR
+    * @return
+    */
   @ApiOperation(
     value = "",
     hidden = true
@@ -278,6 +287,9 @@ class AccountApi @Inject()(
     }
   }
 
+  /**
+    * Update the super representative pages
+    */
   @ApiOperation(
     value = "",
     hidden = true)
@@ -319,6 +331,9 @@ class AccountApi @Inject()(
     }
   }
 
+  /**
+    * Synchronises the given account to the database
+    */
   @ApiOperation(
     value = "",
     hidden = true)
@@ -431,7 +446,8 @@ class AccountApi @Inject()(
   }
 
   /**
-    * Generates a new private key
+    * Generates a new account with private key
+    *
     * @return
     */
   def create = Action {
