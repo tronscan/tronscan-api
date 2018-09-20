@@ -1,12 +1,10 @@
 package org
 package tronscan.api.models
 
-import com.google.protobuf.ByteString
 import io.circe.syntax._
-import io.circe.{Decoder, Encoder, HCursor, Json => Js}
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json => Js}
 import org.joda.time.DateTime
-import org.tron.common.crypto.ECKey
-import org.tron.common.utils.{Base58, ByteArray, Crypto, Sha256Hash}
+import org.tron.common.utils.{Base58, ByteArray, Crypto}
 import org.tron.protos.Tron.Transaction.Contract.ContractType.{AccountCreateContract, AccountUpdateContract, AssetIssueContract, CreateSmartContract, ExchangeCreateContract, ExchangeInjectContract, ExchangeTransactionContract, ExchangeWithdrawContract, FreezeBalanceContract, ParticipateAssetIssueContract, ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract, TransferAssetContract, TransferContract, TriggerSmartContract, UnfreezeAssetContract, UnfreezeBalanceContract, UpdateAssetContract, VoteAssetContract, VoteWitnessContract, WithdrawBalanceContract, WitnessCreateContract, WitnessUpdateContract}
 import org.tron.protos.Tron.{AccountType, Transaction}
 import org.tronscan.Extensions._
@@ -47,7 +45,7 @@ object TransactionSerializer {
     )
   }
 
-  implicit val decodeUpdateAssetContract = new Encoder[org.tron.protos.Contract.UpdateAssetContract] {
+  implicit val decodeUpdateAssetContract = new Decoder[org.tron.protos.Contract.UpdateAssetContract] {
     def apply(c: HCursor) = {
       for {
         from <- c.downField("ownerAddress").as[String]
@@ -59,7 +57,7 @@ object TransactionSerializer {
           description = description.encodeString,
           url = url.encodeString,
           newLimit = c.downField("newLimit").as[Long].getOrElse(0L),
-          newPublicLimit = c.downField("newPublicLimit").as[Long].getOrElse(0L),
+          newPublicLimit = c.downField("newPublicLimit").as[Long].getOrElse(0L)
         )
       }
     }
