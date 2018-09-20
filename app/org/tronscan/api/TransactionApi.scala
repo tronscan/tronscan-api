@@ -8,6 +8,7 @@ import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.common.utils.ByteArray
 import org.tron.protos.Tron.Transaction
+import org.tron.protos.Tron.Transaction.Contract.ContractType
 import org.tronscan.api.models.TransactionSerializer
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
