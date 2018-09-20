@@ -74,7 +74,7 @@ class PartialReader @Inject()(
     println(s"BLOCKCHAIN SYNC FROM $from to $to")
 
     val syncTask = Source(from to to)
-      .take(1000)
+//      .take(1000)
       .mapAsync(12) { i => wallet.getBlockByNum(NumberMessage(i)) }
       .filter(block => {
         if (to > 0) {

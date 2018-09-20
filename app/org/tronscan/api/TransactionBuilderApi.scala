@@ -7,7 +7,7 @@ import io.circe.{Decoder, Json}
 import io.swagger.annotations._
 import javax.inject.Inject
 import org.tron.common.utils.ByteArray
-import org.tron.protos.Contract.{AccountCreateContract, AccountUpdateContract, TransferAssetContract, TransferContract}
+import org.tron.protos.Contract.{AccountCreateContract, AccountUpdateContract, TransferAssetContract, TransferContract, _}
 import org.tron.protos.Tron.Transaction
 import org.tron.protos.Tron.Transaction.Contract.ContractType
 import org.tronscan.Extensions._
@@ -17,6 +17,7 @@ import org.tronscan.service.TransactionBuilder
 import play.api.mvc.{AnyContent, Request, Result}
 
 import scala.concurrent.Future
+
 
 case class TransactionAction(
   contract: Transaction.Contract,
@@ -65,6 +66,11 @@ class TransactionBuilderApi @Inject()(
           Transaction.Contract(
             `type` = ContractType.AccountUpdateContract,
             parameter = Some(Any.pack(c.asInstanceOf[AccountUpdateContract])))
+
+        case c: WithdrawBalanceContract =>
+          Transaction.Contract(
+            `type` = ContractType.WithdrawBalanceContract,
+            parameter = Some(Any.pack(c.asInstanceOf[WithdrawBalanceContract])))
       }
 
       TransactionAction(transactionContract, broadcast.getOrElse(false), key, json.hcursor.downField("data").as[String].toOption)
@@ -135,5 +141,11 @@ class TransactionBuilderApi @Inject()(
     value = "Build AccountUpdateContract" )
   def accountUpdate = Action.async { implicit req =>
     handleTransaction[org.tron.protos.Contract.AccountUpdateContract]()
+  }
+
+  @ApiOperation(
+    value = "Build WithdrawBalancecontract" )
+  def withdrawBalance = Action.async { implicit req =>
+    handleTransaction[org.tron.protos.Contract.WithdrawBalanceContract]()
   }
 }
