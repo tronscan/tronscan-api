@@ -170,10 +170,10 @@ class BlockImporter @Inject() (
     var currentRound = previousVotingRound
 
     Sink.foreach[Block] { block =>
-//      Logger.info("Block Timestamp" + block.getBlockHeader.getRawData.timestamp)
 
       currentRound match {
         case Some(round) =>
+          // The current block timestamp has exceeded the (previous maintenance timestamp + maintenanceRoundTime) then insert a new voting rond
           if ((round.timestamp + maintenanceRoundTime) < block.getBlockHeader.getRawData.timestamp) {
           val newRound = MaintenanceRoundModel(
               block = block.getBlockHeader.getRawData.number,
@@ -186,6 +186,7 @@ class BlockImporter @Inject() (
           currentRound = Some(newRound)
         }
         case _ =>
+          // If there isn't a previous maintenance round then just use the current block as the start of a round
           currentRound = Some(MaintenanceRoundModel(
             block = block.getBlockHeader.getRawData.number,
             number = 1,
