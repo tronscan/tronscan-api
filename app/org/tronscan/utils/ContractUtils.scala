@@ -8,7 +8,7 @@ object ContractUtils {
 
   def getOwner(contract: Transaction.Contract) = {
 
-    ProtoUtils.fromContract(contract) match {
+    ProtoUtils.fromContract(contract).map {
       case c: AccountCreateContract =>
         c.ownerAddress.encodeAddress
 
@@ -57,14 +57,33 @@ object ContractUtils {
       case c: UpdateAssetContract =>
         c.ownerAddress.encodeAddress
 
+      case c: TriggerSmartContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: CreateSmartContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ProposalApproveContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ProposalDeleteContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ProposalCreateContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ProposalCreateContract =>
+        c.ownerAddress.encodeAddress
+
       case _ =>
         ""
-    }
+
+    }.getOrElse("")
   }
 
   def getTo(contract: Transaction.Contract): Option[String] = {
 
-    ProtoUtils.fromContract(contract) match {
+    ProtoUtils.fromContract(contract).flatMap {
       case c: AccountCreateContract =>
         Some(c.accountAddress.encodeAddress)
 

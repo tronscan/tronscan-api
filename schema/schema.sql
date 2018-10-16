@@ -31,7 +31,8 @@ create table if not exists transactions
   contract_type integer default '-1'::integer not null,
   owner_address text default ''::text not null,
   to_address text default ''::text not null,
-  data text default ''::text not null
+  data text default ''::text not null,
+  fee bigint
 )
 ;
 
