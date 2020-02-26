@@ -8,6 +8,7 @@ import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.common.utils.ByteArray
 import org.tron.protos.Tron.Transaction
+import org.tron.protos.Tron.Transaction.Contract.ContractType
 import org.tronscan.api.models.TransactionSerializer
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.grpc.WalletClient
@@ -53,7 +54,7 @@ class TransactionApi @Inject()(
       paramType = "query"),
   ))
   @ApiOperation(
-    value = "List Transfers",
+    value = "Retrieve transactions",
     response = classOf[TransactionModel],
     responseContainer = "List")
   def findAll() = Action.async { implicit request =>
@@ -102,6 +103,10 @@ class TransactionApi @Inject()(
           query.filter(x => x.timestamp <= dateStart)
         case (query, ("contract_type", value)) =>
           query.filter(x => x.contractType === value.toInt)
+        case (query, ("token", value)) if value.toUpperCase == "TRX" =>
+          query.filter(x => x.contractType === ContractType.TransferContract.value)
+        case (query, ("token", value)) =>
+          query.filter(x => x.contractType === ContractType.TransferAssetContract.value && x.contractData.+>>("token") === value)
         case (query, _) =>
           query
       }

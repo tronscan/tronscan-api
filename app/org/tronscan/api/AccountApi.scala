@@ -34,6 +34,7 @@ import scala.async.Async._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import org.tronscan.Extensions._
 
 @Api(
   value = "Accounts",
@@ -55,6 +56,10 @@ class AccountApi @Inject()(
 
   val key = configurationProvider.get.get[String]("play.http.secret.key")
 
+  /**
+    * Query accounts
+    * @return
+    */
   @ApiResponses(Array(
     new ApiResponse(
       code = 200,
@@ -112,6 +117,9 @@ class AccountApi @Inject()(
     }
   }
 
+  /**
+    * Find account by the given address
+    */
   @ApiOperation(
     value = "Find account by address",
     response = classOf[AccountModel])
@@ -149,7 +157,7 @@ class AccountApi @Inject()(
           "allowance" -> account.allowance,
           "url" -> witness.map(_.url),
         ),
-        "name" -> new String(account.accountName.toByteArray).toString,
+        "name" -> account.accountName.decodeString,
         "address" -> address,
         "bandwidth" -> Json.obj(
           "freeNetUsed" -> accountBandwidth.freeNetUsed,
@@ -166,6 +174,7 @@ class AccountApi @Inject()(
         ),
         "balances" -> Json.toJson(balances),
         "balance" -> account.balance,
+        "allowance" -> account.allowance,
         "tokenBalances" -> Json.toJson(balances),
         "frozen" -> Json.obj(
           "total" -> account.frozen.map(_.frozenBalance).sum,
@@ -180,6 +189,9 @@ class AccountApi @Inject()(
     }
   }
 
+  /**
+    * Retrieves the balances for the given address
+    */
   @ApiOperation(
     value = "",
     hidden = true
@@ -218,6 +230,9 @@ class AccountApi @Inject()(
     }
   }
 
+  /**
+    * Votes cast by the given address
+    */
   @ApiOperation(
     value = "",
     hidden = true
@@ -226,7 +241,7 @@ class AccountApi @Inject()(
     for {
       wallet <- walletClient.full
       account <- wallet.getAccount(Account(
-        address = ByteString.copyFrom(Base58.decode58Check(address))
+        address = address.decodeAddress,
       ))
     } yield {
 
@@ -248,6 +263,11 @@ class AccountApi @Inject()(
     }
   }
 
+  /**
+    * Retrieve the Super Representative github link
+    * @param address address of the SR
+    * @return
+    */
   @ApiOperation(
     value = "",
     hidden = true
@@ -267,6 +287,9 @@ class AccountApi @Inject()(
     }
   }
 
+  /**
+    * Update the super representative pages
+    */
   @ApiOperation(
     value = "",
     hidden = true)
@@ -308,70 +331,9 @@ class AccountApi @Inject()(
     }
   }
 
-  @ApiOperation(
-    value = "",
-    hidden = true
-  )
-  def resync = Action.async { req =>
-
-    throw new Exception("DISABLED")
-
-    val decider: Supervision.Decider = {
-      case exc =>
-        println("SOLIDITY STREAM ERROR", exc, ExceptionUtils.getStackTrace(exc))
-        Supervision.Resume
-    }
-
-    implicit val materializer = ActorMaterializer(
-      ActorMaterializerSettings(system)
-        .withSupervisionStrategy(decider))(system)
-
-    async {
-
-      val accounts = await(repo.findAll).toList
-
-      val source = Source(accounts)
-        .mapAsync(8) { existingAccount =>
-          async {
-
-            val walletSolidity = await(walletClient.full)
-
-            val account = await(walletSolidity.getAccount(Account(
-              address = ByteString.copyFrom(Base58.decode58Check(existingAccount.address))
-            )))
-
-            if (account != null) {
-
-              val accountModel = AccountModel(
-                address = existingAccount.address,
-                name = new String(account.accountName.toByteArray),
-                balance = account.balance,
-                power = account.frozen.map(_.frozenBalance).sum,
-                tokenBalances = Json.toJson(account.asset),
-                dateUpdated = DateTime.now,
-              )
-
-              List(repo.buildInsertOrUpdate(accountModel)) ++ addressBalanceModelRepository.buildUpdateBalance(accountModel)
-            } else {
-              List.empty
-            }
-
-          }
-        }
-        .flatMapConcat(queries => Source(queries))
-        .groupedWithin(150, 10.seconds)
-        .mapAsync(1) { queries =>
-          blockModelRepository.executeQueries(queries)
-        }
-        .toMat(Sink.ignore)(Keep.right)
-        .run
-
-      await(source)
-
-      Ok("Done")
-    }
-  }
-
+  /**
+    * Synchronises the given account to the database
+    */
   @ApiOperation(
     value = "",
     hidden = true)
@@ -484,7 +446,8 @@ class AccountApi @Inject()(
   }
 
   /**
-    * Generates a new private key
+    * Generates a new account with private key
+    *
     * @return
     */
   def create = Action {

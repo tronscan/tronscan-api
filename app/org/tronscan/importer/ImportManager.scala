@@ -27,6 +27,7 @@ class ImportManager @Inject() (
   fullNodeImporter: FullNodeImporter,
   solidityNodeImporter: SolidityNodeImporter,
   walletClient: WalletClient,
+  voteRoundImporter: VoteRoundImporter,
   accountImporter: AccountImporter) extends Actor {
 
   val config = configurationProvider.get
@@ -65,6 +66,14 @@ class ImportManager @Inject() (
         val syncSolidity = config.get[Boolean]("sync.solidity")
         val syncFull = config.get[Boolean]("sync.full")
         val syncAddresses = config.get[Boolean]("sync.addresses")
+        val syncVoteRounds = config.get[Boolean]("sync.votes")
+
+        if (syncVoteRounds) {
+          startImporter("ROUNDS") {
+            Source.tick(3.seconds, 30.minutes, "")
+              .mapAsync(1)(_ => voteRoundImporter.importRounds().run())
+          }
+        }
 
         if (syncFull) {
           startImporter("FULL") {

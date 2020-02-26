@@ -4,15 +4,15 @@ package tronscan.api
 import com.google.protobuf.ByteString
 import io.circe.Json
 import io.circe.syntax._
-import io.swagger.annotations.Api
+import io.swagger.annotations.{Api, ApiImplicitParam, ApiImplicitParams, ApiOperation}
 import javax.inject.Inject
-import org.tron.api.api.{BytesMessage, EmptyMessage, NumberMessage, WalletGrpc}
-import org.tron.common.utils.{Base58, ByteArray, ByteUtil}
-import org.tron.protos.Tron.Account
+import org.tron.api.api._
+import org.tron.common.utils.ByteArray
+import org.tronscan.Extensions._
+import org.tronscan.api.models.TransactionSerializer._
 import org.tronscan.api.models.{TransactionSerializer, TronModelsSerializers}
 import org.tronscan.grpc.{GrpcService, WalletClient}
 import play.api.mvc.Request
-import org.tronscan.api.models.TransactionSerializer._
 
 import scala.concurrent.Future
 
@@ -30,6 +30,12 @@ class GrpcFullApi @Inject() (
   val serializer = new TronModelsSerializers
   import serializer._
 
+  /**
+    * Retrieves a GRPC client
+    *
+    * Uses the full node by default, but can be overridden by using the ?ip= parameter
+    * Uses the 50051 port by default but can be overridden by using the ?port= parameter
+    */
   def getClient(implicit request: Request[_]): Future[WalletGrpc.WalletStub] = {
     request.getQueryString("ip") match {
       case Some(ip) =>
@@ -40,11 +46,12 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve the latest block on")
   def getNowBlock = Action.async { implicit req =>
 
     for {
-      client <- getClient
-      block <- client.getNowBlock(EmptyMessage())
+      block <- walletClient.fullRequest(_.getNowBlock(EmptyMessage()))
     } yield {
       Ok(Json.obj(
         "data" -> block.asJson
@@ -52,12 +59,12 @@ class GrpcFullApi @Inject() (
     }
   }
 
-
+  @ApiOperation(
+    value = "Retrieve a block by number")
   def getBlockByNum(number: Long) = Action.async { implicit req =>
 
     for {
-      client <- getClient
-      block <- client.getBlockByNum(NumberMessage(number))
+      block <- walletClient.fullRequest(_.getBlockByNum(NumberMessage(number)))
     } yield {
       block.blockHeader match {
         case Some(_) =>
@@ -70,11 +77,42 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve a range of blocks")
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      name = "from",
+      value = "From block",
+      required = true,
+      dataType = "long",
+      paramType = "query"),
+    new ApiImplicitParam(
+      name = "to",
+      value = "To block",
+      required = true,
+      dataType = "long",
+      paramType = "query"),
+  ))
+  def getBlockByLimitNext = Action.async { implicit req =>
+
+    val from = req.getQueryString("from").get.toLong
+    val to = req.getQueryString("to").get.toLong
+
+    for {
+      blocks <- walletClient.fullRequest(_.getBlockByLimitNext(BlockLimit(from, to)))
+    } yield {
+      Ok(Json.obj(
+        "data" -> blocks.block.sortBy(_.getBlockHeader.getRawData.number).toList.asJson
+      ))
+    }
+  }
+
+  @ApiOperation(
+    value = "Retrieve a transaction by the transaction hash")
   def getTransactionById(hash: String) = Action.async { implicit req =>
 
     for {
-      client <- getClient
-      transaction <- client.getTransactionById(BytesMessage(ByteString.copyFrom(ByteArray.fromHexString(hash))))
+      transaction <- walletClient.fullRequest(_.getTransactionById(BytesMessage(ByteString.copyFrom(ByteArray.fromHexString(hash)))))
     } yield {
       Ok(Json.obj(
         "data" -> TransactionSerializer.serialize(transaction)
@@ -82,11 +120,12 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve total number of transactions")
   def totalTransaction = Action.async { implicit req =>
 
     for {
-      client <- getClient
-      total <- client.totalTransaction(EmptyMessage())
+      total <- walletClient.fullRequest(_.totalTransaction(EmptyMessage()))
     } yield {
       Ok(Json.obj(
         "data" -> total.num.asJson
@@ -94,13 +133,12 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve account by address")
   def getAccount(address: String) = Action.async { implicit req =>
 
     for {
-      client <- getClient
-      account <- client.getAccount(Account(
-        address = ByteString.copyFrom(Base58.decode58Check(address))
-      ))
+      account <- walletClient.fullRequest(_.getAccount(address.toAccount))
     } yield {
       Ok(Json.obj(
         "data" -> account.asJson
@@ -108,13 +146,12 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve bandwidth information for the given account")
   def getAccountNet(address: String) = Action.async { implicit req =>
 
     for {
-      client <- getClient
-      accountNet <- client.getAccountNet(Account(
-        address = ByteString.copyFrom(Base58.decode58Check(address))
-      ))
+      accountNet <- walletClient.fullRequest(_.getAccountNet(address.toAccount))
     } yield {
       Ok(Json.obj(
         "data" -> accountNet.asJson
@@ -122,12 +159,12 @@ class GrpcFullApi @Inject() (
     }
   }
 
-
+  @ApiOperation(
+    value = "Retrieve nodes")
   def listNodes = Action.async { implicit req =>
 
     for {
-      client <- getClient
-      nodes <- client.listNodes(EmptyMessage())
+      nodes <- walletClient.fullRequest(_.listNodes(EmptyMessage()))
     } yield {
       Ok(Json.obj(
         "data" -> nodes.nodes.map(node => Json.obj(
@@ -137,15 +174,56 @@ class GrpcFullApi @Inject() (
     }
   }
 
+  @ApiOperation(
+    value = "Retrieve all witnesses")
   def listWitnesses = Action.async { implicit req =>
 
     for {
-      client <- getClient
-      witnessList <- client.listWitnesses(EmptyMessage())
+      witnessList <- walletClient.fullRequest(_.listWitnesses(EmptyMessage()))
     } yield {
       Ok(Json.obj(
         "data" -> witnessList.witnesses.map(_.asJson).asJson
       ))
     }
   }
+
+  @ApiOperation(
+    value = "Retrieve all proposals")
+  def listProposals = Action.async { implicit req =>
+
+    for {
+      proposalList <- walletClient.fullRequest(_.listProposals(EmptyMessage()))
+    } yield {
+      Ok(Json.obj(
+        "data" -> proposalList.proposals.map(_.asJson).asJson
+      ))
+    }
+  }
+
+  @ApiOperation(
+    value = "Retrieve exchanges")
+  def listExchanges = Action.async { implicit req =>
+
+    for {
+      exchangeList <- walletClient.fullRequest(_.listExchanges(EmptyMessage()))
+    } yield {
+      Ok(Json.obj(
+        "data" -> exchangeList.exchanges.map(_.asJson).asJson
+      ))
+    }
+  }
+
+  @ApiOperation(
+    value = "Retrieve blockchain parameters")
+  def getChainParameters = Action.async { implicit req =>
+
+    for {
+      chainParameters <- walletClient.fullRequest(_.getChainParameters(EmptyMessage()))
+    } yield {
+      Ok(Json.obj(
+        "data" -> chainParameters.chainParameter.map(_.asJson).asJson
+      ))
+    }
+  }
+
 }

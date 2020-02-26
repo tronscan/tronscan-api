@@ -4,15 +4,16 @@ import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
 import akka.NotUsed
-import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.scaladsl.Flow
 import org.tron.api.api.EmptyMessage
+import org.tronscan.Extensions._
+import org.tronscan.utils.NetworkUtils
 import play.api.libs.concurrent.Futures
 import play.api.libs.concurrent.Futures._
+import play.api.libs.ws.WSClient
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import org.tronscan.Extensions._
-import org.tronscan.utils.NetworkUtils
 
 object NetworkStreams {
 
@@ -105,6 +106,44 @@ object NetworkStreams {
             networkNode.copy(
               pingOnline = false,
             )
+        }
+      }
+  }
+
+  /**
+    * Ping the given IPS and returns a node
+    *
+    * @param parallel parallel number of processes
+    */
+  def httpPinger(parallel: Int = 4)(implicit executionContext: ExecutionContext, wsClient: WSClient): Flow[NetworkNode, NetworkNode, NotUsed] = {
+    Flow[NetworkNode]
+      .mapAsyncUnordered(parallel) { networkNode =>
+
+        val ia = InetAddress.getByName(networkNode.ip)
+        val startPing = System.currentTimeMillis()
+
+        (for {
+          online <- if (networkNode.nodeType == NetworkScanner.full) {
+            NetworkUtils.pingHttp(s"http://${networkNode.ip}:8090/wallet/getnowblock")
+          } else {
+            NetworkUtils.pingHttp(s"http://${networkNode.ip}:8091/walletsolidity/getnowblock")
+          }
+          response = System.currentTimeMillis() - startPing
+        } yield {
+          if (online) {
+            val httpPort = if (networkNode.nodeType == NetworkScanner.full) 8090 else 8091
+
+            networkNode.copy(
+              httpEnabled = online,
+              httpResponseTime = response,
+              httpUrl = s"http://${networkNode.ip}:$httpPort",
+            )
+          } else {
+            networkNode.copy(httpEnabled = false)
+          }
+        }).recover {
+          case _ =>
+            networkNode.copy(httpEnabled = false)
         }
       }
   }

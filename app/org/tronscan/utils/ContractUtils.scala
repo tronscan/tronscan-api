@@ -27,9 +27,6 @@ object ContractUtils {
       case c: AssetIssueContract =>
         c.ownerAddress.encodeAddress
 
-      case c: DeployContract =>
-        c.ownerAddress.encodeAddress
-
       case c: ParticipateAssetIssueContract =>
         c.ownerAddress.encodeAddress
 
@@ -55,6 +52,42 @@ object ContractUtils {
         c.ownerAddress.encodeAddress
 
       case c: UpdateAssetContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ProposalCreateContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ProposalApproveContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ProposalDeleteContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: CreateSmartContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: TriggerSmartContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: BuyStorageBytesContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: BuyStorageContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: SellStorageContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ExchangeCreateContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ExchangeInjectContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ExchangeWithdrawContract =>
+        c.ownerAddress.encodeAddress
+
+      case c: ExchangeTransactionContract =>
         c.ownerAddress.encodeAddress
 
       case _ =>

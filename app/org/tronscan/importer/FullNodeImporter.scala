@@ -33,11 +33,11 @@ class FullNodeImporter @Inject()(
   def buildStream(implicit actorSystem: ActorSystem) = {
     async {
       val nodeState = await(synchronisationService.nodeState)
-      Logger.info("BuildStream::nodeState -> " + nodeState)
+//      Logger.info("BuildStream::nodeState -> " + nodeState)
       val importAction = await(importStreamFactory.buildImportActionFromImportStatus(nodeState))
-      Logger.info("BuildStream::importAction -> " + importAction)
-      val importers = importersFactory.buildFullNodeImporters(importAction)
-      Logger.info("BuildStream::importers -> " + importers.debug)
+//      Logger.info("BuildStream::importAction -> " + importAction)
+      val importers = await(importersFactory.buildFullNodeImporters(importAction))
+//      Logger.info("BuildStream::importers -> " + importers.debug)
       val synchronisationChecker = importStreamFactory.fullNodePreSynchronisationChecker
       val blockSource = importStreamFactory.buildBlockSource(walletClient)
       val blockSink = importStreamFactory.buildBlockSink(importers)
@@ -46,6 +46,7 @@ class FullNodeImporter @Inject()(
         .single(nodeState)
         .via(synchronisationChecker)
         .via(blockSource)
+        .via(importStreamFactory.buildBlockSequenceChecker)
         .toMat(blockSink)(Keep.right)
     }
   }

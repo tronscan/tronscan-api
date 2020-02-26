@@ -7,7 +7,7 @@ import io.circe.{Decoder, Json}
 import io.swagger.annotations._
 import javax.inject.Inject
 import org.tron.common.utils.ByteArray
-import org.tron.protos.Contract.{AccountCreateContract, AccountUpdateContract, TransferAssetContract, TransferContract}
+import org.tron.protos.Contract.{AccountCreateContract, AccountUpdateContract, TransferAssetContract, TransferContract, _}
 import org.tron.protos.Tron.Transaction
 import org.tron.protos.Tron.Transaction.Contract.ContractType
 import org.tronscan.Extensions._
@@ -17,20 +17,7 @@ import org.tronscan.service.TransactionBuilder
 import play.api.mvc.{AnyContent, Request, Result}
 
 import scala.concurrent.Future
-import io.circe.syntax._
-import org.tron.protos.Contract._
-import org.tron.protos.Tron.Transaction.Contract.ContractType
-import scalapb.Message
 
-
-case class TransactionAction(
-  contract: Transaction.Contract,
-  broadcast: Boolean,
-  key: Option[String] = None,
-  data: Option[String] = None,
-)
-
-case class Signature(pk: String)
 
 @Api(
   value = "Transaction Builder",
@@ -38,6 +25,13 @@ case class Signature(pk: String)
 class TransactionBuilderApi @Inject()(
   transactionBuilder: TransactionBuilder,
   walletClient: WalletClient) extends BaseApi {
+
+
+  case class TransactionAction(
+      contract: Transaction.Contract,
+      broadcast: Boolean,
+      key: Option[String] = None,
+      data: Option[String] = None)
 
   import TransactionSerializer._
 
@@ -76,6 +70,16 @@ class TransactionBuilderApi @Inject()(
           Transaction.Contract(
             `type` = ContractType.WithdrawBalanceContract,
             parameter = Some(Any.pack(c.asInstanceOf[WithdrawBalanceContract])))
+
+        case c: ProposalApproveContract =>
+          Transaction.Contract(
+            `type` = ContractType.ProposalApproveContract,
+            parameter = Some(Any.pack(c.asInstanceOf[ProposalApproveContract])))
+
+        case c: UpdateAssetContract =>
+          Transaction.Contract(
+            `type` = ContractType.UpdateAssetContract,
+            parameter = Some(Any.pack(c.asInstanceOf[UpdateAssetContract])))
       }
 
       TransactionAction(transactionContract, broadcast.getOrElse(false), key, json.hcursor.downField("data").as[String].toOption)
@@ -126,31 +130,87 @@ class TransactionBuilderApi @Inject()(
 
   @ApiOperation(
     value = "Build TransferContract")
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      required = true,
+      dataType = "org.tronscan.api.models.TransferTransaction",
+      paramType = "body"),
+  ))
   def transfer = Action.async { implicit req =>
     handleTransaction[org.tron.protos.Contract.TransferContract]()
   }
 
   @ApiOperation(
     value = "Build TransferAssetContract" )
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      required = true,
+      dataType = "org.tronscan.api.models.TransferAssetTransaction",
+      paramType = "body"),
+  ))
   def transferAsset = Action.async { implicit req =>
     handleTransaction[org.tron.protos.Contract.TransferAssetContract]()
   }
 
   @ApiOperation(
     value = "Build AccountCreateContract" )
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      required = true,
+      dataType = "org.tronscan.api.models.AccountCreateTransaction",
+      paramType = "body"),
+  ))
   def accountCreate = Action.async { implicit req =>
     handleTransaction[org.tron.protos.Contract.AccountCreateContract]()
   }
 
   @ApiOperation(
     value = "Build AccountUpdateContract" )
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      required = true,
+      dataType = "org.tronscan.api.models.AccountUpdateTransaction",
+      paramType = "body"),
+  ))
   def accountUpdate = Action.async { implicit req =>
     handleTransaction[org.tron.protos.Contract.AccountUpdateContract]()
   }
 
   @ApiOperation(
     value = "Build WithdrawBalancecontract" )
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      required = true,
+      dataType = "org.tronscan.api.models.WithdrawBalanceTransaction",
+      paramType = "body"),
+  ))
   def withdrawBalance = Action.async { implicit req =>
     handleTransaction[org.tron.protos.Contract.WithdrawBalanceContract]()
   }
+
+  @ApiOperation(
+    value = "Build ProposalApproveContract")
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      required = true,
+      dataType = "org.tronscan.api.models.ProposalApproveTransaction",
+      paramType = "body"),
+  ))
+  def proposalApprove = Action.async { implicit req =>
+    handleTransaction[org.tron.protos.Contract.ProposalApproveContract]()
+  }
+
+  @ApiOperation(
+    value = "Build UpdateAssetContract")
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(
+      required = true,
+      dataType = "org.tronscan.api.models.UpdateAssetTransaction",
+      paramType = "body"),
+  ))
+  def updateAsset = Action.async { implicit req =>
+    handleTransaction[org.tron.protos.Contract.UpdateAssetContract]()
+  }
 }
+
+

@@ -5,13 +5,11 @@ organization := "org.tronscan"
 
 version := "latest"
 
-
-scalaVersion := "2.12.4"
+scalaVersion := "2.12.6"
 
 dependencyOverrides ++= Seq(
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.9.2"
 )
-
 
 // Library Dependencies
 libraryDependencies ++= Seq(
@@ -82,7 +80,12 @@ libraryDependencies ++= Seq(
   "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test,
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.9.2"
 
-) ++ grpcDeps ++ akkaDeps ++ circeDependencies ++ akkaStreamsContribDeps
+) ++
+  grpcDeps ++
+  akkaDeps ++
+  circeDependencies ++
+  akkaStreamsContribDeps ++
+  catsDeps
 
 // Disable API Documentation
 sources in (Compile, doc) := Seq.empty
@@ -97,3 +100,6 @@ lazy val root = (project in file("."))
       scalapb.gen() -> (sourceManaged in Compile).value
     ),
   )
+
+
+scalacOptions += "-Ypartial-unification"

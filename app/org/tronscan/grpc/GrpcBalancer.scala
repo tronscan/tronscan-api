@@ -1,5 +1,6 @@
 package org.tronscan.grpc
 
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef, Cancellable, Props, Terminated}
@@ -16,9 +17,9 @@ import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-case class GrpcRequest(request: WalletStub => Future[Any])
-case class GrpcRetry(request: GrpcRequest)
-case class GrpcResponse(response: Any)
+case class GrpcRequest(request: WalletStub => Future[Any], id: UUID)
+case class GrpcRetry(request: GrpcRequest, sender: ActorRef)
+case class GrpcResponse(response: Any, id: UUID, ip: NodeAddress)
 case class GrpcBlock(num: Long, hash: String)
 case class OptimizeNodes()
 case class GrpcBalancerStats(
@@ -110,7 +111,7 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
 
   override def preStart(): Unit = {
     import context.dispatcher
-    pinger = Some(context.system.scheduler.schedule(6.second, 6.seconds, self, OptimizeNodes()))
+    pinger = Some(context.system.scheduler.schedule(4.second, 6.seconds, self, OptimizeNodes()))
   }
 
   override def postStop(): Unit = {
@@ -120,8 +121,8 @@ class GrpcBalancer @Inject() (configurationProvider: ConfigurationProvider) exte
   def receive = {
     case w: GrpcRequest ⇒
       router.route(w, sender())
-    case GrpcRetry(request) =>
-      router.route(request, sender())
+    case GrpcRetry(request, s) =>
+      router.route(request, s)
     case stats: GrpcStats =>
       nodeStatuses = nodeStatuses ++ Map(stats.ip -> stats)
     case Terminated(a) ⇒
@@ -145,7 +146,7 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   lazy val channel = ManagedChannelBuilder
     .forAddress(nodeAddress.ip, nodeAddress.port)
-    .usePlaintext(true)
+    .usePlaintext()
     .build
 
   lazy val walletStub = {
@@ -193,16 +194,15 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
     }
   }
 
-  def handleRequest(request: GrpcRequest) = {
+  def handleRequest(request: GrpcRequest, s: ActorRef) = {
     import context.dispatcher
-    val s = sender()
     request.request(walletStub.withDeadlineAfter(5, TimeUnit.SECONDS)).map { x =>
-      s ! GrpcResponse(x)
+      s ! GrpcResponse(x, request.id, nodeAddress)
       requestsHandled += 1
     }.recover {
       case _ =>
         requestErrors += 1
-        context.parent.tell(GrpcRetry(request), s)
+        context.parent.tell(GrpcRetry(request, s), s)
     }
   }
 
@@ -217,7 +217,7 @@ class GrpcClient(nodeAddress: NodeAddress) extends Actor {
 
   def receive = {
     case c: GrpcRequest =>
-      handleRequest(c)
+      handleRequest(c, sender())
 
     case "ping" =>
       ping()

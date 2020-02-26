@@ -1,5 +1,6 @@
 package org.tronscan.models
 
+import com.google.inject.Guice
 import org.tron.api.api.AccountNetMessage
 
 case class AccountBandwidthCapsule(accountNetMessage: AccountNetMessage) {

@@ -3,6 +3,7 @@ package org.tronscan.importer
 import akka.{Done, NotUsed}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import javax.inject.Inject
+import org.joda.time.DateTime
 import org.tron.protos.Tron.Block
 import org.tronscan.models._
 import org.tronscan.utils.ModelUtils
@@ -17,11 +18,12 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class BlockImporter @Inject() (
   blockModelRepository: BlockModelRepository,
+  maintenanceRoundModelRepository: MaintenanceRoundModelRepository,
   transactionModelRepository: TransactionModelRepository,
   transferRepository: TransferModelRepository,
   assetIssueContractModelRepository: AssetIssueContractModelRepository,
   participateAssetIssueModelRepository: ParticipateAssetIssueModelRepository,
-  databaseImporter: DatabaseImporter) {
+  databaseImporter: ContractImporter) {
 
   /**
     * Build block importer that imports the full nodes into the database
@@ -44,11 +46,11 @@ class BlockImporter @Inject() (
         }
 
         // Import Block
-        queries.append(blockModelRepository.buildInsert(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
+        queries.append(blockModelRepository.buildInsertOrUpdate(BlockModel.fromProto(block).copy(confirmed = confirmBlocks)))
 
         // Import Transactions
         queries.appendAll(block.transactions.map { trx =>
-          transactionModelRepository.buildInsert(ModelUtils.transactionToModel(trx, block).copy(confirmed = confirmBlocks))
+          transactionModelRepository.buildInsertOrUpdate(ModelUtils.transactionToModel(trx, block).copy(confirmed = confirmBlocks))
         })
 
         // Import Contracts
@@ -86,12 +88,12 @@ class BlockImporter @Inject() (
       .mapAsync(12) { solidityBlock =>
         for {
           databaseBlock <- blockModelRepository.findByNumber(solidityBlock.getBlockHeader.getRawData.number)
-        } yield (solidityBlock, databaseBlock.get)
+        } yield (solidityBlock, databaseBlock)
       }
       // Filter empty or confirmed blocks
-      .filter(x => x._1.blockHeader.isDefined && !x._2.confirmed)
+      .filter(x => x._1.blockHeader.isDefined && x._2.nonEmpty && !x._2.get.confirmed)
       .map {
-        case (solidityBlock, databaseBlock) =>
+        case (solidityBlock, Some(databaseBlock)) =>
 
           val queries = ListBuffer[FixedSqlAction[_, NoStream, Effect.Write]]()
 
@@ -136,6 +138,8 @@ class BlockImporter @Inject() (
           })
 
           queries.toList
+        case _ =>
+          List.empty
       }
       .flatMapConcat(queries => Source(queries))
       .groupedWithin(500, 10.seconds)
@@ -153,6 +157,43 @@ class BlockImporter @Inject() (
       val header = block.getBlockHeader.getRawData
       if (header.number % 1000 == 0) {
         Logger.info(s"FULL NODE BLOCK: ${header.number}, TX: ${block.transactions.size}")
+      }
+    }
+  }
+
+  /**
+    * Builds the importer of voting rounds
+    */
+  def buildVotingRoundImporter(previousVotingRound: Option[MaintenanceRoundModel] = None) = {
+    val maintenanceRoundTime = 21600000L
+
+    var currentRound = previousVotingRound
+
+    Sink.foreach[Block] { block =>
+
+      currentRound match {
+        case Some(round) =>
+          // The current block timestamp has exceeded the (previous maintenance timestamp + maintenanceRoundTime) then insert a new voting rond
+          if ((round.timestamp + maintenanceRoundTime) < block.getBlockHeader.getRawData.timestamp) {
+          val newRound = MaintenanceRoundModel(
+              block = block.getBlockHeader.getRawData.number,
+              number = round.number + 1,
+              timestamp = block.getBlockHeader.getRawData.timestamp,
+              dateStart = new DateTime(block.getBlockHeader.getRawData.timestamp),
+          )
+          maintenanceRoundModelRepository.insertAsync(newRound)
+          Logger.info("Next Round: " + newRound.block + " => " + newRound.number)
+          currentRound = Some(newRound)
+        }
+        case _ =>
+          // If there isn't a previous maintenance round then just use the current block as the start of a round
+          currentRound = Some(MaintenanceRoundModel(
+            block = block.getBlockHeader.getRawData.number,
+            number = 1,
+            timestamp = block.getBlockHeader.getRawData.timestamp,
+            dateStart = new DateTime(block.getBlockHeader.getRawData.timestamp),
+          ))
+          maintenanceRoundModelRepository.insertAsync(currentRound.get)
       }
     }
   }

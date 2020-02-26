@@ -47,16 +47,21 @@ GET     /api/node                               org.tronscan.api.NodeApi.status
 
 GET     /api/system/status                      org.tronscan.api.SystemApi.status
 GET     /api/system/balancer                    org.tronscan.api.SystemApi.balancer
-GET     /api/system/sync-accounts               org.tronscan.api.AccountApi.resync
+#GET     /api/system/test                    org.tronscan.api.SystemApi.test
 GET     /api/system/sync-account/:address       org.tronscan.api.AccountApi.sync(address: String)
 
 # Votes
 
-GET     /api/vote                       org.tronscan.api.VoteApi.findAll
-GET     /api/vote/live                  org.tronscan.api.VoteApi.currentCycle
-GET     /api/vote/current-cycle         org.tronscan.api.VoteApi.candidateTotals
-GET     /api/vote/next-cycle            org.tronscan.api.VoteApi.nextCycle
-GET     /api/vote/stats                 org.tronscan.api.VoteApi.stats
+GET     /api/vote                               org.tronscan.api.VoteApi.findAll
+GET     /api/vote/live                          org.tronscan.api.VoteApi.currentCycle
+GET     /api/vote/current-cycle                 org.tronscan.api.VoteApi.candidateTotals
+GET     /api/vote/next-cycle                    org.tronscan.api.VoteApi.nextCycle
+GET     /api/vote/stats                         org.tronscan.api.VoteApi.stats
+
+# Vote Rounds
+
+GET     /api/round/:number              org.tronscan.api.VoteApi.round(number: Int)
+GET     /api/round/:number/votes        org.tronscan.api.VoteApi.roundVotes(number: Int)
 
 # Tokens
 
@@ -66,8 +71,8 @@ GET     /api/token/:name/address        org.tronscan.api.TokenApi.getAccounts(na
 
 # Witnesses
 
-GET     /api/witness                    org.tronscan.api.WitnessApi.findAll
-GET     /api/witness/maintenance-statistic         org.tronscan.api.WitnessApi.maintenanceStatistic
+GET     /api/witness                                org.tronscan.api.WitnessApi.findAll
+GET     /api/witness/maintenance-statistic          org.tronscan.api.WitnessApi.maintenanceStatistic
 
 # Nodes
 
@@ -95,14 +100,18 @@ POST    /api/slack/command              org.tronscan.slack.SlackApi.handleComman
 
 # GRPC Full Node Api
 
-GET     /api/grpc/full/getnowblock                  org.tronscan.api.GrpcFullApi.getNowBlock
-GET     /api/grpc/full/getblockbynum/:number        org.tronscan.api.GrpcFullApi.getBlockByNum(number: Long)
-GET     /api/grpc/full/totaltransaction             org.tronscan.api.GrpcFullApi.totalTransaction
-GET     /api/grpc/full/getaccount/:address          org.tronscan.api.GrpcFullApi.getAccount(address: String)
-GET     /api/grpc/full/gettransactionbyid/:hash     org.tronscan.api.GrpcFullApi.getTransactionById(hash: String)
-GET     /api/grpc/full/getaccountnet/:address       org.tronscan.api.GrpcFullApi.getAccountNet(address: String)
-GET     /api/grpc/full/listnodes                    org.tronscan.api.GrpcFullApi.listNodes
-GET     /api/grpc/full/listwitnesses                org.tronscan.api.GrpcFullApi.listWitnesses
+GET     /api/grpc/full/getnowblock                      org.tronscan.api.GrpcFullApi.getNowBlock
+GET     /api/grpc/full/getblockbynum/:number            org.tronscan.api.GrpcFullApi.getBlockByNum(number: Long)
+GET     /api/grpc/full/getblockbylimitnext              org.tronscan.api.GrpcFullApi.getBlockByLimitNext
+GET     /api/grpc/full/totaltransaction                 org.tronscan.api.GrpcFullApi.totalTransaction
+GET     /api/grpc/full/getaccount/:address              org.tronscan.api.GrpcFullApi.getAccount(address: String)
+GET     /api/grpc/full/gettransactionbyid/:hash         org.tronscan.api.GrpcFullApi.getTransactionById(hash: String)
+GET     /api/grpc/full/getaccountnet/:address           org.tronscan.api.GrpcFullApi.getAccountNet(address: String)
+GET     /api/grpc/full/listnodes                        org.tronscan.api.GrpcFullApi.listNodes
+GET     /api/grpc/full/listwitnesses                    org.tronscan.api.GrpcFullApi.listWitnesses
+GET     /api/grpc/full/listproposals                    org.tronscan.api.GrpcFullApi.listProposals
+GET     /api/grpc/full/listexchanges                    org.tronscan.api.GrpcFullApi.listExchanges
+GET     /api/grpc/full/getchainparameters               org.tronscan.api.GrpcFullApi.getChainParameters
 
 # GRPC Solidity API
 
@@ -113,11 +122,13 @@ GET     /api/grpc/solidity/listwitnesses                org.tronscan.api.GrpcSol
 
 # Transaction Builder
 
-POST    /api/transaction-builder/contract/transfer              org.tronscan.api.TransactionBuilderApi.transfer
-POST    /api/transaction-builder/contract/transferasset         org.tronscan.api.TransactionBuilderApi.transferAsset
-POST    /api/transaction-builder/contract/accountcreate         org.tronscan.api.TransactionBuilderApi.accountCreate
-POST    /api/transaction-builder/contract/accountupdate         org.tronscan.api.TransactionBuilderApi.accountUpdate
-POST    /api/transaction-builder/contract/withdrawbalance       org.tronscan.api.TransactionBuilderApi.withdrawBalance
+POST    /api/transaction-builder/contract/transfer                      org.tronscan.api.TransactionBuilderApi.transfer
+POST    /api/transaction-builder/contract/transferasset                 org.tronscan.api.TransactionBuilderApi.transferAsset
+POST    /api/transaction-builder/contract/accountcreate                 org.tronscan.api.TransactionBuilderApi.accountCreate
+POST    /api/transaction-builder/contract/accountupdate                 org.tronscan.api.TransactionBuilderApi.accountUpdate
+POST    /api/transaction-builder/contract/withdrawbalance               org.tronscan.api.TransactionBuilderApi.withdrawBalance
+POST    /api/transaction-builder/contract/proposalapprove               org.tronscan.api.TransactionBuilderApi.proposalApprove
+POST    /api/transaction-builder/contract/updateasset                   org.tronscan.api.TransactionBuilderApi.updateAsset
 
 # Socket IO
 

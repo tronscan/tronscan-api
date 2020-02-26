@@ -1,5 +1,7 @@
 package org.tronscan.grpc
 
+import java.util.UUID
+
 import akka.actor.ActorRef
 import akka.util
 import javax.inject.{Inject, Named, Singleton}
@@ -9,6 +11,7 @@ import org.tronscan.grpc.GrpcPool.{Channel, RequestChannel}
 import akka.pattern.ask
 import akka.util.Timeout
 import org.tron.api.api.WalletGrpc.WalletStub
+import play.api.Logger
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -29,9 +32,9 @@ class WalletClient @Inject() (
     (grpcPool ? RequestChannel(ip, port)).mapTo[Channel].map(c => WalletGrpc.stub(c.channel))
   }
 
-  def fullRequest[A](request: WalletStub => Future[A]) = {
-    implicit val timeout = Timeout(9.seconds)
-    (grpcBalancer ? GrpcRequest(request)).mapTo[GrpcResponse].map(_.response.asInstanceOf[A])
+  def fullRequest[A](request: WalletStub => Future[A], id: UUID = UUID.randomUUID()) = {
+    implicit val timeout = Timeout(3.seconds)
+    (grpcBalancer ? GrpcRequest(request, id)).mapTo[GrpcResponse].map(_.response.asInstanceOf[A])
   }
 
   def solidity = {

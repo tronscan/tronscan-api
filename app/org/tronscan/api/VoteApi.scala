@@ -4,22 +4,16 @@ package tronscan.api
 import io.circe.Json
 import io.circe.generic.auto._
 import io.circe.syntax._
-import io.circe.generic.auto._
-import io.circe.syntax._
 import javax.inject.Inject
 import org.joda.time.DateTime
 import org.tron.api.api.EmptyMessage
 import org.tron.api.api.WalletSolidityGrpc.WalletSolidity
-import org.tronscan.App._
-import org.tronscan.actions.VoteList
 import org.tronscan.actions.VoteList
 import org.tronscan.db.PgProfile.api._
 import org.tronscan.domain.Constants
 import org.tronscan.grpc.WalletClient
 import org.tronscan.models._
 import play.api.cache.redis.CacheAsyncApi
-import play.api.cache.{Cached, NamedCache}
-import play.api.mvc.InjectedController
 import play.api.cache.{Cached, NamedCache}
 import play.api.mvc.InjectedController
 
@@ -36,6 +30,8 @@ class VoteApi @Inject()(
   voteSnapshotModelRepository: VoteSnapshotModelRepository,
   walletSolidity: WalletSolidity,
   voteList: VoteList,
+  roundVoteModelRepository: RoundVoteModelRepository,
+  maintenanceRoundModelRepository: MaintenanceRoundModelRepository,
   @NamedCache("redis") redisCache: CacheAsyncApi) extends InjectedController {
 
   def findAll() = Action.async { implicit request =>
@@ -131,6 +127,51 @@ class VoteApi @Inject()(
           "timestamp" -> row._1._2.asJson,
           "votes" -> row._2.asJson,
         )).asJson,
+      ))
+    }
+  }
+
+  /**
+    * Retrieves a single voting round
+    */
+  def round(id: Int) = Action.async {
+    maintenanceRoundModelRepository.findByNumber(id).map {
+      case Some(round) =>
+        Ok(round.asJson)
+      case _ =>
+        NotFound
+    }
+  }
+
+  /**
+    * Retrieve the votes for the given round
+    */
+  def roundVotes(id: Int) = Action.async { implicit req =>
+
+    import roundVoteModelRepository._
+
+    var q = sortWithRequest() {
+      case (t, "votes") => t.votes
+    }
+
+    q = q andThen { _.filter(_.round === id) }
+
+    q = q andThen filterRequest {
+      case (query, ("voter", value)) =>
+        query.filter(_.address === value)
+      case (query, ("candidate", value)) =>
+        query.filter(_.candidate === value)
+      case (query, _) =>
+        query
+    }
+
+    for {
+      total <- readTotals(q)
+      accounts <- readQuery(q andThen limitWithRequest())
+    } yield {
+      Ok(Json.obj(
+        "total" -> total.asJson,
+        "data" -> accounts.asJson
       ))
     }
   }
